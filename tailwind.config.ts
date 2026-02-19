@@ -13,8 +13,16 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        cinzel: ['Cinzel', 'serif'],
+        inter: ['Inter', 'sans-serif'],
+      },
       colors: {
+        "status-online": "hsl(var(--status-online))",
+        "status-offline": "hsl(var(--status-offline))",
+        "status-unknown": "hsl(var(--status-unknown))",
         border: "hsl(var(--border))",
+
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
