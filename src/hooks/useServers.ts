@@ -1,58 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ServerConfig } from '@/types/server';
+import { StorageAdapter } from '@/lib/storage';
 
-const STORAGE_KEY = 'risingworld_servers';
+export function useServers(adapter: StorageAdapter) {
+  const [servers, setServers] = useState<ServerConfig[]>([]);
 
-function loadServers(): ServerConfig[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as ServerConfig[];
-  } catch {
-    return [];
-  }
-}
+  // Load servers from adapter on mount / adapter change
+  useEffect(() => {
+    adapter.getServers().then(setServers).catch(() => setServers([]));
+  }, [adapter]);
 
-function saveServers(servers: ServerConfig[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(servers));
-}
-
-export function useServers() {
-  const [servers, setServers] = useState<ServerConfig[]>(loadServers);
-
-  const addServer = useCallback((data: Omit<ServerConfig, 'id' | 'createdAt'>) => {
-    const newServer: ServerConfig = {
-      ...data,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    setServers(prev => {
-      const updated = [...prev, newServer];
-      saveServers(updated);
-      return updated;
-    });
+  const addServer = useCallback(async (data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig> => {
+    const newServer = await adapter.addServer(data);
+    setServers(prev => [...prev, newServer]);
     return newServer;
-  }, []);
+  }, [adapter]);
 
-  const removeServer = useCallback((id: string) => {
-    setServers(prev => {
-      const updated = prev.filter(s => s.id !== id);
-      saveServers(updated);
-      return updated;
-    });
-  }, []);
-
-  const updateServer = useCallback((id: string, data: Partial<Omit<ServerConfig, 'id' | 'createdAt'>>) => {
-    setServers(prev => {
-      const updated = prev.map(s => s.id === id ? { ...s, ...data } : s);
-      saveServers(updated);
-      return updated;
-    });
-  }, []);
+  const removeServer = useCallback(async (id: string): Promise<void> => {
+    await adapter.deleteServer(id);
+    setServers(prev => prev.filter(s => s.id !== id));
+  }, [adapter]);
 
   const getServer = useCallback((id: string) => {
     return servers.find(s => s.id === id);
   }, [servers]);
 
-  return { servers, addServer, removeServer, updateServer, getServer };
+  return { servers, addServer, removeServer, getServer };
 }

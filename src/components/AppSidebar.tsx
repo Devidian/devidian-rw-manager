@@ -1,5 +1,4 @@
 import { NavLink } from '@/components/NavLink';
-import { useLocation } from 'react-router-dom';
 import {
   Sidebar,
   SidebarContent,
@@ -13,12 +12,16 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { ServerWithStatus } from '@/types/server';
-import { LayoutDashboard, Server, Plus, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { StorageMode } from '@/context/StorageModeContext';
+import { LayoutDashboard, Server, Plus, Loader2, HardDrive, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface AppSidebarProps {
   servers: ServerWithStatus[];
   onAddServer: () => void;
+  storageMode: StorageMode;
+  backendUrl: string | null;
 }
 
 function StatusIcon({ status }: { status: ServerWithStatus['status'] }) {
@@ -28,7 +31,7 @@ function StatusIcon({ status }: { status: ServerWithStatus['status'] }) {
   return <span className="h-2 w-2 rounded-full status-dot-unknown shrink-0" />;
 }
 
-export function AppSidebar({ servers, onAddServer }: AppSidebarProps) {
+export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: AppSidebarProps) {
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="px-4 py-4 border-b border-sidebar-border">
@@ -40,6 +43,21 @@ export function AppSidebar({ servers, onAddServer }: AppSidebarProps) {
             <h2 className="text-sm font-semibold text-sidebar-foreground leading-none font-cinzel">RisingWorld</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Server Manager</p>
           </div>
+        </div>
+
+        {/* Storage mode indicator */}
+        <div className="mt-3">
+          {storageMode === 'backend' ? (
+            <Badge variant="outline" className="gap-1.5 text-xs w-full justify-center py-1 border-primary/30 text-primary/80">
+              <Globe className="h-3 w-3" />
+              Backend-Modus
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1.5 text-xs w-full justify-center py-1 text-muted-foreground">
+              <HardDrive className="h-3 w-3" />
+              Lokal
+            </Badge>
+          )}
         </div>
       </SidebarHeader>
 
@@ -94,7 +112,7 @@ export function AppSidebar({ servers, onAddServer }: AppSidebarProps) {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
+      <SidebarFooter className="p-4 border-t border-sidebar-border space-y-2">
         <Button
           onClick={onAddServer}
           size="sm"

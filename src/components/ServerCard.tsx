@@ -50,10 +50,10 @@ function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
 export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
   const navigate = useNavigate();
   const data = server.queryData;
-  const serverName = data?.servername ?? data?.serverName ?? server.label;
+  const serverName = data?.name ?? server.label;
   const map = data?.map ?? '—';
-  const players = data?.players ?? 0;
-  const maxPlayers = data?.maxPlayers ?? '?';
+  const playercount = data?.playercount ?? 0;
+  const maxplayers = data?.maxplayers ?? '?';
   const version = data?.version;
 
   return (
@@ -90,8 +90,8 @@ export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Users className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-foreground font-medium">{players}</span>
-            <span>/ {maxPlayers}</span>
+            <span className="text-foreground font-medium">{playercount}</span>
+            <span>/ {maxplayers}</span>
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground truncate">
             <MapPin className="h-3.5 w-3.5 shrink-0" />

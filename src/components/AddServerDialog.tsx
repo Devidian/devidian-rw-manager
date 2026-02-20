@@ -36,7 +36,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface AddServerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (data: Omit<ServerConfig, 'id' | 'createdAt'>) => void;
+  onAdd: (data: Omit<ServerConfig, 'id' | 'createdAt'>) => Promise<ServerConfig>;
 }
 
 export function AddServerDialog({ open, onOpenChange, onAdd }: AddServerDialogProps) {
@@ -45,8 +45,8 @@ export function AddServerDialog({ open, onOpenChange, onAdd }: AddServerDialogPr
     defaultValues: { label: '', queryUrl: '', backendUrl: '' },
   });
 
-  function onSubmit(values: FormValues) {
-    onAdd({
+  async function onSubmit(values: FormValues) {
+    await onAdd({
       label: values.label,
       queryUrl: values.queryUrl.endsWith('/') ? values.queryUrl : values.queryUrl + '/',
       backendUrl: values.backendUrl || undefined,
