@@ -72,7 +72,7 @@ export default function Index() {
               key={server.id}
               server={server}
               onRefresh={() => refreshOne(server.id)}
-              onDelete={() => removeServer(server.id)}
+              onDelete={() => void removeServer(server.id)}
             />
           ))}
         </div>

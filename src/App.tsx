@@ -3,25 +3,33 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { AddServerDialog } from '@/components/AddServerDialog';
 import { ServerProvider, useServerContext } from '@/context/ServerContext';
+import { StorageModeProvider, useStorageMode } from '@/context/StorageModeContext';
 import Index from './pages/Index';
 import ServerDetailPage from './pages/ServerDetailPage';
 import NotFound from './pages/NotFound';
+import LandingPage from './pages/LandingPage';
 
 const queryClient = new QueryClient();
 
 function Layout() {
   const [addOpen, setAddOpen] = useState(false);
   const { serverList, addServer } = useServerContext();
+  const { mode, backendUrl } = useStorageMode();
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar servers={serverList} onAddServer={() => setAddOpen(true)} />
+        <AppSidebar
+          servers={serverList}
+          onAddServer={() => setAddOpen(true)}
+          storageMode={mode}
+          backendUrl={backendUrl}
+        />
 
         <div className="flex flex-col flex-1 min-w-0">
           {/* Top bar */}
@@ -52,15 +60,38 @@ function Layout() {
   );
 }
 
+/** Guard: redirect to /setup if no storage mode has been chosen yet */
+function AppRoutes() {
+  const { isConfigured } = useStorageMode();
+
+  return (
+    <Routes>
+      <Route path="/setup" element={<LandingPage />} />
+      {isConfigured ? (
+        <Route
+          path="*"
+          element={
+            <ServerProvider>
+              <Layout />
+            </ServerProvider>
+          }
+        />
+      ) : (
+        <Route path="*" element={<Navigate to="/setup" replace />} />
+      )}
+    </Routes>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <ServerProvider>
-          <Layout />
-        </ServerProvider>
+        <StorageModeProvider>
+          <AppRoutes />
+        </StorageModeProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

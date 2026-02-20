@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ServerWithStatus, DbPlayer } from '@/types/server';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,6 +12,7 @@ import {
 import {
   ArrowLeft, RefreshCw, Users, MapPin, Tag, Lock, Gamepad2,
   Search, Loader2, WifiOff, HardDrive, Globe, Shield,
+  Clock, Monitor, Sword, Heart, Star,
 } from 'lucide-react';
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
 import { cn } from '@/lib/utils';
@@ -64,139 +65,117 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
   );
 }
 
+function formatUptime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 function PlayersTab({ server }: { server: ServerWithStatus }) {
   const [search, setSearch] = useState('');
   const { players: dbPlayers, loading: dbLoading, error: dbError, fetchPlayers } = useDatabasePlayers();
+  const hasDbAccess = !!server.backendUrl;
 
   useEffect(() => {
     if (server.backendUrl) {
-      fetchPlayers(server.backendUrl, server.id);
+      fetchPlayers(server.backendUrl);
     }
   }, [server.id, server.backendUrl]);
 
-  const onlinePlayers = server.queryData?.currentPlayers ?? [];
-  const hasDbAccess = !!server.backendUrl;
-
-  // Merge: db players enriched with online status
-  const allPlayers = hasDbAccess ? dbPlayers : onlinePlayers.map(p => ({
-    name: p.name,
-    steamId: p.steamId ?? '—',
-    lastLogin: undefined,
-    playTime: p.playTime,
-    groups: [],
-    rights: [],
-  } satisfies DbPlayer));
-
-  const filtered = allPlayers.filter(p =>
+  const filtered = dbPlayers.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.steamId ?? '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const onlineNames = new Set(onlinePlayers.map(p => p.name));
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Spieler oder SteamID suchen…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        {hasDbAccess && (
-          <Badge variant="outline" className="gap-1.5 text-xs">
-            <HardDrive className="h-3 w-3" />
-            Player.db verbunden
-          </Badge>
-        )}
-      </div>
-
-      {dbLoading && (
-        <div className="flex items-center gap-2 text-muted-foreground text-sm p-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Lade Spielerdaten aus der Datenbank…
-        </div>
-      )}
-
-      {dbError && (
-        <div className="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          Backend-Fehler: {dbError}
-        </div>
-      )}
-
-      {!hasDbAccess && onlinePlayers.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Keine Spieler online</p>
-          <p className="text-sm mt-1">
-            Für erweiterte Daten aus der Player.db füge eine Backend-URL beim Server hinzu.
+      {!hasDbAccess ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <HardDrive className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">Kein Game-Backend konfiguriert</p>
+          <p className="text-sm mt-1 max-w-sm mx-auto">
+            Füge eine Backend-URL beim Server hinzu, um Spielerdaten aus der Player.db abzurufen.
           </p>
         </div>
-      )}
+      ) : (
+        <>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Spieler oder SteamID suchen…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Badge variant="outline" className="gap-1.5 text-xs">
+              <HardDrive className="h-3 w-3" />
+              Player.db verbunden
+            </Badge>
+          </div>
 
-      {filtered.length > 0 && (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="w-8"></TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>SteamID</TableHead>
-                {hasDbAccess && <TableHead>Letzter Login</TableHead>}
-                {hasDbAccess && <TableHead>Spielzeit</TableHead>}
-                {hasDbAccess && <TableHead>Gruppen</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((player, i) => {
-                const isOnline = onlineNames.has(player.name);
-                return (
-                  <TableRow key={player.steamId ?? player.name + i} className="hover:bg-muted/20">
-                    <TableCell>
-                      <span
-                        className={cn(
-                          'block h-2 w-2 rounded-full',
-                          isOnline ? 'status-dot-online' : 'status-dot-offline'
-                        )}
-                        title={isOnline ? 'Online' : 'Offline'}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{player.name}</TableCell>
-                    <TableCell className="text-muted-foreground font-mono text-xs">
-                      {player.steamId ?? '—'}
-                    </TableCell>
-                    {hasDbAccess && (
+          {dbLoading && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm p-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Lade Spielerdaten aus der Datenbank…
+            </div>
+          )}
+
+          {dbError && (
+            <div className="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              Backend-Fehler: {dbError}
+            </div>
+          )}
+
+          {!dbLoading && !dbError && filtered.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="font-medium">Keine Spieler gefunden</p>
+            </div>
+          )}
+
+          {filtered.length > 0 && (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead>Name</TableHead>
+                    <TableHead>SteamID</TableHead>
+                    <TableHead>Gruppe</TableHead>
+                    <TableHead>Letzter Login</TableHead>
+                    <TableHead>Spielzeit</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((player) => (
+                    <TableRow key={player.id} className="hover:bg-muted/20">
+                      <TableCell className="font-medium">{player.name}</TableCell>
+                      <TableCell className="text-muted-foreground font-mono text-xs">
+                        {player.steamId ?? '—'}
+                      </TableCell>
+                      <TableCell>
+                        {player.group ? (
+                          <Badge variant="secondary" className="text-xs py-0 h-5">
+                            {player.group}
+                          </Badge>
+                        ) : '—'}
+                      </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {player.lastLogin
                           ? formatDistanceToNow(new Date(player.lastLogin), { addSuffix: true, locale: de })
                           : '—'}
                       </TableCell>
-                    )}
-                    {hasDbAccess && (
                       <TableCell className="text-muted-foreground text-sm">
                         {player.playTime != null ? `${Math.round(player.playTime / 60)} Min.` : '—'}
                       </TableCell>
-                    )}
-                    {hasDbAccess && (
-                      <TableCell>
-                        <div className="flex gap-1 flex-wrap">
-                          {(player.groups ?? []).map(g => (
-                            <Badge key={g} variant="secondary" className="text-xs py-0 h-5">
-                              {g}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -219,9 +198,10 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   }
 
   const data = server.queryData;
-  const serverName = data?.servername ?? data?.serverName ?? server.label;
-  const players = data?.players ?? 0;
-  const maxPlayers = data?.maxPlayers ?? '?';
+  const serverName = data?.name ?? server.label;
+  const playercount = data?.playercount ?? 0;
+  const maxplayers = data?.maxplayers ?? '?';
+  const gamemodeLabel = data?.gamemode === 0 ? 'Survival' : data?.gamemode === 1 ? 'Creative' : '—';
 
   return (
     <div className="space-y-6">
@@ -260,10 +240,10 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
       {/* Quick stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Spieler', value: `${players} / ${maxPlayers}`, icon: Users },
+          { label: 'Spieler', value: `${playercount} / ${maxplayers}`, icon: Users },
           { label: 'Karte', value: data?.map ?? '—', icon: MapPin },
           { label: 'Version', value: data?.version ? `v${data.version}` : '—', icon: Tag },
-          { label: 'Passwort', value: (data?.passwordProtected || data?.password) ? 'Ja' : 'Nein', icon: Lock },
+          { label: 'Spielmodus', value: gamemodeLabel, icon: Gamepad2 },
         ].map(stat => (
           <Card key={stat.label} className="bg-muted/20 border-border">
             <CardContent className="p-4">
@@ -287,8 +267,8 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           <TabsTrigger value="players" className="gap-2 data-[state=active]:bg-muted">
             <Users className="h-4 w-4" />
             Spieler
-            {players > 0 && (
-              <Badge variant="secondary" className="h-5 px-1.5 text-xs">{players}</Badge>
+            {playercount > 0 && (
+              <Badge variant="secondary" className="h-5 px-1.5 text-xs">{playercount}</Badge>
             )}
           </TabsTrigger>
         </TabsList>
@@ -312,12 +292,23 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
                   <InfoRow icon={Tag} label="Servername" value={serverName} />
                   <InfoRow icon={MapPin} label="Karte / Map" value={data?.map} />
                   <InfoRow icon={Tag} label="Version" value={data?.version} />
-                  <InfoRow icon={Users} label="Spieler" value={`${players} / ${maxPlayers}`} />
-                  <InfoRow icon={Gamepad2} label="Spielmodus" value={data?.gamemode} />
-                  <InfoRow icon={Lock} label="Passwortgeschützt" value={data?.passwordProtected ?? data?.password} />
+                  <InfoRow icon={Users} label="Spieler" value={`${playercount} / ${maxplayers}`} />
+                  <InfoRow icon={Gamepad2} label="Spielmodus" value={gamemodeLabel} />
+                  <InfoRow icon={Clock} label="Uptime" value={data?.uptime != null ? formatUptime(data.uptime) : undefined} />
+                  <InfoRow icon={Monitor} label="Betriebssystem" value={data?.os} />
+                  <InfoRow icon={Globe} label="IP / Port" value={data?.ip && data?.port ? `${data.ip}:${data.port}` : undefined} />
+                  <InfoRow icon={Tag} label="SteamID" value={data?.steamid != null ? String(data.steamid) : undefined} />
+                  <InfoRow icon={Tag} label="Kontakt" value={data?.contact} />
+                  <InfoRow icon={Lock} label="Gesperrt" value={data?.locked} />
+                  <InfoRow icon={Shield} label="Whitelist" value={data?.whitelist} />
+                  <InfoRow icon={Lock} label="Passwortgeschützt" value={data?.locked} />
+                  <InfoRow icon={Sword} label="PvP" value={data?.pvp} />
+                  <InfoRow icon={Heart} label="PvE" value={data?.pve} />
+                  <InfoRow icon={Star} label="Friedensmodus" value={data?.peaceful} />
+                  <InfoRow icon={HardDrive} label="Mods aktiv" value={data?.mods} />
                   <InfoRow icon={Globe} label="Query-URL" value={server.queryUrl} />
                   {server.backendUrl && (
-                    <InfoRow icon={HardDrive} label="Backend-URL" value={server.backendUrl} />
+                    <InfoRow icon={HardDrive} label="Game-Backend-URL" value={server.backendUrl} />
                   )}
                 </div>
               )}

@@ -1,14 +1,14 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
 import { useServers } from '@/hooks/useServers';
 import { useServerStatus } from '@/hooks/useServerStatus';
+import { useStorageMode } from '@/context/StorageModeContext';
 import { ServerConfig, ServerWithStatus } from '@/types/server';
 
 interface ServerContextValue {
   servers: ServerConfig[];
   serverList: ServerWithStatus[];
-  addServer: (data: Omit<ServerConfig, 'id' | 'createdAt'>) => ServerConfig;
-  removeServer: (id: string) => void;
-  updateServer: (id: string, data: Partial<Omit<ServerConfig, 'id' | 'createdAt'>>) => void;
+  addServer: (data: Omit<ServerConfig, 'id' | 'createdAt'>) => Promise<ServerConfig>;
+  removeServer: (id: string) => Promise<void>;
   getServer: (id: string) => ServerConfig | undefined;
   refreshAll: () => void;
   refreshOne: (id: string) => void;
@@ -17,13 +17,14 @@ interface ServerContextValue {
 const ServerContext = createContext<ServerContextValue | undefined>(undefined);
 
 export function ServerProvider({ children }: { children: ReactNode }) {
-  const { servers, addServer, removeServer, updateServer, getServer } = useServers();
+  const { adapter } = useStorageMode();
+  const { servers, addServer, removeServer, getServer } = useServers(adapter);
   const { statusMap, refreshAll, refreshOne } = useServerStatus(servers);
 
   const serverList: ServerWithStatus[] = servers.map(s => statusMap[s.id] ?? { ...s, status: 'unknown' as const });
 
   return (
-    <ServerContext.Provider value={{ servers, serverList, addServer, removeServer, updateServer, getServer, refreshAll, refreshOne }}>
+    <ServerContext.Provider value={{ servers, serverList, addServer, removeServer, getServer, refreshAll, refreshOne }}>
       {children}
     </ServerContext.Provider>
   );
