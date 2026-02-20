@@ -1,85 +1,129 @@
 
-## RisingWorld Server Manager – MVP Plan
+## Refactoring: Dual-Backend-Architektur
 
-### Überblick
-Ein game-thematisches Admin-Dashboard zur Verwaltung von RisingWorld-Servern. Das Frontend kommuniziert mit zwei Datenquellen: der öffentlichen Query-URL des Servers (JSON-Statusabfrage) und einem selbst gehosteten Backend (für lokale Datei- & Datenbankzugriffe).
+### Übersicht der Änderungen
 
----
-
-### Seiten & Features
-
-#### 1. Server-Dashboard (Startseite)
-- **Server hinzufügen**: Formular mit Query-URL (z.B. `http://gs1.omega-zirkel.de:4254/`) und optionaler backend-url (falls backend installiert wurde auf dem server)
-- **Server-Liste**: Übersichts-Cards mit:
-  - Servername & Map
-  - Online/Offline-Status (mit farbiger Indikator-Badge)
-  - Aktuelle Spieleranzahl (z.B. 3/20)
-  - Server-Version
-  - Letzter Check-Zeitstempel
-- **Auto-Refresh**: Status wird alle 60 Sekunden automatisch aktualisiert
-
-#### 2. Server-Detailansicht
-Nach Klick auf einen Server gelangt man in eine dedizierte Detailseite mit Tabs:
-
-**Tab: Übersicht**
-- Alle Infos aus der Query-JSON: Servername, Map, Version, Max. Spieler, Spielmodus, Passwortschutz (ja/nein)
-  - Beispielwerte:
-    - "version": "0.9.1"
-    - "legacy": false
-    - "ip": ""
-    - "port": 5255
-    - "steamid": 76561197960265730
-    - "contact": "Discord:devidian"
-    - "name": "Omega Zirkel - Plugin development & Testing, currently: <color=orange>testing and improve plugins</color>"
-    - "map": "New World"
-    - "os": "LinuxServer"
-    - "uptime": 185
-    - "visible": true
-    - "locked": false
-    - "whitelist": false
-    - "pvp": true
-    - "pve": true
-    - "gamemode": 0  # (0=survival,1=creative)
-    - "peaceful": false
-    - "maxplayers": 16
-    - "playercount": 0
-    - "mods": true
-- Große Online/Offline-Statusanzeige
-
-**Tab: Spieler**
-- Nur verfügbar wenn Backend installiert ist
-- Tabelle der Spieler über backend-api (Spieler-Daten aus `Player.db`), Spielername, db-id, steam-id, spielzeit, aktuelle permission-gruppe
-- Suchfunktion nach Spielername oder SteamID
-- Klickbare Zeilen, öffnen Spieler Profil mit weiteren Details (TBD)
+Das Projekt wird um eine Landing Page erweitert, die den Nutzer zwischen zwei Modi wählen lässt. Die Typen werden aktualisiert und die gesamte Datenzugriffs-Schicht wird sauber getrennt.
 
 ---
 
-### Design & UX
-- **Game-thematisches Design**: Dunkles Theme mit erdigen Tönen (braun, beige, dunkelgrün), rustikale Schrift-Akzente für Überschriften, Holz/Stein-inspirierte Hintergrundtexturen als subtile CSS-Patterns
-- **Sidebar-Navigation**: Aufklappbare linke Sidebar mit Server-Liste und schnellem Wechsel zwischen Servern
-- **Responsive**: Funktioniert auf Desktop, Tablet und Mobile
-- **Leere Zustände**: Freundliche Placeholder wenn noch kein Server hinzugefügt wurde oder der Server offline ist
+### 1. Typen aktualisieren (`src/types/server.ts`)
+
+- `ServerConfig` erhält `userId?: string`
+- `RisingWorldQueryData` wird auf das exakte Schema aus der echten API angepasst (alle Felder mit korrekten Typen: `version`, `legacy`, `ip`, `port`, `steamid`, `contact`, `name`, `map`, `os`, `uptime`, `visible`, `locked`, `whitelist`, `pvp`, `pve`, `gamemode`, `peaceful`, `maxplayers`, `playercount`, `mods`)
+- `DbPlayer` wird angepasst: `id`, `steamId`, `name`, `playTime`, `lastLogin`, `group` (passend zu `GET /api/player`)
 
 ---
 
-### API-Schnittstellen (die das Frontend erwartet)
-Das Frontend wird so gebaut, dass es folgende Endpunkte von deinem Backend erwartet (du implementierst diese):
-- `GET /api/servers` – Liste aller gespeicherten Server
-- `POST /api/servers` – Neuen Server hinzufügen
-- `DELETE /api/servers/:id` – Server entfernen
-- `GET /api/servers/:id/players` – Spieler aus lokaler Player.db
+### 2. Storage-Abstraktionsschicht (`src/lib/storage.ts`)
 
-Für die Query-URL wird direkt vom Browser zum RisingWorld-Server gefetcht (kein Backend-Proxy nötig, sofern CORS erlaubt).
+Neues Modul, das die Lese/Schreib-Operationen für Server-Konfigurationen kapselt. Es entscheidet je nach aktivem Modus, ob es localStorage oder das Site-Backend nutzt:
+
+```text
+StorageAdapter
+├── LocalStorageAdapter  → CRUD in localStorage
+└── BackendStorageAdapter → CRUD via fetch() gegen Site-Backend-API
+```
+
+Beide Adapter implementieren dasselbe Interface:
+- `getServers(): Promise<ServerConfig[]>`
+- `addServer(data): Promise<ServerConfig>`
+- `deleteServer(id): Promise<void>`
 
 ---
 
-### Lokale Datenspeicherung
-Da kein Lovable-Backend genutzt wird, werden die Server-Konfigurationen (URLs, lokale Pfade, benutzerdefinierte Labels) im **localStorage** des Browsers gespeichert – kein Login, kein Benutzerkonto nötig für den MVP.
+### 3. Neuer Context: `StorageModeContext` (`src/context/StorageModeContext.tsx`)
+
+Hält global fest, welcher Modus aktiv ist:
+- `mode: 'local' | 'backend'`
+- `backendUrl: string | null`
+- `setMode(...)`: persistiert die Wahl in localStorage
 
 ---
 
-### Nicht im MVP (aber erweiterbar)
-- Steam-Login & Rechteverwaltung
-- Permissions-Editor (Groups/Areas JSON)
-- server.properties & scheduler.txt bearbeiten
-- Plugin-Übersicht
+### 4. Landing Page (`src/pages/LandingPage.tsx`)
+
+Neue Route `/setup`. Zeigt zwei Optionen:
+
+**Option A – Lokal (kein Backend)**
+- Sofortige Weiterleitung zu `/` nach Auswahl
+
+**Option B – Eigenes Backend**
+- Eingabefeld für die Site-Backend-URL
+- Beim Bestätigen: Fetch gegen `GET {url}/` mit Timeout
+- Auswertungslogik:
+  - Netzwerkfehler → "Backend nicht erreichbar"
+  - Response kein JSON / `ok !== true` → "Kein gültiger Server"
+  - `services` enthält nicht `"storage"` → "Dieser Server bietet keinen Storage-Service an"
+  - Alles OK → URL + Modus speichern, Weiterleitung zu `/`
+- Status-Feedback während der Prüfung (Spinner), danach Erfolg oder Fehler-Badge
+
+---
+
+### 5. Router anpassen (`src/App.tsx`)
+
+- Route `/setup` → `<LandingPage />`
+- Beim App-Start prüfen: Ist bereits ein Modus gespeichert? Falls nicht → Redirect zu `/setup`
+- `Layout`-Komponente bekommt Zugriff auf `StorageModeContext` um den aktiven Modus in der Sidebar anzuzeigen
+
+---
+
+### 6. `useServers` Hook anpassen (`src/hooks/useServers.ts`)
+
+- Nutzt jetzt den aktiven `StorageAdapter` statt direkt localStorage
+- CRUD-Funktionen werden `async` (für Backend-Kompatibilität)
+- `ServerContext` bleibt das API nach außen, übernimmt intern das Warten auf Promises
+
+---
+
+### 7. Spieler-Endpunkt anpassen (`src/hooks/useDatabasePlayers.ts`)
+
+- Endpunkt wird von `/api/servers/:id/players` auf `/api/player` geändert (Game-Backend-API-Spec)
+- Player-Detail-Endpunkt `GET /api/player/:id` vorbereiten
+- `DbPlayer`-Typ entsprechend aktualisieren
+
+---
+
+### 8. `ServerDetail`-Komponente aktualisieren (`src/components/ServerDetail.tsx`)
+
+- `RisingWorldQueryData`-Felder angepasst (z.B. `name` statt `servername`, `playercount` statt `players`, `maxplayers` statt `maxPlayers`, `gamemode` als Zahl 0/1 mit Anzeige "Survival"/"Creative")
+- Übersichts-Tab: Alle neuen Felder aus dem Query-Schema anzeigen (uptime, OS, SteamID, Kontakt, PvP/PvE, Whitelist, Mods, etc.)
+- Spieler-Tab: Nur verfügbar wenn `backendUrl` gesetzt ist (Game-Backend)
+
+---
+
+### 9. `ServerCard`-Komponente aktualisieren (`src/components/ServerCard.tsx`)
+
+- Feldnamen an neues Schema anpassen (`name`, `playercount`, `maxplayers`, `map`)
+
+---
+
+### Dateiübersicht
+
+| Datei | Aktion |
+|---|---|
+| `src/types/server.ts` | Aktualisieren |
+| `src/lib/storage.ts` | Neu erstellen |
+| `src/context/StorageModeContext.tsx` | Neu erstellen |
+| `src/pages/LandingPage.tsx` | Neu erstellen |
+| `src/App.tsx` | Anpassen (Route + Guard) |
+| `src/hooks/useServers.ts` | Async + Adapter nutzen |
+| `src/context/ServerContext.tsx` | Async CRUD |
+| `src/hooks/useDatabasePlayers.ts` | Endpunkt + Typen anpassen |
+| `src/components/ServerDetail.tsx` | Felder + Spieler-Tab |
+| `src/components/ServerCard.tsx` | Felder anpassen |
+
+---
+
+### API-Erwartungen (zur Referenz für dein Backend)
+
+**Site-Backend:**
+- `GET /` → `{ ok: true, services: ["storage"] }`
+- `GET /api/server` → `ServerConfig[]`
+- `POST /api/server` → `ServerConfig`
+- `DELETE /api/server/:id` → `204`
+
+**Game/Server-Backend:**
+- `GET /` → `{ ok: true, services: ["fetch-players", ...] }`
+- `GET /api/player` → `DbPlayer[]` (id, steamId, name, playTime, lastLogin, group)
+- `GET /api/player/:id` → vollständige Spielerdaten
