@@ -9,7 +9,7 @@ Ein game-thematisches Admin-Dashboard zur Verwaltung von RisingWorld-Servern. Da
 ### Seiten & Features
 
 #### 1. Server-Dashboard (Startseite)
-- **Server hinzufügen**: Formular mit Query-URL (z.B. `http://gs1.omega-zirkel.de:4254/`) und optionalem lokalem Pfad (wenn der Server auf derselben Maschine läuft)
+- **Server hinzufügen**: Formular mit Query-URL (z.B. `http://gs1.omega-zirkel.de:4254/`) und optionaler backend-url (falls backend installiert wurde auf dem server)
 - **Server-Liste**: Übersichts-Cards mit:
   - Servername & Map
   - Online/Offline-Status (mit farbiger Indikator-Badge)
@@ -23,12 +23,34 @@ Nach Klick auf einen Server gelangt man in eine dedizierte Detailseite mit Tabs:
 
 **Tab: Übersicht**
 - Alle Infos aus der Query-JSON: Servername, Map, Version, Max. Spieler, Spielmodus, Passwortschutz (ja/nein)
+  - Beispielwerte:
+    - "version": "0.9.1"
+    - "legacy": false
+    - "ip": ""
+    - "port": 5255
+    - "steamid": 76561197960265730
+    - "contact": "Discord:devidian"
+    - "name": "Omega Zirkel - Plugin development & Testing, currently: <color=orange>testing and improve plugins</color>"
+    - "map": "New World"
+    - "os": "LinuxServer"
+    - "uptime": 185
+    - "visible": true
+    - "locked": false
+    - "whitelist": false
+    - "pvp": true
+    - "pve": true
+    - "gamemode": 0  # (0=survival,1=creative)
+    - "peaceful": false
+    - "maxplayers": 16
+    - "playercount": 0
+    - "mods": true
 - Große Online/Offline-Statusanzeige
 
 **Tab: Spieler**
-- Tabelle der aktuell verbundenen Spieler (aus Query-JSON)
-- Falls lokaler Pfad gesetzt: Erweiterte Spieler-Daten aus `Player.db` (SteamID, letzter Login, Spielzeit, zugewiesene Gruppen/Rechte)
+- Nur verfügbar wenn Backend installiert ist
+- Tabelle der Spieler über backend-api (Spieler-Daten aus `Player.db`), Spielername, db-id, steam-id, spielzeit, aktuelle permission-gruppe
 - Suchfunktion nach Spielername oder SteamID
+- Klickbare Zeilen, öffnen Spieler Profil mit weiteren Details (TBD)
 
 ---
 
