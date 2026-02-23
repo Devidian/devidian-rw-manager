@@ -1,23 +1,45 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ServerConfig, ServerStatus, RisingWorldQueryData, ServerWithStatus } from '@/types/server';
+import { ServerConfig, ServerStatus, RisingWorldQueryData, ServerInfoResponse, ServerPlayerListResponse, ServerPlayerListPlayer, ServerWithStatus } from '@/types/server';
 
-const REFRESH_INTERVAL = 60_000; // 60 seconds
+const REFRESH_INTERVAL = 60_000;
 
-async function fetchServerStatus(queryUrl: string): Promise<{ status: ServerStatus; data?: RisingWorldQueryData; error?: string }> {
+async function fetchJson<T>(url: string): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   try {
-    const url = queryUrl.endsWith('/') ? queryUrl : queryUrl + '/';
     const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!response.ok) {
-      return { status: 'offline', error: `HTTP ${response.status}` };
-    }
-    const data: RisingWorldQueryData = await response.json();
-    return { status: 'online', data };
+    if (!response.ok) return { ok: false, error: `HTTP ${response.status}` };
+    const data = await response.json();
+    return { ok: true, data };
   } catch (err) {
-    if (err instanceof Error && err.name === 'TimeoutError') {
-      return { status: 'offline', error: 'Timeout' };
-    }
-    return { status: 'offline', error: err instanceof Error ? err.message : 'Unknown error' };
+    return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
+}
+
+async function fetchServerFull(server: ServerConfig): Promise<Partial<ServerWithStatus>> {
+  const base = server.queryUrl.endsWith('/') ? server.queryUrl : server.queryUrl + '/';
+
+  const [mainResult, infoResult, playerlistResult] = await Promise.allSettled([
+    fetchJson<RisingWorldQueryData>(base),
+    fetchJson<ServerInfoResponse>(base + 'info'),
+    fetchJson<ServerPlayerListResponse>(base + 'playerlist'),
+  ]);
+
+  const main = mainResult.status === 'fulfilled' ? mainResult.value : { ok: false as const, error: 'Failed' };
+
+  const status: ServerStatus = main.ok ? 'online' : 'offline';
+  const queryData = main.ok ? main.data : undefined;
+  const errorMessage = !main.ok ? ('error' in main ? main.error : 'Unknown error') : undefined;
+
+  const info = infoResult.status === 'fulfilled' && infoResult.value.ok ? infoResult.value.data : undefined;
+  const playerlist = playerlistResult.status === 'fulfilled' && playerlistResult.value.ok ? playerlistResult.value.data : undefined;
+
+  return {
+    status,
+    queryData,
+    infoData: info,
+    onlinePlayers: playerlist?.players,
+    lastChecked: new Date(),
+    errorMessage,
+  };
 }
 
 export function useServerStatus(servers: ServerConfig[]) {
@@ -27,7 +49,6 @@ export function useServerStatus(servers: ServerConfig[]) {
   const refreshAll = useCallback(async () => {
     if (servers.length === 0) return;
 
-    // Set all to loading
     setStatusMap(prev => {
       const next = { ...prev };
       servers.forEach(s => {
@@ -36,23 +57,21 @@ export function useServerStatus(servers: ServerConfig[]) {
       return next;
     });
 
-    // Fetch all in parallel
     const results = await Promise.all(
-      servers.map(async s => {
-        const result = await fetchServerStatus(s.queryUrl);
-        return { server: s, ...result };
-      })
+      servers.map(async s => ({ server: s, ...(await fetchServerFull(s)) }))
     );
 
     setStatusMap(prev => {
       const next = { ...prev };
-      results.forEach(r => {
-        next[r.server.id] = {
-          ...r.server,
-          status: r.status,
-          queryData: r.data,
-          lastChecked: new Date(),
-          errorMessage: r.error,
+      results.forEach(({ server, ...rest }) => {
+        next[server.id] = {
+          ...server,
+          status: rest.status as ServerStatus ?? 'unknown',
+          queryData: rest.queryData,
+          infoData: rest.infoData,
+          onlinePlayers: rest.onlinePlayers,
+          lastChecked: rest.lastChecked,
+          errorMessage: rest.errorMessage,
         };
       });
       return next;
@@ -68,16 +87,10 @@ export function useServerStatus(servers: ServerConfig[]) {
       [serverId]: { ...server, status: 'loading', ...(prev[serverId] ?? {}) },
     }));
 
-    const result = await fetchServerStatus(server.queryUrl);
+    const result = await fetchServerFull(server);
     setStatusMap(prev => ({
       ...prev,
-      [serverId]: {
-        ...server,
-        status: result.status,
-        queryData: result.data,
-        lastChecked: new Date(),
-        errorMessage: result.error,
-      },
+      [serverId]: { ...server, ...result } as ServerWithStatus,
     }));
   }, [servers]);
 

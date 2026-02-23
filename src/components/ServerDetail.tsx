@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ServerWithStatus, DbPlayer } from '@/types/server';
+import { useState, useEffect } from 'react';
+import { ServerWithStatus, DbPlayer, ServerPlayerListPlayer } from '@/types/server';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 interface ServerDetailProps {
   server: ServerWithStatus | undefined;
@@ -71,10 +71,52 @@ function formatUptime(seconds: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+function formatPlaytime(seconds: number): string {
+  const h = Math.round(seconds / 3600);
+  if (h > 0) return `${h}h`;
+  return `${Math.round(seconds / 60)} Min.`;
+}
+
+function OnlinePlayersSection({ players }: { players: ServerPlayerListPlayer[] }) {
+  if (players.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
+        <p className="text-sm">Keine Spieler online</p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/30 hover:bg-muted/30">
+            <TableHead>Name</TableHead>
+            <TableHead>UID</TableHead>
+            <TableHead>Platform</TableHead>
+            <TableHead>Ping</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {players.map(p => (
+            <TableRow key={p.id} className="hover:bg-muted/20">
+              <TableCell className="font-medium">{p.name}</TableCell>
+              <TableCell className="text-muted-foreground font-mono text-xs">{p.uid}</TableCell>
+              <TableCell className="text-muted-foreground text-sm">{p.platform}</TableCell>
+              <TableCell className="text-muted-foreground text-sm">{p.ping} ms</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 function PlayersTab({ server }: { server: ServerWithStatus }) {
   const [search, setSearch] = useState('');
   const { players: dbPlayers, loading: dbLoading, error: dbError, fetchPlayers } = useDatabasePlayers();
   const hasDbAccess = !!server.backendUrl;
+  const onlinePlayers = server.onlinePlayers ?? [];
 
   useEffect(() => {
     if (server.backendUrl) {
@@ -82,101 +124,128 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
     }
   }, [server.id, server.backendUrl]);
 
-  const filtered = dbPlayers.filter(p =>
+  const filteredDb = dbPlayers.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.steamId ?? '').toLowerCase().includes(search.toLowerCase())
+    p.uid.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div className="space-y-4">
-      {!hasDbAccess ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <HardDrive className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Kein Game-Backend konfiguriert</p>
-          <p className="text-sm mt-1 max-w-sm mx-auto">
-            Füge eine Backend-URL beim Server hinzu, um Spielerdaten aus der Player.db abzurufen.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Spieler oder SteamID suchen…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Badge variant="outline" className="gap-1.5 text-xs">
-              <HardDrive className="h-3 w-3" />
-              Player.db verbunden
-            </Badge>
-          </div>
+    <div className="space-y-6">
+      {/* Online Players */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            Online-Spieler
+            <Badge variant="secondary" className="text-xs">{onlinePlayers.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <OnlinePlayersSection players={onlinePlayers} />
+        </CardContent>
+      </Card>
 
-          {dbLoading && (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm p-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Lade Spielerdaten aus der Datenbank…
-            </div>
-          )}
-
-          {dbError && (
-            <div className="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              Backend-Fehler: {dbError}
-            </div>
-          )}
-
-          {!dbLoading && !dbError && filtered.length === 0 && (
+      {/* Database Players */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <HardDrive className="h-4 w-4" />
+            Datenbank-Spieler
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {!hasDbAccess ? (
             <div className="text-center py-12 text-muted-foreground">
-              <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">Keine Spieler gefunden</p>
+              <HardDrive className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="font-medium">Kein Game-Backend konfiguriert</p>
+              <p className="text-sm mt-1 max-w-sm mx-auto">
+                Füge eine Backend-URL beim Server hinzu, um Spielerdaten aus der Player.db abzurufen.
+              </p>
             </div>
-          )}
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Spieler oder UID suchen…"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Badge variant="outline" className="gap-1.5 text-xs">
+                  <HardDrive className="h-3 w-3" />
+                  Player.db verbunden
+                </Badge>
+              </div>
 
-          {filtered.length > 0 && (
-            <div className="rounded-lg border border-border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableHead>Name</TableHead>
-                    <TableHead>SteamID</TableHead>
-                    <TableHead>Gruppe</TableHead>
-                    <TableHead>Letzter Login</TableHead>
-                    <TableHead>Spielzeit</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((player) => (
-                    <TableRow key={player.id} className="hover:bg-muted/20">
-                      <TableCell className="font-medium">{player.name}</TableCell>
-                      <TableCell className="text-muted-foreground font-mono text-xs">
-                        {player.steamId ?? '—'}
-                      </TableCell>
-                      <TableCell>
-                        {player.group ? (
-                          <Badge variant="secondary" className="text-xs py-0 h-5">
-                            {player.group}
-                          </Badge>
-                        ) : '—'}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {player.lastLogin
-                          ? formatDistanceToNow(new Date(player.lastLogin), { addSuffix: true, locale: de })
-                          : '—'}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {player.playTime != null ? `${Math.round(player.playTime / 60)} Min.` : '—'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              {dbLoading && (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm p-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Lade Spielerdaten aus der Datenbank…
+                </div>
+              )}
+
+              {dbError && (
+                <div className="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                  Backend-Fehler: {dbError}
+                </div>
+              )}
+
+              {!dbLoading && !dbError && filteredDb.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Keine Spieler gefunden</p>
+                </div>
+              )}
+
+              {filteredDb.length > 0 && (
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableHead>Name</TableHead>
+                        <TableHead>UID</TableHead>
+                        <TableHead>Platform</TableHead>
+                        <TableHead>Gruppe</TableHead>
+                        <TableHead>Spielzeit</TableHead>
+                        <TableHead>Zuletzt gesehen</TableHead>
+                        <TableHead>Gesundheit</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredDb.map(player => (
+                        <TableRow key={player.id} className="hover:bg-muted/20">
+                          <TableCell className="font-medium">{player.name}</TableCell>
+                          <TableCell className="text-muted-foreground font-mono text-xs">{player.uid}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{player.platform}</TableCell>
+                          <TableCell>
+                            {player.permissiongroup ? (
+                              <Badge variant="secondary" className="text-xs py-0 h-5">{player.permissiongroup}</Badge>
+                            ) : '—'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {formatPlaytime(player.playtime)}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {player.lastseen
+                              ? formatDistanceToNow(new Date(player.lastseen * 1000), { addSuffix: true, locale: de })
+                              : '—'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            ❤ {Math.round(player.health)} | 🍖 {Math.round(player.hunger)} | 💧 {Math.round(player.thirst)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </div>
           )}
-        </>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -198,13 +267,27 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   }
 
   const data = server.queryData;
+  const info = server.infoData;
   const serverName = data?.name ?? server.label;
   const playercount = data?.playercount ?? 0;
   const maxplayers = data?.maxplayers ?? '?';
   const gamemodeLabel = data?.gamemode === 0 ? 'Survival' : data?.gamemode === 1 ? 'Creative' : '—';
+  const headerImageUrl = info?.headerimage ? `${server.queryUrl.replace(/\/$/, '')}/image/header` : null;
 
   return (
     <div className="space-y-6">
+      {/* Header Image Banner */}
+      {headerImageUrl && (
+        <div className="rounded-lg overflow-hidden border border-border">
+          <img
+            src={headerImageUrl}
+            alt={`${serverName} Banner`}
+            className="w-full h-48 object-cover"
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -218,8 +301,14 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
             Dashboard
           </Button>
           <h1 className="text-2xl font-bold text-foreground">{serverName}</h1>
-          {server.label !== serverName && (
+          {info?.shortname && (
+            <p className="text-sm text-muted-foreground mt-0.5">{info.shortname}</p>
+          )}
+          {!info?.shortname && server.label !== serverName && (
             <p className="text-sm text-muted-foreground mt-0.5">{server.label}</p>
+          )}
+          {info?.description && (
+            <p className="text-sm text-muted-foreground mt-1">{info.description}</p>
           )}
         </div>
         <div className="flex items-center gap-3 pt-9">
@@ -290,6 +379,8 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
               ) : (
                 <div>
                   <InfoRow icon={Tag} label="Servername" value={serverName} />
+                  {info?.shortname && <InfoRow icon={Tag} label="Kurzname" value={info.shortname} />}
+                  {info?.description && <InfoRow icon={Tag} label="Beschreibung" value={info.description} />}
                   <InfoRow icon={MapPin} label="Karte / Map" value={data?.map} />
                   <InfoRow icon={Tag} label="Version" value={data?.version} />
                   <InfoRow icon={Users} label="Spieler" value={`${playercount} / ${maxplayers}`} />
@@ -298,10 +389,9 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
                   <InfoRow icon={Monitor} label="Betriebssystem" value={data?.os} />
                   <InfoRow icon={Globe} label="IP / Port" value={data?.ip && data?.port ? `${data.ip}:${data.port}` : undefined} />
                   <InfoRow icon={Tag} label="SteamID" value={data?.steamid != null ? String(data.steamid) : undefined} />
-                  <InfoRow icon={Tag} label="Kontakt" value={data?.contact} />
+                  <InfoRow icon={Tag} label="Kontakt" value={info?.contact ?? data?.contact} />
                   <InfoRow icon={Lock} label="Gesperrt" value={data?.locked} />
                   <InfoRow icon={Shield} label="Whitelist" value={data?.whitelist} />
-                  <InfoRow icon={Lock} label="Passwortgeschützt" value={data?.locked} />
                   <InfoRow icon={Sword} label="PvP" value={data?.pvp} />
                   <InfoRow icon={Heart} label="PvE" value={data?.pve} />
                   <InfoRow icon={Star} label="Friedensmodus" value={data?.peaceful} />

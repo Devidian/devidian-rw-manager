@@ -50,7 +50,9 @@ function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
 export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
   const navigate = useNavigate();
   const data = server.queryData;
+  const info = server.infoData;
   const serverName = data?.name ?? server.label;
+  const subtitle = info?.shortname || info?.description || null;
   const map = data?.map ?? '—';
   const playercount = data?.playercount ?? 0;
   const maxplayers = data?.maxplayers ?? '?';
@@ -78,7 +80,10 @@ export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="font-semibold text-foreground truncate leading-tight">{serverName}</h3>
-            {server.label !== serverName && (
+            {subtitle && (
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>
+            )}
+            {!subtitle && server.label !== serverName && (
               <p className="text-xs text-muted-foreground mt-0.5 truncate">{server.label}</p>
             )}
           </div>

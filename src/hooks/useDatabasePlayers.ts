@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { DbPlayer } from '@/types/server';
+import { DbPlayer, DataPlayerListResponse } from '@/types/server';
 
 interface UseDatabasePlayersResult {
   players: DbPlayer[];
@@ -18,14 +18,14 @@ export function useDatabasePlayers(): UseDatabasePlayersResult {
     setError(null);
     try {
       const base = backendUrl.replace(/\/$/, '');
-      const response = await fetch(`${base}/api/player`, {
+      const response = await fetch(`${base}/api/data/player`, {
         signal: AbortSignal.timeout(10_000),
       });
       if (!response.ok) {
         throw new Error(`Backend returned HTTP ${response.status}`);
       }
-      const data: DbPlayer[] = await response.json();
-      setPlayers(data);
+      const data: DataPlayerListResponse = await response.json();
+      setPlayers(data.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       setPlayers([]);
