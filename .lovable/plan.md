@@ -1,129 +1,106 @@
 
-## Refactoring: Dual-Backend-Architektur
+## Anpassungen: Neue Query-Routen, aktualisierte Typen & Backend-Prefix
 
-### Übersicht der Änderungen
+### Zusammenfassung
 
-Das Projekt wird um eine Landing Page erweitert, die den Nutzer zwischen zwei Modi wählen lässt. Die Typen werden aktualisiert und die gesamte Datenzugriffs-Schicht wird sauber getrennt.
+Die vom Spiel gelieferten Daten werden um drei neue Query-Routen erweitert (`/info`, `/playerlist`, `/image/header`), das `DbPlayer`-Schema wird an die echten Datenbankfelder angepasst, und der Backend-Daten-Prefix wechselt von `/api/player` auf `/api/data/player`. Ausserdem wird das `BackendInfo`-Schema um `version` erweitert.
 
 ---
 
 ### 1. Typen aktualisieren (`src/types/server.ts`)
 
-- `ServerConfig` erhält `userId?: string`
-- `RisingWorldQueryData` wird auf das exakte Schema aus der echten API angepasst (alle Felder mit korrekten Typen: `version`, `legacy`, `ip`, `port`, `steamid`, `contact`, `name`, `map`, `os`, `uptime`, `visible`, `locked`, `whitelist`, `pvp`, `pve`, `gamemode`, `peaceful`, `maxplayers`, `playercount`, `mods`)
-- `DbPlayer` wird angepasst: `id`, `steamId`, `name`, `playTime`, `lastLogin`, `group` (passend zu `GET /api/player`)
+Neue Interfaces hinzufuegen:
+
+- **`ServerInfoResponse`** -- Schema fuer `GET {queryUrl}/info` (name, shortname, description, contact, headerimage)
+- **`ServerPlayerListPlayer`** -- Online-Spieler aus `/playerlist` (id, name, uid, platform, ping)
+- **`ServerPlayerListResponse`** -- Wrapper mit playercount + players-Array
+- **`BackendInfo`** -- ok, services (mit `"data"` statt dem alten Konzept), version
+
+**`DbPlayer` komplett ersetzen** mit dem echten Schema:
+- `id: number`, `uid: string`, `name: string`, Position (posx/y/z, rotx/y/z/w), `platform`, `permissiongroup`, Vitalwerte (health, hunger, thirst, brokenbones, temperature), `dead`, `flying`, `clothes`, Spawns, `playtime`, `firstseen`, `lastseen` etc.
+
+**`DataPlayerListResponse`** -- `{ items: DbPlayer[] }`
+
+Das alte `OnlinePlayer`-Interface kann entfernt werden, da es durch `ServerPlayerListPlayer` ersetzt wird.
 
 ---
 
-### 2. Storage-Abstraktionsschicht (`src/lib/storage.ts`)
+### 2. ServerWithStatus erweitern
 
-Neues Modul, das die Lese/Schreib-Operationen für Server-Konfigurationen kapselt. Es entscheidet je nach aktivem Modus, ob es localStorage oder das Site-Backend nutzt:
-
-```text
-StorageAdapter
-├── LocalStorageAdapter  → CRUD in localStorage
-└── BackendStorageAdapter → CRUD via fetch() gegen Site-Backend-API
-```
-
-Beide Adapter implementieren dasselbe Interface:
-- `getServers(): Promise<ServerConfig[]>`
-- `addServer(data): Promise<ServerConfig>`
-- `deleteServer(id): Promise<void>`
+`ServerWithStatus` bekommt zwei neue optionale Felder:
+- `infoData?: ServerInfoResponse` -- aus `/info`
+- `onlinePlayers?: ServerPlayerListPlayer[]` -- aus `/playerlist`
 
 ---
 
-### 3. Neuer Context: `StorageModeContext` (`src/context/StorageModeContext.tsx`)
+### 3. Status-Hook erweitern (`src/hooks/useServerStatus.ts`)
 
-Hält global fest, welcher Modus aktiv ist:
-- `mode: 'local' | 'backend'`
-- `backendUrl: string | null`
-- `setMode(...)`: persistiert die Wahl in localStorage
+Beim Statusabruf pro Server zusaetzlich zu `GET /` auch abfragen:
+- `GET {queryUrl}/info` -- Serverinfo laden (Name, Beschreibung, Headerbild-Flag)
+- `GET {queryUrl}/playerlist` -- Aktuelle Online-Spieler laden
 
----
-
-### 4. Landing Page (`src/pages/LandingPage.tsx`)
-
-Neue Route `/setup`. Zeigt zwei Optionen:
-
-**Option A – Lokal (kein Backend)**
-- Sofortige Weiterleitung zu `/` nach Auswahl
-
-**Option B – Eigenes Backend**
-- Eingabefeld für die Site-Backend-URL
-- Beim Bestätigen: Fetch gegen `GET {url}/` mit Timeout
-- Auswertungslogik:
-  - Netzwerkfehler → "Backend nicht erreichbar"
-  - Response kein JSON / `ok !== true` → "Kein gültiger Server"
-  - `services` enthält nicht `"storage"` → "Dieser Server bietet keinen Storage-Service an"
-  - Alles OK → URL + Modus speichern, Weiterleitung zu `/`
-- Status-Feedback während der Prüfung (Spinner), danach Erfolg oder Fehler-Badge
+Alle drei Requests parallel ausfuehren. Die neuen Daten werden im `ServerWithStatus` gespeichert. Fehler bei `/info` oder `/playerlist` sind nicht kritisch -- der Server gilt trotzdem als online wenn `/` erfolgreich war.
 
 ---
 
-### 5. Router anpassen (`src/App.tsx`)
+### 4. Backend-Daten-Endpoint anpassen (`src/hooks/useDatabasePlayers.ts`)
 
-- Route `/setup` → `<LandingPage />`
-- Beim App-Start prüfen: Ist bereits ein Modus gespeichert? Falls nicht → Redirect zu `/setup`
-- `Layout`-Komponente bekommt Zugriff auf `StorageModeContext` um den aktiven Modus in der Sidebar anzuzeigen
-
----
-
-### 6. `useServers` Hook anpassen (`src/hooks/useServers.ts`)
-
-- Nutzt jetzt den aktiven `StorageAdapter` statt direkt localStorage
-- CRUD-Funktionen werden `async` (für Backend-Kompatibilität)
-- `ServerContext` bleibt das API nach außen, übernimmt intern das Warten auf Promises
+- URL-Pfad aendern: `/api/player` wird zu `/api/data/player`
+- Response-Parsing anpassen: Erwartet jetzt `{ items: DbPlayer[] }` statt ein nacktes Array
+- Felder im Hook an das neue DbPlayer-Schema anpassen (z.B. `uid` statt `steamId`, `permissiongroup` statt `group`, `playtime` statt `playTime`, `lastseen` statt `lastLogin`)
 
 ---
 
-### 7. Spieler-Endpunkt anpassen (`src/hooks/useDatabasePlayers.ts`)
+### 5. Backend-Health-Check anpassen (`src/lib/storage.ts`)
 
-- Endpunkt wird von `/api/servers/:id/players` auf `/api/player` geändert (Game-Backend-API-Spec)
-- Player-Detail-Endpunkt `GET /api/player/:id` vorbereiten
-- `DbPlayer`-Typ entsprechend aktualisieren
-
----
-
-### 8. `ServerDetail`-Komponente aktualisieren (`src/components/ServerDetail.tsx`)
-
-- `RisingWorldQueryData`-Felder angepasst (z.B. `name` statt `servername`, `playercount` statt `players`, `maxplayers` statt `maxPlayers`, `gamemode` als Zahl 0/1 mit Anzeige "Survival"/"Creative")
-- Übersichts-Tab: Alle neuen Felder aus dem Query-Schema anzeigen (uptime, OS, SteamID, Kontakt, PvP/PvE, Whitelist, Mods, etc.)
-- Spieler-Tab: Nur verfügbar wenn `backendUrl` gesetzt ist (Game-Backend)
+- `checkBackend()` aktualisieren: Der Service-Name bleibt `"storage"` fuer Site-Backends
+- Fuer Game-Backends wird der Service `"data"` geprueft (statt dem bisherigen Konzept)
+- Optional `version` aus der Response lesen und zurueckgeben
 
 ---
 
-### 9. `ServerCard`-Komponente aktualisieren (`src/components/ServerCard.tsx`)
+### 6. ServerDetail aktualisieren (`src/components/ServerDetail.tsx`)
 
-- Feldnamen an neues Schema anpassen (`name`, `playercount`, `maxplayers`, `map`)
+**Uebersicht-Tab:**
+- Server-Beschreibung und Kurzname aus `/info` anzeigen (falls vorhanden)
+- Header-Bild: Wenn `infoData.headerimage === true`, ein `<img>` mit `src={queryUrl}/image/header` als Banner ueber der Detailansicht rendern
+
+**Spieler-Tab -- Zwei Bereiche:**
+1. **Online-Spieler** (aus Query `/playerlist`): Immer verfuegbar wenn Server online. Zeigt Name, UID, Platform, Ping
+2. **Datenbank-Spieler** (aus Game-Backend `/api/data/player`): Nur wenn `backendUrl` gesetzt. Tabellenspalten anpassen an neues Schema: Name, UID, Platform, Gruppe (permissiongroup), Spielzeit (playtime), Zuletzt gesehen (lastseen), Health/Hunger/Thirst
+
+**Feldnamen-Mapping in der Spieler-Tabelle:**
+- `steamId` -> `uid`
+- `group` -> `permissiongroup`
+- `playTime` -> `playtime`
+- `lastLogin` -> `lastseen` (Unix-Timestamp, muss formatiert werden)
 
 ---
 
-### Dateiübersicht
+### 7. ServerCard anpassen (`src/components/ServerCard.tsx`)
+
+- Falls `infoData` vorhanden: Kurzname (`shortname`) oder Beschreibung als Untertitel anzeigen
+- Online-Spieler-Anzahl kann jetzt auch aus der `/playerlist`-Response kommen
+
+---
+
+### Dateien-Uebersicht
 
 | Datei | Aktion |
 |---|---|
-| `src/types/server.ts` | Aktualisieren |
-| `src/lib/storage.ts` | Neu erstellen |
-| `src/context/StorageModeContext.tsx` | Neu erstellen |
-| `src/pages/LandingPage.tsx` | Neu erstellen |
-| `src/App.tsx` | Anpassen (Route + Guard) |
-| `src/hooks/useServers.ts` | Async + Adapter nutzen |
-| `src/context/ServerContext.tsx` | Async CRUD |
-| `src/hooks/useDatabasePlayers.ts` | Endpunkt + Typen anpassen |
-| `src/components/ServerDetail.tsx` | Felder + Spieler-Tab |
-| `src/components/ServerCard.tsx` | Felder anpassen |
+| `src/types/server.ts` | Neue Interfaces, DbPlayer ersetzen |
+| `src/hooks/useServerStatus.ts` | `/info` + `/playerlist` parallel abfragen |
+| `src/hooks/useDatabasePlayers.ts` | Pfad `/api/data/player`, neues Response-Format |
+| `src/lib/storage.ts` | `checkBackend` um `version` erweitern, `"data"` Service |
+| `src/components/ServerDetail.tsx` | Header-Bild, Info-Daten, Online-Spieler, DB-Spieler Spalten |
+| `src/components/ServerCard.tsx` | Kurzname/Beschreibung anzeigen |
 
 ---
 
-### API-Erwartungen (zur Referenz für dein Backend)
+### Technische Details
 
-**Site-Backend:**
-- `GET /` → `{ ok: true, services: ["storage"] }`
-- `GET /api/server` → `ServerConfig[]`
-- `POST /api/server` → `ServerConfig`
-- `DELETE /api/server/:id` → `204`
+**Timestamps:** `firstseen` und `lastseen` sind Unix-Timestamps (Sekunden). Formatierung mit `date-fns`: `formatDistanceToNow(new Date(lastseen * 1000), { addSuffix: true, locale: de })`.
 
-**Game/Server-Backend:**
-- `GET /` → `{ ok: true, services: ["fetch-players", ...] }`
-- `GET /api/player` → `DbPlayer[]` (id, steamId, name, playTime, lastLogin, group)
-- `GET /api/player/:id` → vollständige Spielerdaten
+**Header-Bild URL:** `${queryUrl}/image/header` -- wird als normales `<img>` Tag eingebunden mit Fallback bei Ladefehler.
+
+**Parallel-Fetching in useServerStatus:** Alle drei Query-Endpunkte (`/`, `/info`, `/playerlist`) werden gleichzeitig mit `Promise.allSettled` abgefragt, um Timeouts bei einzelnen Routen nicht den gesamten Status zu blockieren.
