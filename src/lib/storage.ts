@@ -78,7 +78,7 @@ export class BackendStorageAdapter implements StorageAdapter {
 // ─── Backend Health Check ────────────────────────────────────────────────────
 
 export type BackendCheckResult =
-  | { ok: true }
+  | { ok: true; version?: number }
   | { ok: false; reason: 'unreachable' | 'invalid-response' | 'missing-service' };
 
 export async function checkBackend(url: string, requiredService: string): Promise<BackendCheckResult> {
@@ -102,7 +102,8 @@ export async function checkBackend(url: string, requiredService: string): Promis
     if (!Array.isArray(services) || !services.includes(requiredService)) {
       return { ok: false, reason: 'missing-service' };
     }
-    return { ok: true };
+    const version = (json as Record<string, unknown>).version;
+    return { ok: true, version: typeof version === 'number' ? version : undefined };
   } catch {
     return { ok: false, reason: 'unreachable' };
   }
