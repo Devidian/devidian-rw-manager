@@ -1,106 +1,116 @@
 
-## Anpassungen: Neue Query-Routen, aktualisierte Typen & Backend-Prefix
 
-### Zusammenfassung
+## Naechste Schritte: i18n, Rich-Text, Server bearbeiten, Steam-Links, API-Anpassungen
 
-Die vom Spiel gelieferten Daten werden um drei neue Query-Routen erweitert (`/info`, `/playerlist`, `/image/header`), das `DbPlayer`-Schema wird an die echten Datenbankfelder angepasst, und der Backend-Daten-Prefix wechselt von `/api/player` auf `/api/data/player`. Ausserdem wird das `BackendInfo`-Schema um `version` erweitert.
+### 1. Internationalisierung (i18n)
 
----
+**Library:** `react-i18next` mit `i18next` und `i18next-browser-languagedetector`
 
-### 1. Typen aktualisieren (`src/types/server.ts`)
-
-Neue Interfaces hinzufuegen:
-
-- **`ServerInfoResponse`** -- Schema fuer `GET {queryUrl}/info` (name, shortname, description, contact, headerimage)
-- **`ServerPlayerListPlayer`** -- Online-Spieler aus `/playerlist` (id, name, uid, platform, ping)
-- **`ServerPlayerListResponse`** -- Wrapper mit playercount + players-Array
-- **`BackendInfo`** -- ok, services (mit `"data"` statt dem alten Konzept), version
-
-**`DbPlayer` komplett ersetzen** mit dem echten Schema:
-- `id: number`, `uid: string`, `name: string`, Position (posx/y/z, rotx/y/z/w), `platform`, `permissiongroup`, Vitalwerte (health, hunger, thirst, brokenbones, temperature), `dead`, `flying`, `clothes`, Spawns, `playtime`, `firstseen`, `lastseen` etc.
-
-**`DataPlayerListResponse`** -- `{ items: DbPlayer[] }`
-
-Das alte `OnlinePlayer`-Interface kann entfernt werden, da es durch `ServerPlayerListPlayer` ersetzt wird.
+- Neue Dateien: `src/i18n/index.ts`, `src/i18n/de.json`, `src/i18n/en.json`
+- `i18next-browser-languagedetector` erkennt automatisch die Browser-Sprache
+- Sprachauswahl wird im localStorage gespeichert (`rwm_language`)
+- Ein Sprachumschalter (DE/EN Toggle) wird in der Sidebar-Footer oder im Header platziert
+- Alle hartkodierten deutschen Strings in Komponenten werden durch `t('key')` ersetzt
+- Betrifft: `ServerCard`, `ServerDetail`, `AddServerDialog`, `AppSidebar`, `Index`, `LandingPage`, `NotFound`, Status-Labels, Fehlermeldungen, Formulare
+- `date-fns` Locale wird dynamisch basierend auf der aktiven Sprache gewaehlt (`de` oder `enUS`)
 
 ---
 
-### 2. ServerWithStatus erweitern
+### 2. Rich-Text / Color-Tags
 
-`ServerWithStatus` bekommt zwei neue optionale Felder:
-- `infoData?: ServerInfoResponse` -- aus `/info`
-- `onlinePlayers?: ServerPlayerListPlayer[]` -- aus `/playerlist`
+Server-Namen und Beschreibungen koennen `<color=orange>Text</color>`-Tags enthalten.
 
----
-
-### 3. Status-Hook erweitern (`src/hooks/useServerStatus.ts`)
-
-Beim Statusabruf pro Server zusaetzlich zu `GET /` auch abfragen:
-- `GET {queryUrl}/info` -- Serverinfo laden (Name, Beschreibung, Headerbild-Flag)
-- `GET {queryUrl}/playerlist` -- Aktuelle Online-Spieler laden
-
-Alle drei Requests parallel ausfuehren. Die neuen Daten werden im `ServerWithStatus` gespeichert. Fehler bei `/info` oder `/playerlist` sind nicht kritisch -- der Server gilt trotzdem als online wenn `/` erfolgreich war.
+- Neue Utility-Komponente: `src/components/RichText.tsx`
+- Parst den String mit einem einfachen Regex: `/<color=([^>]+)>(.*?)<\/color>/g`
+- Gibt React-Elemente mit `<span style={{ color }}>` zurueck
+- Nicht-farbige Textabschnitte werden als normaler Text gerendert
+- Wird ueberall eingesetzt wo Servernamen oder Beschreibungen angezeigt werden: `ServerCard`, `ServerDetail`, `AppSidebar`
 
 ---
 
-### 4. Backend-Daten-Endpoint anpassen (`src/hooks/useDatabasePlayers.ts`)
+### 3. Server bearbeiten
 
-- URL-Pfad aendern: `/api/player` wird zu `/api/data/player`
-- Response-Parsing anpassen: Erwartet jetzt `{ items: DbPlayer[] }` statt ein nacktes Array
-- Felder im Hook an das neue DbPlayer-Schema anpassen (z.B. `uid` statt `steamId`, `permissiongroup` statt `group`, `playtime` statt `playTime`, `lastseen` statt `lastLogin`)
-
----
-
-### 5. Backend-Health-Check anpassen (`src/lib/storage.ts`)
-
-- `checkBackend()` aktualisieren: Der Service-Name bleibt `"storage"` fuer Site-Backends
-- Fuer Game-Backends wird der Service `"data"` geprueft (statt dem bisherigen Konzept)
-- Optional `version` aus der Response lesen und zurueckgeben
+- Neue Komponente: `src/components/EditServerDialog.tsx`
+  - Aehnlich wie `AddServerDialog`, aber mit vorausgefuellten Feldern
+  - Erlaubt Aendern von: `label`, `backendUrl`
+  - `queryUrl` bleibt unveraenderlich (identifiziert den Server)
+- `StorageAdapter` Interface erhaelt neue Methode: `updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig>`
+  - `LocalStorageAdapter`: Update im localStorage
+  - `BackendStorageAdapter`: `PATCH /api/storage/server/:id`
+- Edit-Button in der `ServerDetail`-Ansicht (neben dem Refresh-Button)
+- `ServerContext` und `useServers` Hook erhalten `updateServer` Funktion
 
 ---
 
-### 6. ServerDetail aktualisieren (`src/components/ServerDetail.tsx`)
+### 4. Steam-Profil-Links
 
-**Uebersicht-Tab:**
-- Server-Beschreibung und Kurzname aus `/info` anzeigen (falls vorhanden)
-- Header-Bild: Wenn `infoData.headerimage === true`, ein `<img>` mit `src={queryUrl}/image/header` als Banner ueber der Detailansicht rendern
-
-**Spieler-Tab -- Zwei Bereiche:**
-1. **Online-Spieler** (aus Query `/playerlist`): Immer verfuegbar wenn Server online. Zeigt Name, UID, Platform, Ping
-2. **Datenbank-Spieler** (aus Game-Backend `/api/data/player`): Nur wenn `backendUrl` gesetzt. Tabellenspalten anpassen an neues Schema: Name, UID, Platform, Gruppe (permissiongroup), Spielzeit (playtime), Zuletzt gesehen (lastseen), Health/Hunger/Thirst
-
-**Feldnamen-Mapping in der Spieler-Tabelle:**
-- `steamId` -> `uid`
-- `group` -> `permissiongroup`
-- `playTime` -> `playtime`
-- `lastLogin` -> `lastseen` (Unix-Timestamp, muss formatiert werden)
+- In den Spielerlisten (Online-Spieler und Datenbank-Spieler) wird die `uid` klickbar wenn `platform` den Wert `"Steam"` hat (case-insensitive)
+- Link-Format: `https://steamcommunity.com/profiles/{uid}`
+- Oeffnet sich in einem neuen Tab (`target="_blank"`)
+- Visuell: Die UID wird als Link mit Unterstrich und externem Link-Icon dargestellt
+- Betrifft: `OnlinePlayersSection` und die DB-Spieler-Tabelle in `ServerDetail.tsx`
 
 ---
 
-### 7. ServerCard anpassen (`src/components/ServerCard.tsx`)
+### 5. API-Route-Prefix Aenderung
 
-- Falls `infoData` vorhanden: Kurzname (`shortname`) oder Beschreibung als Untertitel anzeigen
-- Online-Spieler-Anzahl kann jetzt auch aus der `/playerlist`-Response kommen
+Der Storage-Prefix wechselt von `/api/server` zu `/api/storage/server`:
+
+- `BackendStorageAdapter` in `src/lib/storage.ts` anpassen:
+  - `GET /api/storage/server`
+  - `POST /api/storage/server`
+  - `DELETE /api/storage/server/:id`
+  - `PATCH /api/storage/server/:id` (neu)
 
 ---
 
-### Dateien-Uebersicht
+### 6. Neuer Tab: Serverkonfiguration
+
+- Neue Route am Game-Backend: `GET /api/data/server/config` liefert `{ config: Record<string, string | number | boolean> }`
+- Neuer Hook: `src/hooks/useServerConfig.ts` -- laedt die Config wenn `backendUrl` gesetzt ist
+- Neuer Tab "Konfiguration" in `ServerDetail.tsx`, nur sichtbar wenn Backend verbunden
+- Anzeige als gruppierte Key-Value-Tabelle:
+  - Gruppierung nach Prefix: `Server_*`, `World_*`, `Settings_*`, `Database_*`, `RCON_*`, `Plugins_*`, `Permissions_*`
+  - Werte mit `***` werden als "geschwärzt" dargestellt (z.B. mit Schloss-Icon)
+  - Boolean-Werte ("True"/"False") werden visuell als gruene/rote Badges dargestellt
+  - Mehrzeiliger Text (z.B. `Server_Description`) wird mit Zeilenumbruechen gerendert
+
+---
+
+### 7. DbPlayer Spawn-Properties
+
+Die `*spawn` Properties (`primaryspawn`, `secondaryspawn`, `tertiaryspawn`) aendern sich von `unknown`/Buffer zu `{ x: number; y: number; z: number } | null`.
+
+- Typ-Update in `src/types/server.ts`:
+  ```
+  interface SpawnPoint { x: number; y: number; z: number }
+  primaryspawn: SpawnPoint | null;
+  secondaryspawn: SpawnPoint | null;
+  tertiaryspawn: SpawnPoint | null;
+  ```
+
+---
+
+### Dateiuebersicht
 
 | Datei | Aktion |
 |---|---|
-| `src/types/server.ts` | Neue Interfaces, DbPlayer ersetzen |
-| `src/hooks/useServerStatus.ts` | `/info` + `/playerlist` parallel abfragen |
-| `src/hooks/useDatabasePlayers.ts` | Pfad `/api/data/player`, neues Response-Format |
-| `src/lib/storage.ts` | `checkBackend` um `version` erweitern, `"data"` Service |
-| `src/components/ServerDetail.tsx` | Header-Bild, Info-Daten, Online-Spieler, DB-Spieler Spalten |
-| `src/components/ServerCard.tsx` | Kurzname/Beschreibung anzeigen |
+| `src/i18n/index.ts` | Neu: i18next Setup |
+| `src/i18n/de.json` | Neu: Deutsche Uebersetzungen |
+| `src/i18n/en.json` | Neu: Englische Uebersetzungen |
+| `src/components/RichText.tsx` | Neu: Color-Tag Parser |
+| `src/components/EditServerDialog.tsx` | Neu: Server bearbeiten |
+| `src/hooks/useServerConfig.ts` | Neu: Server-Config laden |
+| `src/types/server.ts` | SpawnPoint-Typ, ServerConfigResponse |
+| `src/lib/storage.ts` | API-Prefix + updateServer + PATCH |
+| `src/hooks/useServers.ts` | updateServer hinzufuegen |
+| `src/context/ServerContext.tsx` | updateServer exponieren |
+| `src/components/ServerDetail.tsx` | Steam-Links, RichText, Config-Tab, Edit-Button, i18n |
+| `src/components/ServerCard.tsx` | RichText, i18n |
+| `src/components/AddServerDialog.tsx` | i18n |
+| `src/components/AppSidebar.tsx` | RichText, Sprachumschalter, i18n |
+| `src/pages/Index.tsx` | i18n |
+| `src/pages/LandingPage.tsx` | i18n |
+| `src/pages/NotFound.tsx` | i18n |
+| `src/main.tsx` | i18n Import |
 
----
-
-### Technische Details
-
-**Timestamps:** `firstseen` und `lastseen` sind Unix-Timestamps (Sekunden). Formatierung mit `date-fns`: `formatDistanceToNow(new Date(lastseen * 1000), { addSuffix: true, locale: de })`.
-
-**Header-Bild URL:** `${queryUrl}/image/header` -- wird als normales `<img>` Tag eingebunden mit Fallback bei Ladefehler.
-
-**Parallel-Fetching in useServerStatus:** Alle drei Query-Endpunkte (`/`, `/info`, `/playerlist`) werden gleichzeitig mit `Promise.allSettled` abgefragt, um Timeouts bei einzelnen Routen nicht den gesamten Status zu blockieren.
