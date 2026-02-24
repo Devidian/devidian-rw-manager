@@ -7,6 +7,7 @@ const LOCAL_STORAGE_KEY = 'risingworld_servers';
 export interface StorageAdapter {
   getServers(): Promise<ServerConfig[]>;
   addServer(data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig>;
+  updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig>;
   deleteServer(id: string): Promise<void>;
 }
 
@@ -34,6 +35,16 @@ export class LocalStorageAdapter implements StorageAdapter {
     return newServer;
   }
 
+  async updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig> {
+    const servers = await this.getServers();
+    const idx = servers.findIndex(s => s.id === id);
+    if (idx === -1) throw new Error('Server not found');
+    const updated = { ...servers[idx], ...data };
+    servers[idx] = updated;
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(servers));
+    return updated;
+  }
+
   async deleteServer(id: string): Promise<void> {
     const servers = await this.getServers();
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(servers.filter(s => s.id !== id)));
@@ -50,13 +61,13 @@ export class BackendStorageAdapter implements StorageAdapter {
   }
 
   async getServers(): Promise<ServerConfig[]> {
-    const res = await fetch(`${this.base}/api/server`, { signal: AbortSignal.timeout(10_000) });
+    const res = await fetch(`${this.base}/api/storage/server`, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
     return res.json();
   }
 
   async addServer(data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig> {
-    const res = await fetch(`${this.base}/api/server`, {
+    const res = await fetch(`${this.base}/api/storage/server`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -66,8 +77,19 @@ export class BackendStorageAdapter implements StorageAdapter {
     return res.json();
   }
 
+  async updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig> {
+    const res = await fetch(`${this.base}/api/storage/server/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
+    return res.json();
+  }
+
   async deleteServer(id: string): Promise<void> {
-    const res = await fetch(`${this.base}/api/server/${id}`, {
+    const res = await fetch(`${this.base}/api/storage/server/${id}`, {
       method: 'DELETE',
       signal: AbortSignal.timeout(10_000),
     });

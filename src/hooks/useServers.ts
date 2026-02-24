@@ -5,7 +5,6 @@ import { StorageAdapter } from '@/lib/storage';
 export function useServers(adapter: StorageAdapter) {
   const [servers, setServers] = useState<ServerConfig[]>([]);
 
-  // Load servers from adapter on mount / adapter change
   useEffect(() => {
     adapter.getServers().then(setServers).catch(() => setServers([]));
   }, [adapter]);
@@ -14,6 +13,12 @@ export function useServers(adapter: StorageAdapter) {
     const newServer = await adapter.addServer(data);
     setServers(prev => [...prev, newServer]);
     return newServer;
+  }, [adapter]);
+
+  const updateServer = useCallback(async (id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig> => {
+    const updated = await adapter.updateServer(id, data);
+    setServers(prev => prev.map(s => s.id === id ? updated : s));
+    return updated;
   }, [adapter]);
 
   const removeServer = useCallback(async (id: string): Promise<void> => {
@@ -25,5 +30,5 @@ export function useServers(adapter: StorageAdapter) {
     return servers.find(s => s.id === id);
   }, [servers]);
 
-  return { servers, addServer, removeServer, getServer };
+  return { servers, addServer, updateServer, removeServer, getServer };
 }

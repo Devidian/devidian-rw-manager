@@ -1,21 +1,15 @@
+import { useTranslation } from 'react-i18next';
 import { NavLink } from '@/components/NavLink';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarFooter,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter,
 } from '@/components/ui/sidebar';
 import { ServerWithStatus } from '@/types/server';
 import { StorageMode } from '@/context/StorageModeContext';
 import { LayoutDashboard, Server, Plus, Loader2, HardDrive, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { RichText } from '@/components/RichText';
 
 interface AppSidebarProps {
   servers: ServerWithStatus[];
@@ -31,7 +25,26 @@ function StatusIcon({ status }: { status: ServerWithStatus['status'] }) {
   return <span className="h-2 w-2 rounded-full status-dot-unknown shrink-0" />;
 }
 
+function LanguageToggle() {
+  const { i18n } = useTranslation();
+  const current = i18n.language?.startsWith('de') ? 'de' : 'en';
+  const toggle = () => i18n.changeLanguage(current === 'de' ? 'en' : 'de');
+
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+      onClick={toggle}
+    >
+      {current === 'de' ? '🇩🇪 DE' : '🇬🇧 EN'}
+    </Button>
+  );
+}
+
 export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: AppSidebarProps) {
+  const { t } = useTranslation();
+
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="px-4 py-4 border-b border-sidebar-border">
@@ -40,22 +53,21 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
             <Server className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-sidebar-foreground leading-none font-cinzel">RisingWorld</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Server Manager</p>
+            <h2 className="text-sm font-semibold text-sidebar-foreground leading-none font-cinzel">{t('risingWorld')}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('serverManager')}</p>
           </div>
         </div>
 
-        {/* Storage mode indicator */}
         <div className="mt-3">
           {storageMode === 'backend' ? (
             <Badge variant="outline" className="gap-1.5 text-xs w-full justify-center py-1 border-primary/30 text-primary/80">
               <Globe className="h-3 w-3" />
-              Backend-Modus
+              {t('storageBackend')}
             </Badge>
           ) : (
             <Badge variant="outline" className="gap-1.5 text-xs w-full justify-center py-1 text-muted-foreground">
               <HardDrive className="h-3 w-3" />
-              Lokal
+              {t('storageLocal')}
             </Badge>
           )}
         </div>
@@ -64,7 +76,7 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs uppercase tracking-widest text-muted-foreground px-4 py-2">
-            Navigation
+            {t('navigation')}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -77,7 +89,7 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
                     activeClassName="bg-sidebar-accent text-primary font-medium"
                   >
                     <LayoutDashboard className="h-4 w-4 shrink-0" />
-                    <span>Dashboard</span>
+                    <span>{t('dashboard')}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -88,7 +100,7 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
         {servers.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-xs uppercase tracking-widest text-muted-foreground px-4 py-2">
-              Server
+              {t('server')}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -101,7 +113,9 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
                         activeClassName="bg-sidebar-accent text-primary font-medium"
                       >
                         <StatusIcon status={server.status} />
-                        <span className="truncate text-sm">{server.label}</span>
+                        <span className="truncate text-sm">
+                          <RichText text={server.label} />
+                        </span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -120,8 +134,11 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
           variant="outline"
         >
           <Plus className="h-4 w-4" />
-          Server hinzufügen
+          {t('addServer')}
         </Button>
+        <div className="flex justify-center">
+          <LanguageToggle />
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
