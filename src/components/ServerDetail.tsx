@@ -90,7 +90,8 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
       </div>
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm text-foreground font-medium mt-0.5">{display.includes('<color')?<RichText text={display} />:display}</p>
+        {display.includes('\n')?<pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono mt-1">{display}</pre>:
+        <p className="text-sm text-foreground font-medium mt-0.5">{display.includes('<color')?<RichText text={display} />:display}</p>}
       </div>
     </div>
   );
