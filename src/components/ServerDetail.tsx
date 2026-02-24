@@ -198,13 +198,16 @@ function ConfigTab({ backendUrl }: { backendUrl: string }) {
                       const shortKey = key.replace(`${group}_`, '');
                       const isSensitive = val === '***';
                       const isBool = val === 'True' || val === 'False';
+                      const isRichText = typeof val === 'string' && (val.includes('<color'));
                       const strVal = String(val);
 
                       return (
                         <TableRow key={key} className="hover:bg-muted/20">
                           <TableCell className="font-medium text-sm w-1/3">{shortKey}</TableCell>
                           <TableCell className="text-sm">
-                            {isSensitive ? (
+                            {isRichText ? (
+                              <RichText text={strVal} />
+                            ) : isSensitive ? (
                               <Badge variant="outline" className="gap-1.5 text-xs text-muted-foreground">
                                 <Lock className="h-3 w-3" />
                                 {t('configSensitive')}
