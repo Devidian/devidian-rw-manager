@@ -64,6 +64,12 @@ export interface BackendInfo {
 }
 
 // GET {backendUrl}/api/data/player
+export interface SpawnPoint {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface DbPlayer {
   id: number;
   uid: string;
@@ -85,9 +91,9 @@ export interface DbPlayer {
   dead: number;
   flying: number;
   clothes: unknown;
-  primaryspawn: unknown;
-  secondaryspawn: unknown;
-  tertiaryspawn: unknown;
+  primaryspawn: SpawnPoint | null;
+  secondaryspawn: SpawnPoint | null;
+  tertiaryspawn: SpawnPoint | null;
   lastspawn: number;
   lastusedmount: number;
   lastusedvehicle: number;

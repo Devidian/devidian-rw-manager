@@ -1,37 +1,16 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ServerConfig } from '@/types/server';
 import { Server, Globe, HardDrive } from 'lucide-react';
-
-const formSchema = z.object({
-  label: z.string().trim().min(1, 'Name ist erforderlich').max(50, 'Max. 50 Zeichen'),
-  queryUrl: z
-    .string()
-    .trim()
-    .url('Bitte gültige URL eingeben (z.B. http://gs1.example.de:4254/)')
-    .max(500, 'URL zu lang'),
-  backendUrl: z
-    .string()
-    .trim()
-    .max(500, 'URL zu lang')
-    .optional()
-    .or(z.literal('')),
-});
-
-type FormValues = z.infer<typeof formSchema>;
 
 interface AddServerDialogProps {
   open: boolean;
@@ -40,6 +19,16 @@ interface AddServerDialogProps {
 }
 
 export function AddServerDialog({ open, onOpenChange, onAdd }: AddServerDialogProps) {
+  const { t } = useTranslation();
+
+  const formSchema = z.object({
+    label: z.string().trim().min(1, t('validationNameRequired')).max(50, t('validationNameMax')),
+    queryUrl: z.string().trim().url(t('validationUrlInvalid')).max(500, t('validationUrlMax')),
+    backendUrl: z.string().trim().max(500, t('validationUrlMax')).optional().or(z.literal('')),
+  });
+
+  type FormValues = z.infer<typeof formSchema>;
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { label: '', queryUrl: '', backendUrl: '' },
@@ -63,10 +52,10 @@ export function AddServerDialog({ open, onOpenChange, onAdd }: AddServerDialogPr
             <div className="flex h-9 w-9 items-center justify-center rounded bg-primary/20 border border-primary/30">
               <Server className="h-5 w-5 text-primary" />
             </div>
-            <DialogTitle className="text-lg">Server hinzufügen</DialogTitle>
+            <DialogTitle className="text-lg">{t('addServerTitle')}</DialogTitle>
           </div>
           <DialogDescription className="text-muted-foreground">
-            Trage die Query-URL deines RisingWorld-Servers ein.
+            {t('addServerDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -79,10 +68,10 @@ export function AddServerDialog({ open, onOpenChange, onAdd }: AddServerDialogPr
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Server className="h-3.5 w-3.5 text-primary" />
-                    Server-Name
+                    {t('serverNameLabel')}
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Mein RisingWorld Server" {...field} />
+                    <Input placeholder={t('serverNamePlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -96,13 +85,13 @@ export function AddServerDialog({ open, onOpenChange, onAdd }: AddServerDialogPr
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Globe className="h-3.5 w-3.5 text-primary" />
-                    Query-URL
+                    {t('queryUrlLabel')}
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="http://gs1.example.de:4254/" {...field} />
+                    <Input placeholder={t('queryUrlPlaceholder')} {...field} />
                   </FormControl>
                   <FormDescription className="text-xs text-muted-foreground">
-                    Die öffentliche JSON-Status-URL des Servers.
+                    {t('queryUrlDesc')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -116,14 +105,14 @@ export function AddServerDialog({ open, onOpenChange, onAdd }: AddServerDialogPr
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <HardDrive className="h-3.5 w-3.5 text-muted-foreground" />
-                    Backend-URL{' '}
-                    <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+                    {t('backendUrlLabel')}{' '}
+                    <span className="text-muted-foreground font-normal text-xs">{t('backendUrlOptional')}</span>
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="http://localhost:3001" {...field} />
+                    <Input placeholder={t('backendUrlPlaceholder')} {...field} />
                   </FormControl>
                   <FormDescription className="text-xs text-muted-foreground">
-                    Nur nötig wenn der Server auf derselben Maschine läuft (für Player.db-Zugriff).
+                    {t('backendUrlDesc')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -131,15 +120,11 @@ export function AddServerDialog({ open, onOpenChange, onAdd }: AddServerDialogPr
             />
 
             <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => { form.reset(); onOpenChange(false); }}
-              >
-                Abbrechen
+              <Button type="button" variant="ghost" onClick={() => { form.reset(); onOpenChange(false); }}>
+                {t('cancel')}
               </Button>
               <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                Hinzufügen
+                {t('add')}
               </Button>
             </DialogFooter>
           </form>

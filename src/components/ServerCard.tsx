@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { ServerWithStatus } from '@/types/server';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -5,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Users, MapPin, Tag, RefreshCw, Trash2, Loader2, Clock, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de as deFns } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { RichText } from '@/components/RichText';
 
 interface ServerCardProps {
   server: ServerWithStatus;
@@ -15,11 +18,12 @@ interface ServerCardProps {
 }
 
 function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
+  const { t } = useTranslation();
   if (status === 'loading') {
     return (
       <Badge variant="outline" className="gap-1.5 text-muted-foreground border-border">
         <Loader2 className="h-3 w-3 animate-spin" />
-        Prüfe...
+        {t('checking')}
       </Badge>
     );
   }
@@ -27,7 +31,7 @@ function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
     return (
       <Badge className="gap-1.5 bg-[hsl(120_55%_42%/0.15)] text-[hsl(120_55%_62%)] border-[hsl(120_55%_42%/0.4)] hover:bg-[hsl(120_55%_42%/0.2)]">
         <span className="h-1.5 w-1.5 rounded-full status-dot-online" />
-        Online
+        {t('online')}
       </Badge>
     );
   }
@@ -35,19 +39,21 @@ function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
     return (
       <Badge className="gap-1.5 bg-[hsl(0_55%_42%/0.15)] text-[hsl(0_55%_65%)] border-[hsl(0_55%_42%/0.4)] hover:bg-[hsl(0_55%_42%/0.2)]">
         <span className="h-1.5 w-1.5 rounded-full status-dot-offline" />
-        Offline
+        {t('offline')}
       </Badge>
     );
   }
   return (
     <Badge variant="outline" className="gap-1.5 text-muted-foreground border-border">
       <span className="h-1.5 w-1.5 rounded-full status-dot-unknown" />
-      Unbekannt
+      {t('unknown')}
     </Badge>
   );
 }
 
 export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('de') ? deFns : enUS;
   const navigate = useNavigate();
   const data = server.queryData;
   const info = server.infoData;
@@ -66,7 +72,6 @@ export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
       )}
       onClick={() => navigate(`/server/${server.id}`)}
     >
-      {/* Top color accent bar */}
       <div
         className={cn(
           'absolute top-0 left-0 right-0 h-0.5',
@@ -79,9 +84,13 @@ export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
       <CardHeader className="pb-3 pt-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="font-semibold text-foreground truncate leading-tight">{serverName}</h3>
+            <h3 className="font-semibold text-foreground truncate leading-tight">
+              <RichText text={serverName} />
+            </h3>
             {subtitle && (
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                <RichText text={subtitle} />
+              </p>
             )}
             {!subtitle && server.label !== serverName && (
               <p className="text-xs text-muted-foreground mt-0.5 truncate">{server.label}</p>
@@ -112,7 +121,7 @@ export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
             <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
               <Clock className="h-3.5 w-3.5 shrink-0" />
               <span className="text-xs">
-                {formatDistanceToNow(server.lastChecked, { addSuffix: true, locale: de })}
+                {formatDistanceToNow(server.lastChecked, { addSuffix: true, locale: dateLocale })}
               </span>
             </div>
           )}
@@ -131,7 +140,7 @@ export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
               variant="ghost"
               className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
               onClick={e => { e.stopPropagation(); onRefresh(); }}
-              title="Status aktualisieren"
+              title={t('refreshStatus')}
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
@@ -140,13 +149,13 @@ export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
               variant="ghost"
               className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
               onClick={e => { e.stopPropagation(); onDelete(); }}
-              title="Server entfernen"
+              title={t('deleteServer')}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
-            Details
+            {t('details')}
             <ChevronRight className="h-3.5 w-3.5" />
           </div>
         </div>
