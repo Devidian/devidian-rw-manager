@@ -133,7 +133,7 @@ function OnlinePlayersSection({ players }: { players: ServerPlayerListPlayer[] }
           {players.map(p => (
             <TableRow key={p.id} className="hover:bg-muted/20">
               <TableCell className="font-medium">{p.name}</TableCell>
-              <TableCell><SteamLink uid={p.uid} platform={p.platform} /></TableCell>
+              <TableCell><SteamLink uid={BigInt(p.uid)+''} platform={p.platform} /></TableCell>
               <TableCell className="text-muted-foreground text-sm">{p.platform}</TableCell>
               <TableCell className="text-muted-foreground text-sm">{p.ping} ms</TableCell>
             </TableRow>
@@ -345,7 +345,7 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
                       {filteredDb.map(player => (
                         <TableRow key={player.id} className="hover:bg-muted/20">
                           <TableCell className="font-medium">{player.name}</TableCell>
-                          <TableCell><SteamLink uid={player.uid} platform={player.platform} /></TableCell>
+                          <TableCell><SteamLink uid={BigInt(player.uid)+''} platform={player.platform} /></TableCell>
                           <TableCell className="text-muted-foreground text-sm">{player.platform}</TableCell>
                           <TableCell>
                             {player.permissiongroup ? (
@@ -533,7 +533,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
                   <InfoRow icon={Clock} label={t('uptime')} value={data?.uptime != null ? formatUptime(data.uptime) : undefined} />
                   <InfoRow icon={Monitor} label={t('os')} value={data?.os} />
                   <InfoRow icon={Globe} label={t('ipPort')} value={data?.ip && data?.port ? `${data.ip}:${data.port}` : undefined} />
-                  <InfoRow icon={Tag} label={t('steamId')} value={data?.steamid != null ? String(data.steamid) : undefined} />
+                  <InfoRow icon={Tag} label={t('steamId')} value={data?.steamid != null ? BigInt(data.steamid)+'' : undefined} />
                   <InfoRow icon={Tag} label={t('contact')} value={info?.contact ?? data?.contact} />
                   <InfoRow icon={Lock} label={t('locked')} value={data?.locked} />
                   <InfoRow icon={Shield} label={t('whitelist')} value={data?.whitelist} />
