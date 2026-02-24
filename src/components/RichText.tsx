@@ -5,9 +5,10 @@ const COLOR_TAG_REGEX = /<color=([^>]+)>(.*?)<\/color>/g;
 interface RichTextProps {
   text: string;
   className?: string;
+  code?:boolean;
 }
 
-export function RichText({ text, className }: RichTextProps) {
+export function RichText({ text, className,code }: RichTextProps) {
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -30,5 +31,5 @@ export function RichText({ text, className }: RichTextProps) {
     parts.push(text.slice(lastIndex));
   }
 
-  return <span className={className}>{parts}</span>;
+  return code?<pre>{parts}</pre>:<span className={className}>{parts}</span>;
 }

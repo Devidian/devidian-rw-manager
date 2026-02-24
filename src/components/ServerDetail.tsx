@@ -444,7 +444,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           )}
           {info?.description && (
             <p className="text-sm text-muted-foreground mt-1">
-              <RichText text={info.description} />
+              <RichText text={info.description} code={true} />
             </p>
           )}
         </div>
