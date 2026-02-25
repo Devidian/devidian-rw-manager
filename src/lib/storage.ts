@@ -1,7 +1,8 @@
 import { ServerConfig } from '@/types/server';
+import { authHeaders, TOKEN_KEY } from './authApi';
 
 const LOCAL_STORAGE_KEY = 'risingworld_servers';
-const TOKEN_KEY = 'rwm_auth_token';
+
 
 // ─── Interface ──────────────────────────────────────────────────────────────
 
@@ -54,17 +55,6 @@ export class LocalStorageAdapter implements StorageAdapter {
 
 // ─── Backend Storage Adapter ─────────────────────────────────────────────────
 
-function getAuthToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const token = getAuthToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  return headers;
-}
-
 export class BackendStorageAdapter implements StorageAdapter {
   constructor(private readonly baseUrl: string) {}
 
@@ -78,7 +68,7 @@ export class BackendStorageAdapter implements StorageAdapter {
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
-    return res.json();
+    return res.json().then(json => json.servers as ServerConfig[]);
   }
 
   async addServer(data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig> {
@@ -89,7 +79,7 @@ export class BackendStorageAdapter implements StorageAdapter {
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
-    return res.json();
+    return res.json().then(json => json.server as ServerConfig);
   }
 
   async updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig> {
@@ -100,7 +90,7 @@ export class BackendStorageAdapter implements StorageAdapter {
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
-    return res.json();
+    return res.json().then(json => json.server as ServerConfig);
   }
 
   async deleteServer(id: string): Promise<void> {

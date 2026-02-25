@@ -18,6 +18,35 @@ const indexFilePath = path.join(rootPath, "dist", "index.html");
 
 app.get("/health", (req, res) => res.send("ok").end());
 
+const replacements = {
+  base: env.BASE || "",
+  fixedBackendUrl: env.FIXED_BACKEND_URL || "",
+  fixedBackendAdminId: env.FIXED_BACKEND_ADMIN || "",
+  steamApiKey: env.STEAM_API_KEY || "",
+};
+
+const applyReplacements = (text) => {
+  return text
+    .replace(
+      /\/VITE_BASE_PLACEHOLDER/g,
+      replacements.base ? `/${replacements.base}` : "",
+    )
+    .replace(
+      /VITE_FIXED_BACKEND_URL_PLACEHOLDER/g,
+      replacements.fixedBackendUrl ? `${replacements.fixedBackendUrl}` : "",
+    )
+    .replace(
+      /VITE_FIXED_BACKEND_ADMIN_PLACEHOLDER/g,
+      replacements.fixedBackendAdminId
+        ? `${replacements.fixedBackendAdminId}`
+        : "",
+    )
+    .replace(
+      /VITE_STEAM_API_KEY_PLACEHOLDER/g,
+      replacements.steamApiKey ? `${replacements.steamApiKey}` : "",
+    );
+};
+
 app.use((req, res, next) => {
   const url = req.url;
   const filePath = path.join(rootPath, "dist", url);
@@ -34,14 +63,7 @@ app.use((req, res, next) => {
       );
 
     // we need to catch the starting slash to ensure if env is empty the result is not starting with //
-    res
-      .send(
-        indexFile.replace(
-          /\/VITE_BASE_PLACEHOLDER/g,
-          finalBase ? `/${finalBase}` : "",
-        ),
-      )
-      .end();
+    res.send(applyReplacements(indexFile)).end();
     return;
   }
 
@@ -58,10 +80,7 @@ app.use((req, res, next) => {
     if (["debug"].includes(logLevel))
       logger.info(`replacing placeholders in ${filePath}`);
     // for (const [from, to] of staticReplacements)
-    fileContents = fileContents.replaceAll(
-      "/VITE_BASE_PLACEHOLDER",
-      finalBase ? `/${finalBase}` : "",
-    );
+    fileContents = applyReplacements(fileContents);
   }
 
   res.contentType(basename(filePath)).send(fileContents).end();
@@ -74,10 +93,7 @@ app.use(express.static(path.join(rootPath, "dist")));
 
 app.get("*wc", (req, res) => {
   let html = readFileSync(indexFilePath, "utf8");
-  html = html.replace(
-    /\/VITE_BASE_PLACEHOLDER/g,
-    finalBase ? `/${finalBase}` : "",
-  );
+  html = applyReplacements(html);
   res.setHeader("Content-Type", "text/html");
   res.send(html);
 });

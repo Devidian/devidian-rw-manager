@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { authHeaders } from '../lib/authApi';
 
 export interface ServerConfigData {
   config: Record<string, string | number | boolean>;
@@ -23,6 +24,7 @@ export function useServerConfig(): UseServerConfigResult {
       const base = backendUrl.replace(/\/$/, '');
       const res = await fetch(`${base}/api/data/server/config`, {
         signal: AbortSignal.timeout(10_000),
+        headers: authHeaders(),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: ServerConfigData = await res.json();

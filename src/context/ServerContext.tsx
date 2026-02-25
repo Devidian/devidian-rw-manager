@@ -19,7 +19,7 @@ const ServerContext = createContext<ServerContextValue | undefined>(undefined);
 
 export function ServerProvider({ children }: { children: ReactNode }) {
   const { adapter } = useStorageMode();
-  const { servers, addServer, updateServer, removeServer, getServer } = useServers(adapter);
+  const { servers=[], addServer, updateServer, removeServer, getServer } = useServers(adapter);
   const { statusMap, refreshAll, refreshOne } = useServerStatus(servers);
 
   const serverList: ServerWithStatus[] = servers.map(s => statusMap[s.id] ?? { ...s, status: 'unknown' as const });
