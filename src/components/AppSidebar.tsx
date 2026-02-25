@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -6,14 +7,15 @@ import {
 } from '@/components/ui/sidebar';
 import { ServerWithStatus } from '@/types/server';
 import { StorageMode } from '@/context/StorageModeContext';
-import { LayoutDashboard, Server, Plus, Loader2, HardDrive, Globe } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { LayoutDashboard, Server, Plus, Loader2, HardDrive, Globe, Shield, LogOut, LogIn, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RichText } from '@/components/RichText';
 
 interface AppSidebarProps {
   servers: ServerWithStatus[];
-  onAddServer: () => void;
+  onAddServer?: () => void;
   storageMode: StorageMode;
   backendUrl: string | null;
 }
@@ -42,8 +44,34 @@ function LanguageToggle() {
   );
 }
 
+function StorageBadge({ mode }: { mode: StorageMode }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const config: Record<StorageMode, { icon: React.ReactNode; label: string; className: string }> = {
+    backend: { icon: <Globe className="h-3 w-3" />, label: t('storageBackend'), className: 'border-primary/30 text-primary/80' },
+    fixed: { icon: <Shield className="h-3 w-3" />, label: t('storageFixed'), className: 'border-primary/30 text-primary/80' },
+    local: { icon: <HardDrive className="h-3 w-3" />, label: t('storageLocal'), className: 'text-muted-foreground' },
+  };
+
+  const c = config[mode];
+
+  return (
+    <Badge
+      variant="outline"
+      className={`gap-1.5 text-xs w-full justify-center py-1 cursor-pointer hover:bg-muted/50 ${c.className}`}
+      onClick={() => navigate('/setup')}
+    >
+      {c.icon}
+      {c.label}
+    </Badge>
+  );
+}
+
 export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: AppSidebarProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, isAdmin, hasAuthService, logout } = useAuth();
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -59,17 +87,7 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
         </div>
 
         <div className="mt-3">
-          {storageMode === 'backend' ? (
-            <Badge variant="outline" className="gap-1.5 text-xs w-full justify-center py-1 border-primary/30 text-primary/80">
-              <Globe className="h-3 w-3" />
-              {t('storageBackend')}
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="gap-1.5 text-xs w-full justify-center py-1 text-muted-foreground">
-              <HardDrive className="h-3 w-3" />
-              {t('storageLocal')}
-            </Badge>
-          )}
+          <StorageBadge mode={storageMode} />
         </div>
       </SidebarHeader>
 
@@ -127,15 +145,59 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border space-y-2">
-        <Button
-          onClick={onAddServer}
-          size="sm"
-          className="w-full gap-2 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 hover:text-primary"
-          variant="outline"
-        >
-          <Plus className="h-4 w-4" />
-          {t('addServer')}
-        </Button>
+        {/* User display */}
+        {hasAuthService && isAuthenticated && user && (
+          <div className="flex items-center gap-2 px-1">
+            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-xs text-foreground truncate flex-1">
+              {user.username || user.email || user.steamId}
+            </span>
+            {isAdmin && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary">
+                {t('adminBadge')}
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Auth buttons */}
+        {hasAuthService && isAuthenticated && (
+          <Button
+            onClick={logout}
+            size="sm"
+            variant="ghost"
+            className="w-full gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+            {t('logoutButton')}
+          </Button>
+        )}
+
+        {hasAuthService && !isAuthenticated && (
+          <Button
+            onClick={() => navigate('/auth/login')}
+            size="sm"
+            variant="ghost"
+            className="w-full gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <LogIn className="h-4 w-4" />
+            {t('loginSubmit')}
+          </Button>
+        )}
+
+        {/* Add server */}
+        {onAddServer && (
+          <Button
+            onClick={onAddServer}
+            size="sm"
+            className="w-full gap-2 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 hover:text-primary"
+            variant="outline"
+          >
+            <Plus className="h-4 w-4" />
+            {t('addServer')}
+          </Button>
+        )}
+
         <div className="flex justify-center">
           <LanguageToggle />
         </div>

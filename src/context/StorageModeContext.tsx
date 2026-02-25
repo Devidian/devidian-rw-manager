@@ -4,15 +4,20 @@ import { StorageAdapter, LocalStorageAdapter, BackendStorageAdapter } from '@/li
 const MODE_KEY = 'rwm_storage_mode';
 const BACKEND_URL_KEY = 'rwm_backend_url';
 
-export type StorageMode = 'local' | 'backend';
+export type StorageMode = 'local' | 'backend' | 'fixed';
+
+const FIXED_BACKEND_URL = (import.meta.env.VITE_FIXED_BACKEND_URL as string) || '';
 
 interface StorageModeContextValue {
   mode: StorageMode;
   backendUrl: string | null;
+  fixedBackendUrl: string | null;
+  hasFixedBackend: boolean;
   adapter: StorageAdapter;
   isConfigured: boolean;
   setLocalMode: () => void;
   setBackendMode: (url: string) => void;
+  setFixedMode: () => void;
   reset: () => void;
 }
 
@@ -29,12 +34,18 @@ export function StorageModeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<StorageMode | null>(persisted.mode);
   const [backendUrl, setBackendUrlState] = useState<string | null>(persisted.backendUrl);
 
+  const fixedBackendUrl = FIXED_BACKEND_URL || null;
+  const hasFixedBackend = !!FIXED_BACKEND_URL;
+
   const adapter = useMemo<StorageAdapter>(() => {
+    if (mode === 'fixed' && fixedBackendUrl) {
+      return new BackendStorageAdapter(fixedBackendUrl);
+    }
     if (mode === 'backend' && backendUrl) {
       return new BackendStorageAdapter(backendUrl);
     }
     return new LocalStorageAdapter();
-  }, [mode, backendUrl]);
+  }, [mode, backendUrl, fixedBackendUrl]);
 
   const setLocalMode = () => {
     localStorage.setItem(MODE_KEY, 'local');
@@ -50,6 +61,13 @@ export function StorageModeProvider({ children }: { children: ReactNode }) {
     setBackendUrlState(url);
   };
 
+  const setFixedMode = () => {
+    localStorage.setItem(MODE_KEY, 'fixed');
+    localStorage.removeItem(BACKEND_URL_KEY);
+    setModeState('fixed');
+    setBackendUrlState(null);
+  };
+
   const reset = () => {
     localStorage.removeItem(MODE_KEY);
     localStorage.removeItem(BACKEND_URL_KEY);
@@ -62,10 +80,13 @@ export function StorageModeProvider({ children }: { children: ReactNode }) {
       value={{
         mode: mode ?? 'local',
         backendUrl,
+        fixedBackendUrl,
+        hasFixedBackend,
         adapter,
         isConfigured: mode !== null,
         setLocalMode,
         setBackendMode,
+        setFixedMode,
         reset,
       }}
     >

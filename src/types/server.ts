@@ -5,6 +5,15 @@ export interface ServerConfig {
   backendUrl?: string;
   createdAt: string;
   userId?: string;
+  public?: boolean;
+}
+
+export interface AuthUser {
+  id: string;
+  username?: string;
+  email?: string;
+  steamId?: string;
+  role: 'guest' | 'user' | 'admin';
 }
 
 export type ServerStatus = 'online' | 'offline' | 'loading' | 'unknown';
