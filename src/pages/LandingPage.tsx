@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  HardDrive, Globe, Loader2, CheckCircle, XCircle, Server, ArrowRight, Wifi,
+  HardDrive, Globe, Loader2, CheckCircle, XCircle, Server, ArrowRight, Wifi, Shield,
 } from 'lucide-react';
 
 type CheckState = 'idle' | 'checking' | 'ok' | 'unreachable' | 'invalid-response' | 'missing-service';
@@ -16,10 +16,11 @@ type CheckState = 'idle' | 'checking' | 'ok' | 'unreachable' | 'invalid-response
 export default function LandingPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setLocalMode, setBackendMode } = useStorageMode();
+  const { setLocalMode, setBackendMode, setFixedMode, hasFixedBackend, fixedBackendUrl } = useStorageMode();
 
   const [backendUrl, setBackendUrl] = useState('');
   const [checkState, setCheckState] = useState<CheckState>('idle');
+  const [fixedCheckState, setFixedCheckState] = useState<CheckState>('idle');
 
   const handleLocal = () => { setLocalMode(); navigate('/'); };
 
@@ -37,11 +38,27 @@ export default function LandingPage() {
     }
   };
 
+  const handleFixedConnect = async () => {
+    if (!fixedBackendUrl) return;
+    setFixedCheckState('checking');
+    const result = await checkBackend(fixedBackendUrl, 'storage');
+    if (result.ok) {
+      setFixedCheckState('ok');
+      setFixedMode();
+      setTimeout(() => navigate('/'), 800);
+    } else {
+      const r = result as { ok: false; reason: string };
+      setFixedCheckState(r.reason as CheckState);
+    }
+  };
+
   const errorMessages: Record<string, string> = {
     unreachable: t('errUnreachable'),
     'invalid-response': t('errInvalidResponse'),
     'missing-service': t('errMissingService'),
   };
+
+  const gridCols = hasFixedBackend ? 'md:grid-cols-3' : 'md:grid-cols-2';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
@@ -55,7 +72,8 @@ export default function LandingPage() {
         <p className="text-muted-foreground mt-2 max-w-md mx-auto">{t('landingDesc')}</p>
       </div>
 
-      <div className="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={`w-full max-w-3xl grid grid-cols-1 ${gridCols} gap-4`}>
+        {/* Local */}
         <Card className="bg-card border-border hover:border-primary/40 transition-colors cursor-pointer group" onClick={handleLocal}>
           <CardHeader className="pb-3">
             <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center mb-3">
@@ -77,6 +95,7 @@ export default function LandingPage() {
           </CardContent>
         </Card>
 
+        {/* Custom Backend */}
         <Card className="bg-card border-border hover:border-primary/40 transition-colors">
           <CardHeader className="pb-3">
             <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center mb-3">
@@ -91,7 +110,6 @@ export default function LandingPage() {
               <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />{t('multiUser')}</li>
               <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />{t('ownServerRequired')}</li>
             </ul>
-
             <div className="space-y-2">
               <div className="flex gap-2">
                 <Input
@@ -113,7 +131,6 @@ export default function LandingPage() {
                   {t('check')}
                 </Button>
               </div>
-
               {checkState === 'ok' && (
                 <Badge className="gap-1.5 bg-[hsl(120_55%_42%/0.15)] text-[hsl(120_55%_62%)] border-[hsl(120_55%_42%/0.4)] w-full justify-center py-1.5">
                   <CheckCircle className="h-3.5 w-3.5" />
@@ -129,6 +146,50 @@ export default function LandingPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Fixed Backend */}
+        {hasFixedBackend && (
+          <Card className="bg-card border-border hover:border-primary/40 transition-colors">
+            <CardHeader className="pb-3">
+              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center mb-3">
+                <Shield className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <CardTitle className="text-lg">{t('fixedBackend')}</CardTitle>
+              <CardDescription>{t('fixedBackendDesc')}</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ul className="text-sm text-muted-foreground space-y-1.5 mb-4">
+                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />{t('fixedBullet1')}</li>
+                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />{t('fixedBullet2')}</li>
+                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />{t('fixedBullet3')}</li>
+              </ul>
+              <div className="space-y-2">
+                <Button
+                  onClick={handleFixedConnect}
+                  disabled={fixedCheckState === 'checking' || fixedCheckState === 'ok'}
+                  className="w-full gap-2"
+                >
+                  {fixedCheckState === 'checking' ? <Loader2 className="h-4 w-4 animate-spin" /> :
+                   fixedCheckState === 'ok' ? <CheckCircle className="h-4 w-4" /> :
+                   <ArrowRight className="h-4 w-4" />}
+                  {t('fixedConnect')}
+                </Button>
+                {fixedCheckState === 'ok' && (
+                  <Badge className="gap-1.5 bg-[hsl(120_55%_42%/0.15)] text-[hsl(120_55%_62%)] border-[hsl(120_55%_42%/0.4)] w-full justify-center py-1.5">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    {t('connected')}
+                  </Badge>
+                )}
+                {fixedCheckState !== 'idle' && fixedCheckState !== 'checking' && fixedCheckState !== 'ok' && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2.5 flex items-start gap-2">
+                    <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <p className="text-xs text-destructive">{errorMessages[fixedCheckState]}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground mt-8">{t('settingsHint')}</p>

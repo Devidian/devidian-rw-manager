@@ -1,6 +1,7 @@
 import { ServerConfig } from '@/types/server';
 
 const LOCAL_STORAGE_KEY = 'risingworld_servers';
+const TOKEN_KEY = 'rwm_auth_token';
 
 // ─── Interface ──────────────────────────────────────────────────────────────
 
@@ -53,6 +54,17 @@ export class LocalStorageAdapter implements StorageAdapter {
 
 // ─── Backend Storage Adapter ─────────────────────────────────────────────────
 
+function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = getAuthToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
+
 export class BackendStorageAdapter implements StorageAdapter {
   constructor(private readonly baseUrl: string) {}
 
@@ -61,7 +73,10 @@ export class BackendStorageAdapter implements StorageAdapter {
   }
 
   async getServers(): Promise<ServerConfig[]> {
-    const res = await fetch(`${this.base}/api/storage/server`, { signal: AbortSignal.timeout(10_000) });
+    const res = await fetch(`${this.base}/api/storage/server`, {
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
     return res.json();
   }
@@ -69,7 +84,7 @@ export class BackendStorageAdapter implements StorageAdapter {
   async addServer(data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig> {
     const res = await fetch(`${this.base}/api/storage/server`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify(data),
       signal: AbortSignal.timeout(10_000),
     });
@@ -80,7 +95,7 @@ export class BackendStorageAdapter implements StorageAdapter {
   async updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig> {
     const res = await fetch(`${this.base}/api/storage/server/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify(data),
       signal: AbortSignal.timeout(10_000),
     });
@@ -91,6 +106,7 @@ export class BackendStorageAdapter implements StorageAdapter {
   async deleteServer(id: string): Promise<void> {
     const res = await fetch(`${this.base}/api/storage/server/${id}`, {
       method: 'DELETE',
+      headers: authHeaders(),
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok && res.status !== 204) throw new Error(`Backend returned HTTP ${res.status}`);
@@ -100,7 +116,7 @@ export class BackendStorageAdapter implements StorageAdapter {
 // ─── Backend Health Check ────────────────────────────────────────────────────
 
 export type BackendCheckResult =
-  | { ok: true; version?: number }
+  | { ok: true; version?: number; services: string[] }
   | { ok: false; reason: 'unreachable' | 'invalid-response' | 'missing-service' };
 
 export async function checkBackend(url: string, requiredService: string): Promise<BackendCheckResult> {
@@ -125,7 +141,7 @@ export async function checkBackend(url: string, requiredService: string): Promis
       return { ok: false, reason: 'missing-service' };
     }
     const version = (json as Record<string, unknown>).version;
-    return { ok: true, version: typeof version === 'number' ? version : undefined };
+    return { ok: true, version: typeof version === 'number' ? version : undefined, services };
   } catch {
     return { ok: false, reason: 'unreachable' };
   }
