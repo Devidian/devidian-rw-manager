@@ -8,7 +8,7 @@ import {
 import { ServerWithStatus } from '@/types/server';
 import { StorageMode } from '@/context/StorageModeContext';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, Server, Plus, Loader2, HardDrive, Globe, Shield, LogOut, LogIn, User } from 'lucide-react';
+import { LayoutDashboard, Server, Plus, Loader2, HardDrive, Globe, Shield, LogOut, LogIn, User, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RichText } from '@/components/RichText';
@@ -71,7 +71,7 @@ function StorageBadge({ mode }: { mode: StorageMode }) {
 export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: AppSidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, isAdmin, hasAuthService, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, isSuperAdmin, hasAuthService, logout } = useAuth();
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -111,6 +111,20 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {storageMode === 'fixed' && isSuperAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/admin/users"
+                      className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                      activeClassName="bg-sidebar-accent text-primary font-medium"
+                    >
+                      <Users className="h-4 w-4 shrink-0" />
+                      <span>{t('userManagement')}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

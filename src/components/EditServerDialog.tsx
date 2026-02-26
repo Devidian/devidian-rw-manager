@@ -8,6 +8,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ServerConfig } from '@/types/server';
 import { Server, HardDrive } from 'lucide-react';
 
@@ -15,28 +16,31 @@ interface EditServerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   server: ServerConfig;
-  onSave: (id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>) => Promise<ServerConfig>;
+  onSave: (id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl' | 'public'>>) => Promise<ServerConfig>;
+  showPublicFlag?: boolean;
 }
 
-export function EditServerDialog({ open, onOpenChange, server, onSave }: EditServerDialogProps) {
+export function EditServerDialog({ open, onOpenChange, server, onSave, showPublicFlag }: EditServerDialogProps) {
   const { t } = useTranslation();
 
   const formSchema = z.object({
     label: z.string().trim().min(1, t('validationNameRequired')).max(50, t('validationNameMax')),
     backendUrl: z.string().trim().max(500, t('validationUrlMax')).optional().or(z.literal('')),
+    public: z.boolean().optional(),
   });
 
   type FormValues = z.infer<typeof formSchema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { label: server.label, backendUrl: server.backendUrl ?? '' },
+    defaultValues: { label: server.label, backendUrl: server.backendUrl ?? '', public: server.public ?? false },
   });
 
   async function onSubmit(values: FormValues) {
     await onSave(server.id, {
       label: values.label,
       backendUrl: values.backendUrl || undefined,
+      ...(showPublicFlag ? { public: values.public ?? false } : {}),
     });
     onOpenChange(false);
   }
@@ -95,6 +99,24 @@ export function EditServerDialog({ open, onOpenChange, server, onSave }: EditSer
                 </FormItem>
               )}
             />
+
+            {showPublicFlag && (
+              <FormField
+                control={form.control}
+                name="public"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>{t('serverPublic')}</FormLabel>
+                      <FormDescription className="text-xs">{t('serverPublicDesc')}</FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

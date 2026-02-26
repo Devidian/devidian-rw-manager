@@ -9,7 +9,7 @@ const LOCAL_STORAGE_KEY = 'risingworld_servers';
 export interface StorageAdapter {
   getServers(): Promise<ServerConfig[]>;
   addServer(data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig>;
-  updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig>;
+  updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl' | 'public'>>): Promise<ServerConfig>;
   deleteServer(id: string): Promise<void>;
 }
 
@@ -37,7 +37,7 @@ export class LocalStorageAdapter implements StorageAdapter {
     return newServer;
   }
 
-  async updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig> {
+  async updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl' | 'public'>>): Promise<ServerConfig> {
     const servers = await this.getServers();
     const idx = servers.findIndex(s => s.id === id);
     if (idx === -1) throw new Error('Server not found');
@@ -82,7 +82,7 @@ export class BackendStorageAdapter implements StorageAdapter {
     return res.json().then(json => json.server as ServerConfig);
   }
 
-  async updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig> {
+  async updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl' | 'public'>>): Promise<ServerConfig> {
     const res = await fetch(`${this.base}/api/storage/server/${id}`, {
       method: 'PATCH',
       headers: authHeaders(),

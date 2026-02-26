@@ -10,6 +10,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   isLoading: boolean;
   requiresAuth: boolean;
   hasAuthService: boolean;
@@ -45,9 +46,11 @@ export function AuthProvider({
   const requiresAuth = backendServices.includes('forceAuth');
   const fixedAdmin = import.meta.env.VITE_FIXED_BACKEND_ADMIN as string | undefined;
 
+  const isSuperAdmin = user != null && !!fixedAdmin && user.steamId === fixedAdmin;
+
   const isAdmin = user != null && (
     user.role === 'admin' ||
-    (!!fixedAdmin && user.steamId === fixedAdmin)
+    isSuperAdmin
   );
 
   const saveToken = (token: string) => localStorage.setItem(TOKEN_KEY, token);
@@ -114,6 +117,7 @@ export function AuthProvider({
       user,
       isAuthenticated: user != null,
       isAdmin,
+      isSuperAdmin,
       isLoading,
       requiresAuth,
       hasAuthService,

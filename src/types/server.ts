@@ -18,6 +18,18 @@ export interface AuthUser {
 
 export type ServerStatus = 'online' | 'offline' | 'loading' | 'unknown';
 
+export type UserState = 'new' | 'verified' | 'closed';
+export type UserRole = 'guest' | 'user' | 'admin';
+
+export interface PublicUserInterface {
+  id: string;
+  username: string;
+  state: UserState;
+  role: UserRole;
+  steamId?: string;
+  createdAt: string;
+}
+
 export interface RisingWorldQueryData {
   version: string;
   legacy: boolean;

@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { checkBackend } from '@/lib/storage';
 import Index from './pages/Index';
 import ServerDetailPage from './pages/ServerDetailPage';
+import UserManagementPage from './pages/UserManagementPage';
 import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -26,7 +27,7 @@ function Layout() {
   const { mode, backendUrl, fixedBackendUrl } = useStorageMode();
   const { isAdmin, isAuthenticated, hasAuthService } = useAuth();
 
-  const canAddServer = mode !== 'fixed' || isAdmin;
+  const canAddServer = mode === 'local' || isAdmin;
 
   return (
     <SidebarProvider>
@@ -50,6 +51,7 @@ function Layout() {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/server/:id" element={<ServerDetailPage />} />
+              <Route path="/admin/users" element={<UserManagementPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
@@ -61,7 +63,7 @@ function Layout() {
           open={addOpen}
           onOpenChange={setAddOpen}
           onAdd={addServer}
-          isFixedMode={mode === 'fixed'}
+          isBackendMode={mode === 'fixed' || mode === 'backend'}
         />
       )}
     </SidebarProvider>
