@@ -14,7 +14,7 @@ import { RichText } from '@/components/RichText';
 interface ServerCardProps {
   server: ServerWithStatus;
   onRefresh: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
 }
 
 function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
@@ -144,15 +144,17 @@ export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-              onClick={e => { e.stopPropagation(); onDelete(); }}
-              title={t('deleteServer')}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            {onDelete && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                onClick={e => { e.stopPropagation(); onDelete(); }}
+                title={t('deleteServer')}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
             {t('details')}

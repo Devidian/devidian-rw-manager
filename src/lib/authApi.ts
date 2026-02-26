@@ -1,4 +1,4 @@
-import { AuthUser } from '@/types/server';
+import { AuthUser, PublicUserInterface, UserState, UserRole } from '@/types/server';
 
 const TIMEOUT = 10_000;
 export const TOKEN_KEY = 'rwm_auth_token';
@@ -82,5 +82,38 @@ export async function steamCallback(
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify(openIdParams),
+  });
+}
+
+// ─── User Management (Superadmin) ────────────────────────────────────────────
+
+export async function getUsers(
+  baseUrl: string,
+  token: string,
+): Promise<{ users: PublicUserInterface[] }> {
+  return authFetch(`${baseUrl}/api/storage/user`, { headers: authHeaders(token) });
+}
+
+export async function updateUser(
+  baseUrl: string,
+  token: string,
+  id: string,
+  data: { state?: UserState; role?: UserRole },
+): Promise<PublicUserInterface> {
+  return authFetch(`${baseUrl}/api/storage/user/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteUser(
+  baseUrl: string,
+  token: string,
+  id: string,
+): Promise<void> {
+  return authFetch(`${baseUrl}/api/storage/user/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
   });
 }

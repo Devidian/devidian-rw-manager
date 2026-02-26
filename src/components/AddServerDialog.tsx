@@ -17,10 +17,10 @@ interface AddServerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdd: (data: Omit<ServerConfig, 'id' | 'createdAt'>) => Promise<ServerConfig>;
-  isFixedMode?: boolean;
+  isBackendMode?: boolean;
 }
 
-export function AddServerDialog({ open, onOpenChange, onAdd, isFixedMode }: AddServerDialogProps) {
+export function AddServerDialog({ open, onOpenChange, onAdd, isBackendMode }: AddServerDialogProps) {
   const { t } = useTranslation();
 
   const formSchema = z.object({
@@ -42,7 +42,7 @@ export function AddServerDialog({ open, onOpenChange, onAdd, isFixedMode }: AddS
       label: values.label,
       queryUrl: values.queryUrl.endsWith('/') ? values.queryUrl : values.queryUrl + '/',
       backendUrl: values.backendUrl || undefined,
-      ...(isFixedMode ? { public: values.public ?? false } : {}),
+      ...(isBackendMode ? { public: values.public ?? false } : {}),
     });
     form.reset();
     onOpenChange(false);
@@ -123,7 +123,7 @@ export function AddServerDialog({ open, onOpenChange, onAdd, isFixedMode }: AddS
               )}
             />
 
-            {isFixedMode && (
+            {isBackendMode && (
               <FormField
                 control={form.control}
                 name="public"

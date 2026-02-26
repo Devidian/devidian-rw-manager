@@ -17,6 +17,8 @@ import {
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useServerContext } from '@/context/ServerContext';
+import { useStorageMode } from '@/context/StorageModeContext';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { de as deFns } from 'date-fns/locale';
@@ -385,6 +387,10 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { updateServer } = useServerContext();
+  const { mode } = useStorageMode();
+  const { isAdmin } = useAuth();
+  const canEdit = mode === 'local' || isAdmin;
+  const showPublicFlag = mode === 'fixed' || mode === 'backend';
   const [editOpen, setEditOpen] = useState(false);
 
   if (!server) {
@@ -450,14 +456,16 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
         </div>
         <div className="flex items-center gap-3 pt-9">
           <StatusDisplay status={server.status} />
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-2"
-            onClick={() => setEditOpen(true)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          {canEdit && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -566,12 +574,15 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
         )}
       </Tabs>
 
-      <EditServerDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        server={server}
-        onSave={updateServer}
-      />
+      {canEdit && (
+        <EditServerDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          server={server}
+          onSave={updateServer}
+          showPublicFlag={showPublicFlag}
+        />
+      )}
     </div>
   );
 }
