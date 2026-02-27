@@ -17,12 +17,14 @@ export default function SteamCallbackPage() {
       .catch((e: Error) => setError(e.message || t('errLoginFailed')));
   }, []);
 
+  const link = <a href={window['__BASE_URL__']??'/'} className="text-primary underline">{t('back')}</a>
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <p className="text-destructive mb-4">{error}</p>
-          <a href="/" className="text-primary underline">{t('back')}</a>
+          {link}
         </div>
       </div>
     );
