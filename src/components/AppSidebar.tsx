@@ -159,9 +159,12 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border space-y-2">
-        {/* User display */}
+        {/* User display — clickable to profile */}
         {hasAuthService && isAuthenticated && user && (
-          <div className="flex items-center gap-2 px-1">
+          <div
+            className="flex items-center gap-2 px-1 cursor-pointer hover:bg-sidebar-accent rounded py-1 transition-colors"
+            onClick={() => navigate('/profile')}
+          >
             <User className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-xs text-foreground truncate flex-1">
               {user.username || user.email || user.steamId}

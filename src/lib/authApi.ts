@@ -13,7 +13,12 @@ export class AuthApiError extends Error {
 async function authFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(url, { ...options, signal: AbortSignal.timeout(TIMEOUT) });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new AuthApiError(res.status, (json as Record<string, string>).error ?? `HTTP ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401) {
+      window.dispatchEvent(new CustomEvent('rwm:session-expired'));
+    }
+    throw new AuthApiError(res.status, (json as Record<string, string>).error ?? `HTTP ${res.status}`);
+  }
   if(json.token) localStorage.setItem(TOKEN_KEY, json.token)
   return json as T;
 }
@@ -67,10 +72,54 @@ export async function linkSteamId(
   token: string,
   steamId: string,
 ): Promise<{ user: AuthUser }> {
-  return authFetch(`${baseUrl}/api/auth/steam-id`, {
+  return authFetch(`${baseUrl}/api/auth/steam-connect`, {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify({ steamId }),
+  });
+}
+
+export async function steamConnect(
+  baseUrl: string,
+  openIdParams: Record<string, string>,
+): Promise<{ user: AuthUser; token: string }> {
+  return authFetch(`${baseUrl}/api/auth/steam-connect`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(openIdParams),
+  });
+}
+
+export async function steamDisconnect(
+  baseUrl: string,
+  token: string,
+): Promise<{ user: AuthUser; token: string }> {
+  return authFetch(`${baseUrl}/api/auth/steam-disconnect`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: '{}',
+  });
+}
+
+export async function updateSelf(
+  baseUrl: string,
+  token: string,
+  data: { name: string },
+): Promise<{ user: AuthUser }> {
+  return authFetch(`${baseUrl}/api/auth/self`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteSelf(
+  baseUrl: string,
+  token: string,
+): Promise<{ ok: true }> {
+  return authFetch(`${baseUrl}/api/auth/self`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
   });
 }
 
@@ -99,7 +148,7 @@ export async function updateUser(
   token: string,
   id: string,
   data: { state?: UserState; role?: UserRole },
-): Promise<PublicUserInterface> {
+): Promise<{ user: PublicUserInterface }> {
   return authFetch(`${baseUrl}/api/storage/user/${id}`, {
     method: 'PATCH',
     headers: authHeaders(token),

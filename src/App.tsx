@@ -11,9 +11,15 @@ import { ServerProvider, useServerContext } from '@/context/ServerContext';
 import { StorageModeProvider, useStorageMode } from '@/context/StorageModeContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { checkBackend } from '@/lib/storage';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useTranslation } from 'react-i18next';
 import Index from './pages/Index';
 import ServerDetailPage from './pages/ServerDetailPage';
 import UserManagementPage from './pages/UserManagementPage';
+import ProfilePage from './pages/ProfilePage';
 import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -21,11 +27,38 @@ import SteamCallbackPage from './pages/SteamCallbackPage';
 
 const queryClient = new QueryClient();
 
+function SessionExpiredDialog() {
+  const { t } = useTranslation();
+  const { sessionExpired, clearSessionExpired, requiresAuth } = useAuth();
+  const navigate = useNavigate();
+
+  const handleConfirm = () => {
+    clearSessionExpired();
+    if (requiresAuth) {
+      navigate('/auth/login', { replace: true });
+    }
+  };
+
+  return (
+    <AlertDialog open={sessionExpired}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('sessionExpiredTitle')}</AlertDialogTitle>
+          <AlertDialogDescription>{t('sessionExpiredMessage')}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={handleConfirm}>{t('sessionExpiredConfirm')}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function Layout() {
   const [addOpen, setAddOpen] = useState(false);
   const { serverList, addServer } = useServerContext();
   const { mode, backendUrl, fixedBackendUrl } = useStorageMode();
-  const { isAdmin, isAuthenticated, hasAuthService } = useAuth();
+  const { isAdmin } = useAuth();
 
   const canAddServer = mode === 'local' || isAdmin;
 
@@ -52,6 +85,7 @@ function Layout() {
               <Route path="/" element={<Index />} />
               <Route path="/server/:id" element={<ServerDetailPage />} />
               <Route path="/admin/users" element={<UserManagementPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
@@ -66,6 +100,8 @@ function Layout() {
           isBackendMode={mode === 'fixed' || mode === 'backend'}
         />
       )}
+
+      <SessionExpiredDialog />
     </SidebarProvider>
   );
 }
