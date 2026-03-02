@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ServerWithStatus, DbPlayer, ServerPlayerListPlayer, ServerConfig } from '@/types/server';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,9 +10,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   ArrowLeft, RefreshCw, Users, MapPin, Tag, Lock, Gamepad2,
   Search, Loader2, WifiOff, HardDrive, Globe, Shield,
   Clock, Monitor, Sword, Heart, Star, ExternalLink, Settings, Pencil,
+  ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
 import { useServerConfig } from '@/hooks/useServerConfig';
@@ -26,6 +30,9 @@ import { enUS } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { RichText } from '@/components/RichText';
 import { EditServerDialog } from '@/components/EditServerDialog';
+import {
+  Tooltip, TooltipContent, TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ServerDetailProps {
   server: ServerWithStatus | undefined;
@@ -247,6 +254,26 @@ function ConfigTab({ backendUrl }: { backendUrl: string }) {
   );
 }
 
+// ─── Player sort types ───────────────────────────────────────────────────────
+type PlayerSortField = 'name' | 'platform' | 'permissiongroup' | 'playtime' | 'lastseen';
+type SortDir = 'asc' | 'desc';
+const PAGE_SIZE_KEY = 'rwm_player_page_size';
+
+function SortablePlayerHeader({ field, label, sortField, sortDir, onSort }: {
+  field: PlayerSortField; label: string; sortField: PlayerSortField; sortDir: SortDir;
+  onSort: (f: PlayerSortField) => void;
+}) {
+  const active = sortField === field;
+  return (
+    <TableHead className="cursor-pointer select-none hover:text-foreground" onClick={() => onSort(field)}>
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active && (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+      </span>
+    </TableHead>
+  );
+}
+
 function PlayersTab({ server }: { server: ServerWithStatus }) {
   const { t } = useTranslation();
   const dateLocale = useDateLocale();
@@ -254,6 +281,29 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
   const { players: dbPlayers, loading: dbLoading, error: dbError, fetchPlayers } = useDatabasePlayers();
   const hasDbAccess = !!server.backendUrl;
   const onlinePlayers = server.onlinePlayers ?? [];
+
+  // Sort state
+  const [sortField, setSortField] = useState<PlayerSortField>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  // Pagination state
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const stored = localStorage.getItem(PAGE_SIZE_KEY);
+    return stored ? parseInt(stored, 10) : 50;
+  });
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const handleSort = (field: PlayerSortField) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
+
+  const handlePageSize = (val: string) => {
+    const num = parseInt(val, 10);
+    setPageSize(num);
+    setCurrentPage(0);
+    localStorage.setItem(PAGE_SIZE_KEY, val);
+  };
 
   useEffect(() => {
     if (server.backendUrl) {
@@ -265,6 +315,26 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.uid.toLowerCase().includes(search.toLowerCase())
   );
+
+  const sortedDb = useMemo(() => {
+    return [...filteredDb].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'name': cmp = a.name.localeCompare(b.name); break;
+        case 'platform': cmp = a.platform.localeCompare(b.platform); break;
+        case 'permissiongroup': cmp = (a.permissiongroup || '').localeCompare(b.permissiongroup || ''); break;
+        case 'playtime': cmp = a.playtime - b.playtime; break;
+        case 'lastseen': cmp = (a.lastseen || 0) - (b.lastseen || 0); break;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [filteredDb, sortField, sortDir]);
+
+  const totalPages = pageSize === -1 ? 1 : Math.max(1, Math.ceil(sortedDb.length / pageSize));
+  const pagedDb = pageSize === -1 ? sortedDb : sortedDb.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+
+  // Reset page when search changes
+  useEffect(() => { setCurrentPage(0); }, [search]);
 
   return (
     <div className="space-y-6">
@@ -333,47 +403,90 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
                 </div>
               )}
 
-              {filteredDb.length > 0 && (
-                <div className="rounded-lg border border-border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableHead>{t('name')}</TableHead>
-                        <TableHead>{t('uid')}</TableHead>
-                        <TableHead>{t('platform')}</TableHead>
-                        <TableHead>{t('group')}</TableHead>
-                        <TableHead>{t('playtime')}</TableHead>
-                        <TableHead>{t('lastSeen')}</TableHead>
-                        <TableHead>{t('health')}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredDb.map(player => (
-                        <TableRow key={player.id} className="hover:bg-muted/20">
-                          <TableCell className="font-medium">{player.name}</TableCell>
-                          <TableCell><SteamLink uid={BigInt(player.uid)+''} platform={player.platform} /></TableCell>
-                          <TableCell className="text-muted-foreground text-sm">{player.platform}</TableCell>
-                          <TableCell>
-                            {player.permissiongroup ? (
-                              <Badge variant="secondary" className="text-xs py-0 h-5">{player.permissiongroup}</Badge>
-                            ) : '—'}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {formatPlaytime(player.playtime)}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {player.lastseen
-                              ? formatDistanceToNow(new Date(player.lastseen * 1000), { addSuffix: true, locale: dateLocale })
-                              : '—'}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            ❤ {Math.round(player.health)} | 🍖 {Math.round(player.hunger)} | 💧 {Math.round(player.thirst)}
-                          </TableCell>
+              {pagedDb.length > 0 && (
+                <>
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                          <SortablePlayerHeader field="name" label={t('name')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                          <TableHead>{t('uid')}</TableHead>
+                          <SortablePlayerHeader field="platform" label={t('platform')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                          <SortablePlayerHeader field="permissiongroup" label={t('group')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                          <SortablePlayerHeader field="playtime" label={t('playtime')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                          <SortablePlayerHeader field="lastseen" label={t('lastSeen')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                          <TableHead>{t('health')}</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {pagedDb.map(player => (
+                          <TableRow key={player.id} className="hover:bg-muted/20">
+                            <TableCell className="font-medium">{player.name}</TableCell>
+                            <TableCell><SteamLink uid={BigInt(player.uid)+''} platform={player.platform} /></TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{player.platform}</TableCell>
+                            <TableCell>
+                              {player.permissiongroup ? (
+                                <Badge variant="secondary" className="text-xs py-0 h-5">{player.permissiongroup}</Badge>
+                              ) : '—'}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {formatPlaytime(player.playtime)}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {player.lastseen
+                                ? formatDistanceToNow(new Date(player.lastseen * 1000), { addSuffix: true, locale: dateLocale })
+                                : '—'}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              ❤ {Math.round(player.health)} | 🍖 {Math.round(player.hunger)} | 💧 {Math.round(player.thirst)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Pagination controls */}
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <span>{t('pageSize')}:</span>
+                      <Select value={String(pageSize)} onValueChange={handlePageSize}>
+                        <SelectTrigger className="h-7 w-20 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[10, 25, 50, 100].map(n => (
+                            <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                          ))}
+                          <SelectItem value="-1">{t('all')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {pageSize !== -1 && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          disabled={currentPage === 0}
+                          onClick={() => setCurrentPage(p => p - 1)}
+                        >
+                          ‹
+                        </Button>
+                        <span>{t('page')} {currentPage + 1} {t('of')} {totalPages}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          disabled={currentPage >= totalPages - 1}
+                          onClick={() => setCurrentPage(p => p + 1)}
+                        >
+                          ›
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -388,7 +501,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const navigate = useNavigate();
   const { updateServer } = useServerContext();
   const { mode } = useStorageMode();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isAuthenticated } = useAuth();
   const canEdit = mode === 'local' || isAdmin;
   const showPublicFlag = mode === 'fixed' || mode === 'backend';
   const [editOpen, setEditOpen] = useState(false);
@@ -512,10 +625,22 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
             )}
           </TabsTrigger>
           {hasBackend && (
-            <TabsTrigger value="config" className="gap-2 data-[state=active]:bg-muted">
-              <Settings className="h-4 w-4" />
-              {t('configuration')}
-            </TabsTrigger>
+            isAuthenticated ? (
+              <TabsTrigger value="config" className="gap-2 data-[state=active]:bg-muted">
+                <Settings className="h-4 w-4" />
+                {t('configuration')}
+              </TabsTrigger>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground/50 cursor-not-allowed">
+                    <Lock className="h-4 w-4" />
+                    {t('configuration')}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{t('configRequiresAuth')}</TooltipContent>
+              </Tooltip>
+            )
           )}
         </TabsList>
 
@@ -567,7 +692,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           <PlayersTab server={server} />
         </TabsContent>
 
-        {hasBackend && (
+        {hasBackend && isAuthenticated && (
           <TabsContent value="config" className="mt-4">
             <ConfigTab backendUrl={server.backendUrl!} />
           </TabsContent>

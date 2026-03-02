@@ -21,6 +21,7 @@ export default function LandingPage() {
   const [backendUrl, setBackendUrl] = useState('');
   const [checkState, setCheckState] = useState<CheckState>('idle');
   const [fixedCheckState, setFixedCheckState] = useState<CheckState>('idle');
+  const [fixedHasForceAuth, setFixedHasForceAuth] = useState(false);
 
   const handleLocal = () => { setLocalMode(); navigate('/'); };
 
@@ -43,6 +44,7 @@ export default function LandingPage() {
     setFixedCheckState('checking');
     const result = await checkBackend(fixedBackendUrl, 'storage');
     if (result.ok) {
+      setFixedHasForceAuth(result.services.includes('forceAuth'));
       setFixedCheckState('ok');
       setFixedMode();
       setTimeout(() => navigate('/'), 800);
@@ -74,7 +76,7 @@ export default function LandingPage() {
 
       <div className={`w-full max-w-3xl grid grid-cols-1 ${gridCols} gap-4`}>
         {/* Local */}
-        <Card className="bg-card border-border hover:border-primary/40 transition-colors cursor-pointer group" onClick={handleLocal}>
+        <Card className="bg-card border-border hover:border-primary/40 transition-colors cursor-pointer group flex flex-col" onClick={handleLocal}>
           <CardHeader className="pb-3">
             <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center mb-3">
               <HardDrive className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -82,21 +84,23 @@ export default function LandingPage() {
             <CardTitle className="text-lg">{t('localBrowser')}</CardTitle>
             <CardDescription>{t('localDesc')}</CardDescription>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="pt-0 flex flex-col flex-1">
             <ul className="text-sm text-muted-foreground space-y-1.5 mb-4">
               <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />{t('localReady')}</li>
               <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />{t('localNoLogin')}</li>
               <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />{t('localBrowserOnly')}</li>
             </ul>
-            <Button className="w-full gap-2 group-hover:bg-primary/90" onClick={handleLocal}>
-              {t('localStart')}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            <div className="mt-auto">
+              <Button className="w-full gap-2 group-hover:bg-primary/90" onClick={handleLocal}>
+                {t('localStart')}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
         {/* Custom Backend */}
-        <Card className="bg-card border-border hover:border-primary/40 transition-colors">
+        <Card className="bg-card border-border hover:border-primary/40 transition-colors flex flex-col">
           <CardHeader className="pb-3">
             <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center mb-3">
               <Globe className="h-5 w-5 text-muted-foreground" />
@@ -104,13 +108,13 @@ export default function LandingPage() {
             <CardTitle className="text-lg">{t('ownBackend')}</CardTitle>
             <CardDescription>{t('ownBackendDesc')}</CardDescription>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="pt-0 flex flex-col flex-1">
             <ul className="text-sm text-muted-foreground space-y-1.5 mb-4">
               <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />{t('sharedList')}</li>
               <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />{t('multiUser')}</li>
               <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />{t('ownServerRequired')}</li>
             </ul>
-            <div className="space-y-2">
+            <div className="mt-auto space-y-2">
               <div className="flex gap-2">
                 <Input
                   placeholder="http://localhost:3000"
@@ -149,7 +153,7 @@ export default function LandingPage() {
 
         {/* Fixed Backend */}
         {hasFixedBackend && (
-          <Card className="bg-card border-border hover:border-primary/40 transition-colors">
+          <Card className="bg-card border-border hover:border-primary/40 transition-colors flex flex-col">
             <CardHeader className="pb-3">
               <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center mb-3">
                 <Shield className="h-5 w-5 text-muted-foreground" />
@@ -157,13 +161,15 @@ export default function LandingPage() {
               <CardTitle className="text-lg">{t('fixedBackend')}</CardTitle>
               <CardDescription>{t('fixedBackendDesc')}</CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 flex flex-col flex-1">
               <ul className="text-sm text-muted-foreground space-y-1.5 mb-4">
                 <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />{t('fixedBullet1')}</li>
-                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />{t('fixedBullet2')}</li>
+                {fixedHasForceAuth && (
+                  <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />{t('fixedBullet2')}</li>
+                )}
                 <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />{t('fixedBullet3')}</li>
               </ul>
-              <div className="space-y-2">
+              <div className="mt-auto space-y-2">
                 <Button
                   onClick={handleFixedConnect}
                   disabled={fixedCheckState === 'checking' || fixedCheckState === 'ok'}
