@@ -17,6 +17,7 @@ import {
   Search, Loader2, WifiOff, HardDrive, Globe, Shield,
   Clock, Monitor, Sword, Heart, Star, ExternalLink, Settings, Pencil,
   ArrowUp, ArrowDown,
+  Map, Plug,
 } from 'lucide-react';
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
 import { useServerConfig } from '@/hooks/useServerConfig';
@@ -33,6 +34,9 @@ import { EditServerDialog } from '@/components/EditServerDialog';
 import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useAdminMapping } from '@/hooks/useAdminMapping';
+import { AdminMapTab } from '@/components/AdminMapTab';
+import { PluginsTab } from '@/components/PluginsTab';
 
 interface ServerDetailProps {
   server: ServerWithStatus | undefined;
@@ -505,6 +509,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const canEdit = mode === 'local' || isAdmin;
   const showPublicFlag = mode === 'fixed' || mode === 'backend';
   const [editOpen, setEditOpen] = useState(false);
+  const adminMapping = useAdminMapping(server?.backendUrl);
 
   if (!server) {
     return (
@@ -624,6 +629,18 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
               <Badge variant="secondary" className="h-5 px-1.5 text-xs">{playercount}</Badge>
             )}
           </TabsTrigger>
+          {hasBackend && adminMapping.map.available && (
+            <TabsTrigger value="admin-map" className="gap-2 data-[state=active]:bg-muted">
+              <Map className="h-4 w-4" />
+              {t('map')}
+            </TabsTrigger>
+          )}
+          {hasBackend && (
+            <TabsTrigger value="plugins" className="gap-2 data-[state=active]:bg-muted">
+              <Plug className="h-4 w-4" />
+              {t('plugins')}
+            </TabsTrigger>
+          )}
           {hasBackend && (
             isAuthenticated ? (
               <TabsTrigger value="config" className="gap-2 data-[state=active]:bg-muted">
@@ -691,6 +708,18 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
         <TabsContent value="players" className="mt-4">
           <PlayersTab server={server} />
         </TabsContent>
+
+        {hasBackend && adminMapping.map.available && (
+          <TabsContent value="admin-map" className="mt-4">
+            <AdminMapTab backendUrl={server.backendUrl!} metadata={adminMapping.map.metadata} />
+          </TabsContent>
+        )}
+
+        {hasBackend && (
+          <TabsContent value="plugins" className="mt-4">
+            <PluginsTab plugins={adminMapping.plugins} loading={adminMapping.pluginsLoading} error={adminMapping.pluginsError} />
+          </TabsContent>
+        )}
 
         {hasBackend && isAuthenticated && (
           <TabsContent value="config" className="mt-4">
