@@ -166,7 +166,7 @@ function ConfigTab({ backendUrl }: { backendUrl: string }) {
 
   useEffect(() => {
     fetchConfig(backendUrl);
-  }, [backendUrl]);
+  }, [backendUrl, fetchConfig]);
 
   if (loading) {
     return (
@@ -313,7 +313,7 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
     if (server.backendUrl) {
       fetchPlayers(server.backendUrl);
     }
-  }, [server.id, server.backendUrl]);
+  }, [server.id, server.backendUrl, fetchPlayers]);
 
   const filteredDb = dbPlayers.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||

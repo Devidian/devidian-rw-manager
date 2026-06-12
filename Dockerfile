@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including devDependencies for the build)
-RUN npm install
+RUN npm ci
 
 # Copy the entire project into the container
 COPY . .
@@ -33,7 +33,7 @@ COPY server ./server
 COPY package*.json ./
 
 # Install only production dependencies (Express, etc.)
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 # Expose the port your server listens on
 EXPOSE 3000

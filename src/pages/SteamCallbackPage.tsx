@@ -15,7 +15,7 @@ export default function SteamCallbackPage() {
     handleSteamCallback(location.search)
       .then(() => navigate('/'))
       .catch((e: Error) => setError(e.message || t('errLoginFailed')));
-  }, []);
+  }, [handleSteamCallback, location.search, navigate, t]);
 
   const link = <a href={window['__BASE_URL__']??'/'} className="text-primary underline">{t('back')}</a>
 

@@ -64,6 +64,10 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
+The repository CI validates linting, tests, the production build, and the Docker
+image. Published GitHub releases build and push versioned multi-platform images
+to `devidian/rw-manager-frontend` on Docker Hub.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
