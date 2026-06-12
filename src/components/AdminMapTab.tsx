@@ -25,7 +25,6 @@ export function AdminMapTab({ backendUrl, metadata }: { backendUrl: string; meta
           minZoom={metadata.minZoom}
           maxZoom={metadata.nativeZoom}
           zoom={metadata.nativeZoom}
-          maxBounds={mapBounds.pad(1)}
           className="h-[65vh] min-h-[420px] w-full bg-muted"
         >
           <SignedZTileLayer
