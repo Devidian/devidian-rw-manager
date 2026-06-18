@@ -566,11 +566,11 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           {!info?.shortname && server.label !== serverName && (
             <p className="text-sm text-muted-foreground mt-0.5">{server.label}</p>
           )}
-          {info?.description && (
+          {/* {info?.description && (
             <span className="text-sm text-muted-foreground mt-2">
               <RichText text={info.description} code={true} />
             </span>
-          )}
+          )} */}
         </div>
         <div className="flex items-center gap-3 pt-9">
           <StatusDisplay status={server.status} />
