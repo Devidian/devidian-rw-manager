@@ -18,6 +18,7 @@ import {
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { MapClaim, MapMetadata, MapPlayer } from '@/types/adminMapping';
+import type { ServerPlayerListPlayer } from '@/types/server';
 import {
   areaToMapBounds,
   leafletYToBackendZ,
@@ -38,14 +39,20 @@ interface LayerVisibility {
 export function AdminMapTab({
   backendUrl,
   metadata,
+  onlinePlayers = [],
   isAdmin = false,
 }: {
   backendUrl: string;
   metadata: MapMetadata;
+  onlinePlayers?: ServerPlayerListPlayer[];
   isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
-  const { capabilities, claims, players, error } = useMapLayers(backendUrl, metadata.worldKey);
+  const { capabilities, claims, players, error } = useMapLayers(
+    backendUrl,
+    metadata.worldKey,
+    onlinePlayers,
+  );
   const [visible, setVisible] = useState<LayerVisibility>({
     sectors: false,
     claims: false,
@@ -82,8 +89,8 @@ export function AdminMapTab({
           disabled={!capabilities?.claims}
           onChange={(checked) => setVisible((value) => ({ ...value, claims: checked }))} />
         <LayerToggle label={t('mapLayerOnlinePlayers')}
-          checked={visible.online && Boolean(capabilities?.onlinePlayers)}
-          disabled={!capabilities?.onlinePlayers}
+          checked={visible.online}
+          disabled={!capabilities?.players}
           onChange={(checked) => setVisible((value) => ({ ...value, online: checked }))} />
         <LayerToggle label={t('mapLayerRecentPlayers')} checked={visible.recent}
           disabled={!capabilities?.players}

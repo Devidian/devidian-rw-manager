@@ -10,6 +10,7 @@ import {
   parseClaims,
   parseOffers,
   parsePlayers,
+  mergeOnlinePlayers,
 } from '@/hooks/useMapLayers';
 
 describe('admin mapping contract', () => {
@@ -51,17 +52,16 @@ describe('admin mapping contract', () => {
     expect(parseCapabilities({
       schemaVersion: 1,
       worldName: 'World',
-      sectorSizeChunks: 32,
+      sectorSizeChunks: 256,
       chunkSizeBlocks: 32,
-      sectorSizeBlocks: 1024,
+      sectorSizeBlocks: 8192,
       recentPlayerDays: 7,
       claims: true,
       claimSales: true,
       marketplace: true,
       shop: true,
       players: true,
-      onlinePlayers: true,
-    }).sectorSizeBlocks).toBe(1024);
+    }).sectorSizeBlocks).toBe(8192);
     expect(parseClaims({
       schemaVersion: 1,
       available: true,
@@ -109,6 +109,30 @@ describe('admin mapping contract', () => {
       }],
     })).toHaveLength(1);
     expect(() => parseCapabilities({ schemaVersion: 1 })).toThrow();
+  });
+
+  it('uses the selected server playerlist to classify online map positions', () => {
+    expect(mergeOnlinePlayers(
+      [{
+        id: 'recent',
+        name: 'Recent',
+        x: 1,
+        z: 2,
+        state: 'recent-offline',
+        lastSeen: '2026-06-18T00:00:00.000Z',
+      }],
+      [{
+        uid: 'ONLINE',
+        name: 'Online',
+        posx: 3.5,
+        posz: -4.5,
+        lastseen: 1781740800,
+      }],
+      [{ id: 1, uid: 'online', name: 'Online', platform: 'Steam', ping: 10 }],
+    )).toEqual([
+      expect.objectContaining({ id: 'recent', state: 'recent-offline' }),
+      expect.objectContaining({ id: 'ONLINE', state: 'online', x: 3.5, z: -4.5 }),
+    ]);
   });
 });
 

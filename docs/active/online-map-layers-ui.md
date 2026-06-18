@@ -35,7 +35,7 @@ Create one tested conversion module for all overlays:
 - Rising World block X/Z to Leaflet coordinates at native map scale
 - half-open area block rectangles to Leaflet bounds
 - player block positions to marker positions
-- 1024-block sector coordinates to block-space bounds and upper-left labels
+- 8192-block sector coordinates to block-space bounds and upper-left labels
 - signed world Z inversion consistent with terrain tile requests
 
 The verified source contract is documented in
@@ -170,11 +170,13 @@ tile layer. The existing map tab and schema-5 parsing remain the fallback.
 
 - Map identity now includes backend URL, world key, native zoom, and tile size;
   switching worlds remounts Leaflet instead of retaining stale center state.
-- Sector cells are generated only for the current viewport, use 1024-block
+- Sector cells are generated only for the current viewport, use 8192-block
   geometry, silver borders, and upper-left coordinate labels.
 - Claims, configured colors, sale state, Marketplace/Shop indicators, and
   on-demand local offers render above terrain tiles.
 - Player layers poll every 60 seconds and expose separate online, recent, and
   admin-only long-term toggles.
+- Online UIDs come from the selected server's existing `playerlist` result and
+  are joined with `Player.db` coordinates; no global player-list URL is used.
 - Runtime parsers fail closed for incompatible schema-1 responses.
 - Frontend tests, lint, and production build pass.

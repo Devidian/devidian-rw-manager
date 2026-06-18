@@ -714,6 +714,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
             <AdminMapTab
               backendUrl={server.backendUrl!}
               metadata={adminMapping.map.metadata}
+              onlinePlayers={server.onlinePlayers ?? []}
               isAdmin={isAdmin}
             />
           </TabsContent>

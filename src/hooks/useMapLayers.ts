@@ -6,8 +6,13 @@ import type {
   MapMarketplaceOffer,
   MapPlayer,
 } from '@/types/adminMapping';
+import type { ServerPlayerListPlayer } from '@/types/server';
 
-export function useMapLayers(backendUrl: string, worldKey: string) {
+export function useMapLayers(
+  backendUrl: string,
+  worldKey: string,
+  onlinePlayers: ServerPlayerListPlayer[],
+) {
   const [capabilities, setCapabilities] = useState<MapLayerCapabilities | null>(null);
   const [claims, setClaims] = useState<MapClaim[]>([]);
   const [players, setPlayers] = useState<MapPlayer[]>([]);
@@ -44,11 +49,16 @@ export function useMapLayers(backendUrl: string, worldKey: string) {
     if (!capabilities?.players) return;
     const controller = new AbortController();
     const base = backendUrl.replace(/\/$/, '');
-    const load = () => request(
-      `${base}/api/data/server/map/layers/players`,
-      controller.signal,
-      true,
-    ).then(parsePlayers).then(setPlayers).catch((requestError) => {
+    const load = () => Promise.all([
+      request(
+        `${base}/api/data/server/map/layers/players`,
+        controller.signal,
+        true,
+      ).then(parsePlayers),
+      request(`${base}/api/data/player`, controller.signal).then(parseDatabasePlayers),
+    ]).then(([layerPlayers, databasePlayers]) => {
+      setPlayers(mergeOnlinePlayers(layerPlayers, databasePlayers, onlinePlayers));
+    }).catch((requestError) => {
       if (!aborted(requestError)) setError(true);
     });
     void load();
@@ -57,7 +67,7 @@ export function useMapLayers(backendUrl: string, worldKey: string) {
       controller.abort();
       window.clearInterval(interval);
     };
-  }, [backendUrl, capabilities?.players, worldKey]);
+  }, [backendUrl, capabilities?.players, onlinePlayers, worldKey]);
 
   return { capabilities, claims, players, error };
 }
@@ -78,11 +88,11 @@ export function parseCapabilities(value: unknown): MapLayerCapabilities {
   if (!record(value) ||
     value.schemaVersion !== 1 ||
     typeof value.worldName !== 'string' ||
-    value.sectorSizeChunks !== 32 ||
+    value.sectorSizeChunks !== 256 ||
     value.chunkSizeBlocks !== 32 ||
-    value.sectorSizeBlocks !== 1024 ||
+    value.sectorSizeBlocks !== 8192 ||
     !positiveInteger(value.recentPlayerDays) ||
-    !booleans(value, ['claims', 'claimSales', 'marketplace', 'shop', 'players', 'onlinePlayers'])
+    !booleans(value, ['claims', 'claimSales', 'marketplace', 'shop', 'players'])
   ) throw new Error('Invalid map layer capabilities');
   return value as unknown as MapLayerCapabilities;
 }
@@ -102,6 +112,28 @@ export function parsePlayers(value: unknown): MapPlayer[] {
     throw new Error('Invalid map players response');
   }
   return value.available ? value.items : [];
+}
+
+export function mergeOnlinePlayers(
+  layerPlayers: MapPlayer[],
+  databasePlayers: DatabaseMapPlayer[],
+  onlinePlayers: ServerPlayerListPlayer[],
+): MapPlayer[] {
+  const onlineUids = new Set(onlinePlayers.map((player) => normalizeUid(player.uid)));
+  const merged = new Map(layerPlayers.map((player) => [normalizeUid(player.id), player]));
+  for (const player of databasePlayers) {
+    const uid = normalizeUid(player.uid);
+    if (!onlineUids.has(uid)) continue;
+    merged.set(uid, {
+      id: player.uid,
+      name: player.name,
+      x: player.posx,
+      z: player.posz,
+      state: 'online',
+      lastSeen: new Date(player.lastseen * 1000).toISOString(),
+    });
+  }
+  return [...merged.values()];
 }
 
 export function parseOffers(value: unknown): MapMarketplaceOffer[] {
@@ -164,6 +196,36 @@ function isOffer(value: unknown): value is MapMarketplaceOffer {
     dateString(value.createdAt);
 }
 
+interface DatabaseMapPlayer {
+  uid: string;
+  name: string;
+  posx: number;
+  posz: number;
+  lastseen: number;
+}
+
+function parseDatabasePlayers(value: unknown): DatabaseMapPlayer[] {
+  if (!record(value) || !Array.isArray(value.items)) {
+    throw new Error('Invalid database players response');
+  }
+  return value.items.flatMap((item): DatabaseMapPlayer[] => {
+    if (!record(item) ||
+      typeof item.uid !== 'string' ||
+      typeof item.name !== 'string' ||
+      typeof item.posx !== 'number' || !Number.isFinite(item.posx) ||
+      typeof item.posz !== 'number' || !Number.isFinite(item.posz) ||
+      !Number.isSafeInteger(item.lastseen) || (item.lastseen as number) < 0
+    ) return [];
+    return [{
+      uid: item.uid,
+      name: item.name,
+      posx: item.posx,
+      posz: item.posz,
+      lastseen: item.lastseen,
+    }];
+  });
+}
+
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object';
 }
@@ -190,4 +252,8 @@ function dateString(value: unknown): value is string {
 
 function aborted(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
+}
+
+function normalizeUid(value: string): string {
+  return value.trim().toLowerCase();
 }
