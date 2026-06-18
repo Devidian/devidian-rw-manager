@@ -711,7 +711,11 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
 
         {hasBackend && adminMapping.map.available && (
           <TabsContent value="admin-map" className="mt-4">
-            <AdminMapTab backendUrl={server.backendUrl!} metadata={adminMapping.map.metadata} />
+            <AdminMapTab
+              backendUrl={server.backendUrl!}
+              metadata={adminMapping.map.metadata}
+              isAdmin={isAdmin}
+            />
           </TabsContent>
         )}
 

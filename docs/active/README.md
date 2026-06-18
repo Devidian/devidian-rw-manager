@@ -7,3 +7,4 @@ Each task must include objective, ownership, dependencies, risks, validation str
 ## Current Tasks
 
 - [Lovable Admin Mapping Feature Plan](../../.lovable/admin-mapping-feature.md)
+- [Online Map Layers Frontend](online-map-layers-ui.md)

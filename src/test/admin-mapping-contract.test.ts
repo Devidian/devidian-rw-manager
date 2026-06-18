@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { leafletYToBackendZ } from '@/lib/mapCoordinates';
+import {
+  areaToMapBounds,
+  leafletYToBackendZ,
+  playerToMapPosition,
+} from '@/lib/mapCoordinates';
 import { parseMapResponse, parsePluginsResponse } from '@/hooks/useAdminMapping';
+import {
+  parseCapabilities,
+  parseClaims,
+  parseOffers,
+  parsePlayers,
+} from '@/hooks/useMapLayers';
 
 describe('admin mapping contract', () => {
   it('accepts schema-5 metadata with signed bounds', () => {
@@ -26,6 +36,79 @@ describe('admin mapping contract', () => {
         { directory: 'BrokenPlugin', valid: false },
       ],
     })).toHaveLength(2);
+  });
+
+  it('maps block-space areas and players into native tile coordinates', () => {
+    expect(areaToMapBounds(
+      { minX: -64, minZ: 32, width: 32, depth: 64 },
+      64,
+    )).toEqual([[0.5, -1], [1.5, -0.5]]);
+    expect(playerToMapPosition({ x: -32.5, z: 96.25 }, 64))
+      .toEqual([1.50390625, -0.5078125]);
+  });
+
+  it('validates map layer contracts', () => {
+    expect(parseCapabilities({
+      schemaVersion: 1,
+      worldName: 'World',
+      sectorSizeChunks: 32,
+      chunkSizeBlocks: 32,
+      sectorSizeBlocks: 1024,
+      recentPlayerDays: 7,
+      claims: true,
+      claimSales: true,
+      marketplace: true,
+      shop: true,
+      players: true,
+      onlinePlayers: true,
+    }).sectorSizeBlocks).toBe(1024);
+    expect(parseClaims({
+      schemaVersion: 1,
+      available: true,
+      items: [{
+        areaId: 1,
+        name: 'Claim',
+        permission: 'ozlc-guest',
+        minX: 0,
+        minZ: 0,
+        width: 32,
+        depth: 32,
+        borderColor: '#0010E010',
+        fillColor: '#0010E050',
+        forSale: false,
+        marketplace: false,
+        shop: false,
+      }],
+    })).toHaveLength(1);
+    expect(parsePlayers({
+      schemaVersion: 1,
+      available: true,
+      recentPlayerDays: 7,
+      items: [{
+        id: 'uid',
+        name: 'Player',
+        x: 1.5,
+        z: -2.5,
+        state: 'online',
+        lastSeen: '2026-06-18T00:00:00.000Z',
+      }],
+    })).toHaveLength(1);
+    expect(parseOffers({
+      schemaVersion: 1,
+      available: true,
+      areaId: 1,
+      items: [{
+        id: 2,
+        itemName: 'iron_ingot',
+        itemVariant: 0,
+        amount: 4,
+        price: 10,
+        currency: 'coins',
+        sellerName: 'Seller',
+        createdAt: '2026-06-18T00:00:00.000Z',
+      }],
+    })).toHaveLength(1);
+    expect(() => parseCapabilities({ schemaVersion: 1 })).toThrow();
   });
 });
 
