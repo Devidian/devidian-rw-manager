@@ -17,7 +17,7 @@ import {
   useMapEvents,
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { MapClaim, MapMetadata, MapPlayer } from '@/types/adminMapping';
+import type { MapClaim, MapGpsMarker, MapMetadata, MapPlayer } from '@/types/adminMapping';
 import type { ServerPlayerListPlayer } from '@/types/server';
 import {
   areaToMapBounds,
@@ -34,6 +34,7 @@ interface LayerVisibility {
   online: boolean;
   recent: boolean;
   longTerm: boolean;
+  gpsGlobalMarkers: boolean;
 }
 
 export function AdminMapTab({
@@ -48,7 +49,7 @@ export function AdminMapTab({
   isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
-  const { capabilities, claims, players, error } = useMapLayers(
+  const { capabilities, claims, players, gpsGlobalMarkers, error } = useMapLayers(
     backendUrl,
     metadata.worldKey,
     onlinePlayers,
@@ -59,6 +60,7 @@ export function AdminMapTab({
     online: true,
     recent: false,
     longTerm: false,
+    gpsGlobalMarkers: false,
   });
   const bounds = metadata.generatedTileBounds;
   const mapBounds = latLngBounds(
@@ -76,6 +78,7 @@ export function AdminMapTab({
       online: true,
       recent: false,
       longTerm: false,
+      gpsGlobalMarkers: false,
     });
   }, [mapIdentity]);
 
@@ -100,6 +103,12 @@ export function AdminMapTab({
             disabled={!capabilities?.players}
             onChange={(checked) => setVisible((value) => ({ ...value, longTerm: checked }))} />
         )}
+        <LayerToggle label={t('mapLayerGpsGlobalMarkers')} checked={visible.gpsGlobalMarkers}
+          disabled={!capabilities?.gpsGlobalMarkers}
+          onChange={(checked) => setVisible((value) => ({
+            ...value,
+            gpsGlobalMarkers: checked,
+          }))} />
         {error && <span className="text-destructive">{t('mapLayerError')}</span>}
       </div>
       <div className="overflow-hidden rounded-lg border border-border">
@@ -136,10 +145,54 @@ export function AdminMapTab({
             visible={visible}
             nativeTileSizeBlocks={nativeTileSizeBlocks}
           />
+          {visible.gpsGlobalMarkers && (
+            <GpsGlobalMarkerLayer
+              markers={gpsGlobalMarkers}
+              nativeTileSizeBlocks={nativeTileSizeBlocks}
+            />
+          )}
         </MapContainer>
       </div>
     </div>
   );
+}
+
+function GpsGlobalMarkerLayer({
+  markers,
+  nativeTileSizeBlocks,
+}: {
+  markers: MapGpsMarker[];
+  nativeTileSizeBlocks: number;
+}) {
+  const { t } = useTranslation();
+  return markers.map((marker) => (
+    <CircleMarker
+      key={marker.id}
+      center={playerToMapPosition(marker, nativeTileSizeBlocks)}
+      radius={6}
+      pathOptions={{
+        color: marker.color,
+        fillColor: marker.color,
+        fillOpacity: 0.85,
+        weight: 2,
+      }}
+    >
+      <Popup>
+        <strong>{marker.name}</strong>
+        <div>{t('mapGpsMarkerPosition')}: {formatPosition(marker)}</div>
+        <div>{t('mapGpsMarkerIcon')}: {marker.icon}</div>
+        <div>{t('mapClaimCreated')}: {new Date(marker.createdAt).toLocaleString()}</div>
+      </Popup>
+    </CircleMarker>
+  ));
+}
+
+function formatPosition(marker: MapGpsMarker): string {
+  return `${formatCoordinate(marker.x)}, ${formatCoordinate(marker.y)}, ${formatCoordinate(marker.z)}`;
+}
+
+function formatCoordinate(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
 function LayerToggle({

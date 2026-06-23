@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { TOKEN_KEY } from '@/lib/authApi';
 import type {
   MapClaim,
+  MapGpsMarker,
   MapLayerCapabilities,
   MapMarketplaceOffer,
   MapPlayer,
@@ -16,6 +17,7 @@ export function useMapLayers(
   const [capabilities, setCapabilities] = useState<MapLayerCapabilities | null>(null);
   const [claims, setClaims] = useState<MapClaim[]>([]);
   const [players, setPlayers] = useState<MapPlayer[]>([]);
+  const [gpsGlobalMarkers, setGpsGlobalMarkers] = useState<MapGpsMarker[]>([]);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -24,6 +26,7 @@ export function useMapLayers(
     setCapabilities(null);
     setClaims([]);
     setPlayers([]);
+    setGpsGlobalMarkers([]);
     setError(false);
 
     request(`${base}/api/data/server/map/layers`, controller.signal)
@@ -34,6 +37,14 @@ export function useMapLayers(
           request(`${base}/api/data/server/map/layers/claims`, controller.signal)
             .then(parseClaims)
             .then(setClaims)
+            .catch((requestError) => {
+              if (!aborted(requestError)) setError(true);
+            });
+        }
+        if (value.gpsGlobalMarkers) {
+          request(`${base}/api/data/server/map/layers/gps-global-markers`, controller.signal)
+            .then(parseGpsGlobalMarkers)
+            .then(setGpsGlobalMarkers)
             .catch((requestError) => {
               if (!aborted(requestError)) setError(true);
             });
@@ -69,7 +80,7 @@ export function useMapLayers(
     };
   }, [backendUrl, capabilities?.players, onlinePlayers, worldKey]);
 
-  return { capabilities, claims, players, error };
+  return { capabilities, claims, players, gpsGlobalMarkers, error };
 }
 
 export async function fetchMarketplaceOffers(
@@ -92,7 +103,9 @@ export function parseCapabilities(value: unknown): MapLayerCapabilities {
     value.chunkSizeBlocks !== 32 ||
     value.sectorSizeBlocks !== 8192 ||
     !positiveInteger(value.recentPlayerDays) ||
-    !booleans(value, ['claims', 'claimSales', 'marketplace', 'shop', 'players'])
+    !booleans(value, [
+      'claims', 'claimSales', 'marketplace', 'shop', 'players', 'gpsGlobalMarkers',
+    ])
   ) throw new Error('Invalid map layer capabilities');
   return value as unknown as MapLayerCapabilities;
 }
@@ -110,6 +123,14 @@ export function parsePlayers(value: unknown): MapPlayer[] {
     !positiveInteger(value.recentPlayerDays) ||
     !Array.isArray(value.items) || !value.items.every(isPlayer)) {
     throw new Error('Invalid map players response');
+  }
+  return value.available ? value.items : [];
+}
+
+export function parseGpsGlobalMarkers(value: unknown): MapGpsMarker[] {
+  if (!record(value) || value.schemaVersion !== 1 || typeof value.available !== 'boolean' ||
+    !Array.isArray(value.items) || !value.items.every(isGpsMarker)) {
+    throw new Error('Invalid GPS marker response');
   }
   return value.available ? value.items : [];
 }
@@ -182,6 +203,18 @@ function isPlayer(value: unknown): value is MapPlayer {
     typeof value.z === 'number' && Number.isFinite(value.z) &&
     ['online', 'recent-offline', 'long-term-offline'].includes(String(value.state)) &&
     dateString(value.lastSeen);
+}
+
+function isGpsMarker(value: unknown): value is MapGpsMarker {
+  return record(value) &&
+    positiveInteger(value.id) &&
+    typeof value.name === 'string' &&
+    typeof value.x === 'number' && Number.isFinite(value.x) &&
+    typeof value.y === 'number' && Number.isFinite(value.y) &&
+    typeof value.z === 'number' && Number.isFinite(value.z) &&
+    typeof value.icon === 'string' &&
+    color(value.color) &&
+    dateString(value.createdAt);
 }
 
 function isOffer(value: unknown): value is MapMarketplaceOffer {

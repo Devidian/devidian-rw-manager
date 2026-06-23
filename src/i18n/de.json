@@ -20,6 +20,7 @@
   "mapLayerOnlinePlayers": "Online-Spieler",
   "mapLayerRecentPlayers": "Kürzlich offline",
   "mapLayerLongTermPlayers": "Länger offline",
+  "mapLayerGpsGlobalMarkers": "Globale GPS-Marker",
   "mapLayerError": "Layer-Daten konnten nicht geladen werden.",
   "mapClaimOwner": "Besitzer",
   "mapClaimCreated": "Erstellt",
@@ -29,6 +30,8 @@
   "mapOffersLoading": "Angebote werden geladen…",
   "mapOffersError": "Angebote konnten nicht geladen werden.",
   "mapNoOffers": "Keine lokalen Angebote.",
+  "mapGpsMarkerPosition": "Position",
+  "mapGpsMarkerIcon": "Icon",
   "mapPlayerState": {
     "online": "Online",
     "recent-offline": "Kürzlich offline",

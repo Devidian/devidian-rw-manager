@@ -8,6 +8,7 @@ import { parseMapResponse, parsePluginsResponse } from '@/hooks/useAdminMapping'
 import {
   parseCapabilities,
   parseClaims,
+  parseGpsGlobalMarkers,
   parseOffers,
   parsePlayers,
   mergeOnlinePlayers,
@@ -61,6 +62,7 @@ describe('admin mapping contract', () => {
       marketplace: true,
       shop: true,
       players: true,
+      gpsGlobalMarkers: true,
     }).sectorSizeBlocks).toBe(8192);
     expect(parseClaims({
       schemaVersion: 1,
@@ -91,6 +93,20 @@ describe('admin mapping contract', () => {
         z: -2.5,
         state: 'online',
         lastSeen: '2026-06-18T00:00:00.000Z',
+      }],
+    })).toHaveLength(1);
+    expect(parseGpsGlobalMarkers({
+      schemaVersion: 1,
+      available: true,
+      items: [{
+        id: 2,
+        name: 'Spawn',
+        x: -32.5,
+        y: 64,
+        z: 96.25,
+        icon: 'global-icon',
+        color: '#FFFFFFFF',
+        createdAt: '2026-06-18T00:00:00.000Z',
       }],
     })).toHaveLength(1);
     expect(parseOffers({
