@@ -6,5 +6,6 @@ Each task must include objective, ownership, dependencies, risks, validation str
 
 ## Current Tasks
 
-- [Lovable Admin Mapping Feature Plan](../../.lovable/admin-mapping-feature.md)
-- [Online Map Layers Frontend](online-map-layers-ui.md)
+No active frontend implementation tasks. Completed work is stored under
+`docs/archive/`. The cross-repository Marketplace map-offers overlay follow-up
+is tracked in the workspace root.

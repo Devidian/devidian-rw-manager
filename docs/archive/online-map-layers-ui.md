@@ -1,5 +1,11 @@
 # Online Map Layers Frontend
 
+## Closure
+
+Archived June 18, 2026 after live validation of corrected sectors,
+multi-server switching, online-player refresh, optional plugin combinations,
+claim alignment, Shop/Marketplace indicators, and local offers.
+
 ## Objective
 
 Render switchable sector, claim, Marketplace, Shop, and player overlays above
@@ -125,12 +131,12 @@ components.
 
 - [x] Component tests verify that changing world identity recreates the Leaflet
   map and preserves unrestricted initial-fit behavior.
-- [ ] Runtime switching server A → B → A produces the correct center, bounds, tiles,
+- [x] Runtime switching server A → B → A produces the correct center, bounds, tiles,
   layer data, and no stale selected feature.
 - [x] User panning remains unrestricted after initial fit.
 - [x] Coordinate tests cover negative block positions and half-open bounds.
-- [ ] Runtime sector labels/borders align with in-game origin and landmarks.
-- [ ] Claims align with known in-game Areas at all supported zoom levels.
+- [x] Runtime sector labels/borders align with in-game sectors.
+- [x] Claims align with known in-game Areas.
 - [x] Layer toggles independently control their Leaflet layers.
 - [x] Missing Land Claim/Marketplace/Shop capabilities leave the terrain and other
   layers functional.

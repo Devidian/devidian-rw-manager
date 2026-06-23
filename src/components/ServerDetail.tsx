@@ -530,7 +530,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const playercount = data?.playercount ?? 0;
   const maxplayers = data?.maxplayers ?? '?';
   const gamemodeLabel = data?.gamemode === 0 ? t('survival') : data?.gamemode === 1 ? t('creative') : '—';
-  const headerImageUrl = info?.headerimage ? `${server.queryUrl.replace(/\/$/, '')}/image/header` : null;
+  const headerImageUrl = info?.headerimage ? `${server.queryUrl.replace(/\/$/, '')}/images/header` : null;
   const hasBackend = !!server.backendUrl;
 
   return (

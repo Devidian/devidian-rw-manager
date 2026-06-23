@@ -1,5 +1,10 @@
 # Lovable Plan: Admin Mapping V2 und installierte Plugins
 
+## Status
+
+Archiviert am 18. Juni 2026 nach erfolgreicher Implementierung und
+mehrtägigem produktivem Betrieb.
+
 ## Ziel
 Das Server-Detail zeigt die vom Manager-Backend gerenderte V2-Karte. Der
 bestehende geplante Reiter für installierte Plugins bleibt Bestandteil des
