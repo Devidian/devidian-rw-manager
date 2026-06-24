@@ -5,19 +5,26 @@ import { ServerCard } from '@/components/ServerCard';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { Plus, Server, RefreshCw } from 'lucide-react';
-import { useStorageMode } from '@/context/StorageModeContext';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Index() {
   const { t } = useTranslation();
   const [addOpen, setAddOpen] = useState(false);
-  const { servers, serverList, addServer, removeServer, refreshAll, refreshOne } = useServerContext();
-  const { mode } = useStorageMode();
+  const {
+    addServer,
+    removeServer,
+    refreshAll,
+    refreshOne,
+    dashboardServerList,
+    pinServer,
+    unpinServer,
+    isPinned,
+  } = useServerContext();
   const { isAdmin } = useAuth();
-  const canManage = mode === 'local' || isAdmin;
+  const canManage = isAdmin;
 
-  const onlineCount = serverList.filter(s => s.status === 'online').length;
-  const plural = servers.length !== 1 ? (t('server') === 'Server' ? 'n' : 's') : '';
+  const onlineCount = dashboardServerList.filter(s => s.status === 'online').length;
+  const plural = dashboardServerList.length !== 1 ? (t('server') === 'Server' ? 'n' : 's') : '';
 
   return (
     <div className="space-y-6">
@@ -25,13 +32,13 @@ export default function Index() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t('dashboard')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {servers.length === 0
+            {dashboardServerList.length === 0
               ? t('addFirstPrompt')
-              : t('serversOnline', { online: onlineCount, total: servers.length, plural })}
+              : t('serversOnline', { online: onlineCount, total: dashboardServerList.length, plural })}
           </p>
         </div>
         <div className="flex gap-2">
-          {servers.length > 0 && (
+          {dashboardServerList.length > 0 && (
             <Button size="sm" variant="outline" className="gap-2" onClick={refreshAll}>
               <RefreshCw className="h-4 w-4" />
               {t('refreshAll')}
@@ -50,7 +57,7 @@ export default function Index() {
         </div>
       </div>
 
-      {servers.length === 0 && (
+      {dashboardServerList.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted/30 border border-border mb-6">
             <Server className="h-10 w-10 text-muted-foreground/50" />
@@ -69,20 +76,22 @@ export default function Index() {
         </div>
       )}
 
-      {servers.length > 0 && (
+      {dashboardServerList.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {serverList.map(server => (
+          {dashboardServerList.map(server => (
             <ServerCard
               key={server.id}
               server={server}
               onRefresh={() => refreshOne(server.id)}
+              isPinned={isPinned(server.id)}
+              onTogglePin={() => void (isPinned(server.id) ? unpinServer(server.id) : pinServer(server.id))}
               onDelete={canManage ? () => void removeServer(server.id) : undefined}
             />
           ))}
         </div>
       )}
 
-      {canManage && <AddServerDialog open={addOpen} onOpenChange={setAddOpen} onAdd={addServer} isBackendMode={mode !== 'local'} />}
+      {canManage && <AddServerDialog open={addOpen} onOpenChange={setAddOpen} onAdd={addServer} isBackendMode />}
     </div>
   );
 }

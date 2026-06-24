@@ -60,7 +60,7 @@ export default function ProfilePage() {
     try {
       await deleteAccount();
       toast({ title: t('accountDeleted') });
-      navigate('/setup', { replace: true });
+      navigate('/', { replace: true });
     } catch {
       toast({ title: t('backendError'), variant: 'destructive' });
     }

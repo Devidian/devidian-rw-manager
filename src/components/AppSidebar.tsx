@@ -8,7 +8,7 @@ import {
 import { ServerWithStatus } from '@/types/server';
 import { StorageMode } from '@/context/StorageModeContext';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, Server, Plus, Loader2, HardDrive, Globe, Shield, LogOut, LogIn, User, Users } from 'lucide-react';
+import { LayoutDashboard, Server, Plus, Loader2, Globe, Shield, LogOut, LogIn, User, Users, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RichText } from '@/components/RichText';
@@ -46,12 +46,11 @@ function LanguageToggle() {
 
 function StorageBadge({ mode }: { mode: StorageMode }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
 
   const config: Record<StorageMode, { icon: React.ReactNode; label: string; className: string }> = {
     backend: { icon: <Globe className="h-3 w-3" />, label: t('storageBackend'), className: 'border-primary/30 text-primary/80' },
     fixed: { icon: <Shield className="h-3 w-3" />, label: t('storageFixed'), className: 'border-primary/30 text-primary/80' },
-    local: { icon: <HardDrive className="h-3 w-3" />, label: t('storageLocal'), className: 'text-muted-foreground' },
+    local: { icon: <Globe className="h-3 w-3" />, label: t('storageBackend'), className: 'text-muted-foreground' },
   };
 
   const c = config[mode];
@@ -59,8 +58,7 @@ function StorageBadge({ mode }: { mode: StorageMode }) {
   return (
     <Badge
       variant="outline"
-      className={`gap-1.5 text-xs w-full justify-center py-1 cursor-pointer hover:bg-muted/50 ${c.className}`}
-      onClick={() => navigate('/setup')}
+      className={`gap-1.5 text-xs w-full justify-center py-1 ${c.className}`}
     >
       {c.icon}
       {c.label}
@@ -108,6 +106,18 @@ export function AppSidebar({ servers, onAddServer, storageMode, backendUrl }: Ap
                   >
                     <LayoutDashboard className="h-4 w-4 shrink-0" />
                     <span>{t('dashboard')}</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/serverliste"
+                    className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                    activeClassName="bg-sidebar-accent text-primary font-medium"
+                  >
+                    <List className="h-4 w-4 shrink-0" />
+                    <span>{t('serverList')}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

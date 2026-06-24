@@ -1,7 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ServerConfig, ServerStatus, RisingWorldQueryData, ServerInfoResponse, ServerPlayerListResponse, ServerPlayerListPlayer, ServerWithStatus } from '@/types/server';
 
-const REFRESH_INTERVAL = 60_000;
+const DEFAULT_REFRESH_INTERVAL_MS = 30_000;
+const MIN_REFRESH_INTERVAL_MS = 5_000;
+
+function getRefreshIntervalMs(): number {
+  const raw = import.meta.env.VITE_SERVER_QUERY_REFRESH_INTERVAL_MS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_REFRESH_INTERVAL_MS;
+  return Math.max(MIN_REFRESH_INTERVAL_MS, parsed);
+}
 
 async function fetchJson<T>(url: string): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   try {
@@ -96,7 +104,7 @@ export function useServerStatus(servers: ServerConfig[]) {
 
   useEffect(() => {
     refreshAll();
-    intervalRef.current = setInterval(refreshAll, REFRESH_INTERVAL);
+    intervalRef.current = setInterval(refreshAll, getRefreshIntervalMs());
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };

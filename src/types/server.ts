@@ -1,8 +1,26 @@
 export interface ServerConfig {
   id: string;
   label: string;
+  steamId?: string;
+  addr?: string;
+  version?: string;
+  name?: string;
+  ip?: string;
+  port?: number;
+  region?: string;
+  gm?: number;
+  mods?: boolean;
+  password?: boolean;
+  whitelist?: boolean;
+  adminUid?: string;
   queryUrl: string;
+  mapUrl?: string;
   backendUrl?: string;
+  data?: unknown;
+  info?: unknown;
+  firstSeen?: string;
+  lastSeen?: string;
+  queryDataUpdatedAt?: string;
   createdAt: string;
   userId?: string;
   public?: boolean;
@@ -13,6 +31,7 @@ export interface AuthUser {
   username?: string;
   email?: string;
   steamId?: string;
+  pinnedServers?: string[];
   role: 'guest' | 'user' | 'admin';
 }
 
@@ -27,6 +46,7 @@ export interface PublicUserInterface {
   state: UserState;
   role: UserRole;
   steamId?: string;
+  pinnedServers: string[];
   createdAt: string;
 }
 

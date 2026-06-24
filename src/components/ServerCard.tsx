@@ -3,7 +3,7 @@ import { ServerWithStatus } from '@/types/server';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MapPin, Tag, RefreshCw, Trash2, Loader2, Clock, ChevronRight } from 'lucide-react';
+import { Users, MapPin, Tag, RefreshCw, Trash2, Loader2, Clock, ChevronRight, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { de as deFns } from 'date-fns/locale';
@@ -15,6 +15,8 @@ interface ServerCardProps {
   server: ServerWithStatus;
   onRefresh: () => void;
   onDelete?: () => void;
+  isPinned?: boolean;
+  onTogglePin?: () => void;
 }
 
 function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
@@ -51,7 +53,7 @@ function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
   );
 }
 
-export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
+export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTogglePin }: ServerCardProps) {
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language?.startsWith('de') ? deFns : enUS;
   const navigate = useNavigate();
@@ -144,6 +146,20 @@ export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
+            {onTogglePin && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className={cn(
+                  'h-7 w-7 p-0 text-muted-foreground hover:text-primary',
+                  isPinned && 'text-primary'
+                )}
+                onClick={e => { e.stopPropagation(); onTogglePin(); }}
+                title={isPinned ? t('unpinServer') : t('pinServer')}
+              >
+                <Star className={cn('h-3.5 w-3.5', isPinned && 'fill-current')} />
+              </Button>
+            )}
             {onDelete && (
               <Button
                 size="sm"

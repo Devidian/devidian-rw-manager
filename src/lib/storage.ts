@@ -1,7 +1,27 @@
-import { ServerConfig } from '@/types/server';
+import { AuthUser, ServerConfig } from '@/types/server';
 import { authHeaders, TOKEN_KEY } from './authApi';
 
 const LOCAL_STORAGE_KEY = 'risingworld_servers';
+const LOCAL_PINNED_SERVERS_KEY = 'risingworld_pinned_servers';
+
+function readLocalPinnedServers(): string[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_PINNED_SERVERS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalPinnedServers(ids: string[]): void {
+  localStorage.setItem(LOCAL_PINNED_SERVERS_KEY, JSON.stringify(ids));
+}
+
+export function clearLocalPinnedServers(): void {
+  localStorage.removeItem(LOCAL_PINNED_SERVERS_KEY);
+}
 
 
 // ─── Interface ──────────────────────────────────────────────────────────────
@@ -11,6 +31,9 @@ export interface StorageAdapter {
   addServer(data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig>;
   updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl' | 'public'>>): Promise<ServerConfig>;
   deleteServer(id: string): Promise<void>;
+  getPinnedServers(): Promise<string[]>;
+  pinServer(id: string): Promise<AuthUser | null>;
+  unpinServer(id: string): Promise<AuthUser | null>;
 }
 
 // ─── Local Storage Adapter ───────────────────────────────────────────────────
@@ -50,6 +73,24 @@ export class LocalStorageAdapter implements StorageAdapter {
   async deleteServer(id: string): Promise<void> {
     const servers = await this.getServers();
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(servers.filter(s => s.id !== id)));
+  }
+
+  async getPinnedServers(): Promise<string[]> {
+    return readLocalPinnedServers();
+  }
+
+  async pinServer(id: string): Promise<AuthUser | null> {
+    const pinned = new Set(await this.getPinnedServers());
+    pinned.add(id);
+    writeLocalPinnedServers([...pinned]);
+    return null;
+  }
+
+  async unpinServer(id: string): Promise<AuthUser | null> {
+    const pinned = new Set(await this.getPinnedServers());
+    pinned.delete(id);
+    writeLocalPinnedServers([...pinned]);
+    return null;
   }
 }
 
@@ -100,6 +141,42 @@ export class BackendStorageAdapter implements StorageAdapter {
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok && res.status !== 204) throw new Error(`Backend returned HTTP ${res.status}`);
+  }
+
+  async getPinnedServers(): Promise<string[]> {
+    return readLocalPinnedServers();
+  }
+
+  async pinServer(id: string): Promise<AuthUser | null> {
+    if (!localStorage.getItem(TOKEN_KEY)) {
+      const pinned = new Set(readLocalPinnedServers());
+      pinned.add(id);
+      writeLocalPinnedServers([...pinned]);
+      return null;
+    }
+    const res = await fetch(`${this.base}/api/storage/server/${id}/pin`, {
+      method: 'POST',
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
+    return res.json().then(json => json.user as AuthUser);
+  }
+
+  async unpinServer(id: string): Promise<AuthUser | null> {
+    if (!localStorage.getItem(TOKEN_KEY)) {
+      const pinned = new Set(readLocalPinnedServers());
+      pinned.delete(id);
+      writeLocalPinnedServers([...pinned]);
+      return null;
+    }
+    const res = await fetch(`${this.base}/api/storage/server/${id}/pin`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
+    return res.json().then(json => json.user as AuthUser);
   }
 }
 

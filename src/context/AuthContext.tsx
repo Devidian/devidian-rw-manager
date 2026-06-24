@@ -24,6 +24,7 @@ interface AuthContextValue {
   disconnectSteam: () => Promise<void>;
   updateProfile: (data: { name: string }) => Promise<void>;
   deleteAccount: () => Promise<void>;
+  applyUserUpdate: (user: AuthUser) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -165,6 +166,10 @@ export function AuthProvider({
     setUser(null);
   }, [baseUrl]);
 
+  const applyUserUpdate = useCallback((nextUser: AuthUser) => {
+    setUser(nextUser);
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -185,6 +190,7 @@ export function AuthProvider({
       disconnectSteam,
       updateProfile,
       deleteAccount,
+      applyUserUpdate,
     }}>
       {children}
     </AuthContext.Provider>

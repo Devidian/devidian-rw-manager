@@ -506,7 +506,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const { updateServer } = useServerContext();
   const { mode } = useStorageMode();
   const { isAdmin, isAuthenticated } = useAuth();
-  const canEdit = mode === 'local' || isAdmin;
+  const canEdit = isAdmin;
   const showPublicFlag = mode === 'fixed' || mode === 'backend';
   const [editOpen, setEditOpen] = useState(false);
   const adminMapping = useAdminMapping(server?.backendUrl);

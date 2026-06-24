@@ -18,12 +18,14 @@ import {
 import { useTranslation } from 'react-i18next';
 import Index from './pages/Index';
 import ServerDetailPage from './pages/ServerDetailPage';
+import ServerListPage from './pages/ServerListPage';
 import UserManagementPage from './pages/UserManagementPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SteamCallbackPage from './pages/SteamCallbackPage';
+import { LocalPinSyncDialog } from './components/LocalPinSyncDialog';
 
 const queryClient = new QueryClient();
 
@@ -56,20 +58,20 @@ function SessionExpiredDialog() {
 
 function Layout() {
   const [addOpen, setAddOpen] = useState(false);
-  const { serverList, addServer } = useServerContext();
-  const { mode, backendUrl, fixedBackendUrl } = useStorageMode();
+  const { pinnedServerList, addServer } = useServerContext();
+  const { mode, fixedBackendUrl } = useStorageMode();
   const { isAdmin } = useAuth();
 
-  const canAddServer = mode === 'local' || isAdmin;
+  const canAddServer = isAdmin;
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar
-          servers={serverList}
+          servers={pinnedServerList}
           onAddServer={canAddServer ? () => setAddOpen(true) : undefined}
           storageMode={mode}
-          backendUrl={mode === 'fixed' ? fixedBackendUrl : backendUrl}
+          backendUrl={fixedBackendUrl}
         />
 
         <div className="flex flex-col flex-1 min-w-0">
@@ -83,6 +85,7 @@ function Layout() {
           <main className="flex-1 p-6 overflow-auto">
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/serverliste" element={<ServerListPage />} />
               <Route path="/server/:id" element={<ServerDetailPage />} />
               <Route path="/admin/users" element={<UserManagementPage />} />
               <Route path="/profile" element={<ProfilePage />} />
@@ -97,10 +100,11 @@ function Layout() {
           open={addOpen}
           onOpenChange={setAddOpen}
           onAdd={addServer}
-          isBackendMode={mode === 'fixed' || mode === 'backend'}
+          isBackendMode
         />
       )}
 
+      <LocalPinSyncDialog />
       <SessionExpiredDialog />
     </SidebarProvider>
   );
@@ -124,17 +128,16 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 /** Resolves backend services for auth context */
 function AppWithAuth({ children }: { children: React.ReactNode }) {
-  const { mode, backendUrl, fixedBackendUrl } = useStorageMode();
+  const { fixedBackendUrl } = useStorageMode();
   const [services, setServices] = useState<string[]>([]);
 
   useEffect(() => {
-    const url = mode === 'fixed' ? fixedBackendUrl : mode === 'backend' ? backendUrl : null;
-    if (!url) { setServices([]); return; }
-    checkBackend(url, 'storage').then(r => {
+    if (!fixedBackendUrl) { setServices([]); return; }
+    checkBackend(fixedBackendUrl, 'storage').then(r => {
       if (r.ok) setServices(r.services);
       else setServices([]);
     });
-  }, [mode, backendUrl, fixedBackendUrl]);
+  }, [fixedBackendUrl]);
 
   return (
     <AuthProvider backendServices={services}>
