@@ -55,6 +55,7 @@ vi.mock('@/hooks/useServerStatus', () => ({
   useServerStatus: () => ({
     statusMap,
     refreshAll: vi.fn(),
+    refreshServerList: vi.fn(),
     refreshOne: vi.fn(),
   }),
 }));

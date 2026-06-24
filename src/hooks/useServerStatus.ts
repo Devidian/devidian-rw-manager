@@ -12,7 +12,11 @@ function getRefreshIntervalMs(): number {
   return Math.max(MIN_REFRESH_INTERVAL_MS, parsed);
 }
 
-export function useServerStatus(servers: ServerConfig[], adapter: StorageAdapter) {
+export function useServerStatus(
+  servers: ServerConfig[],
+  adapter: StorageAdapter,
+  autoRefreshServers: ServerConfig[] = servers,
+) {
   const [statusMap, setStatusMap] = useState<Record<string, ServerWithStatus>>({});
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -29,18 +33,18 @@ export function useServerStatus(servers: ServerConfig[], adapter: StorageAdapter
   }, [adapter]);
 
   const refreshAll = useCallback(async () => {
-    if (servers.length === 0) return;
+    if (autoRefreshServers.length === 0) return;
 
     setStatusMap(prev => {
       const next = { ...prev };
-      servers.forEach(s => {
+      autoRefreshServers.forEach(s => {
         next[s.id] = { ...s, status: 'loading', ...(prev[s.id] ?? {}) };
       });
       return next;
     });
 
     const results = await Promise.all(
-      servers.map(async s => ({ server: s, ...(await fetchServerFull(s)) }))
+      autoRefreshServers.map(async s => ({ server: s, ...(await fetchServerFull(s)) }))
     );
 
     setStatusMap(prev => {
@@ -58,7 +62,7 @@ export function useServerStatus(servers: ServerConfig[], adapter: StorageAdapter
       });
       return next;
     });
-  }, [fetchServerFull, servers]);
+  }, [autoRefreshServers, fetchServerFull]);
 
   const refreshOne = useCallback(async (serverId: string) => {
     const server = servers.find(s => s.id === serverId);

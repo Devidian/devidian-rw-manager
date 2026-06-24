@@ -56,6 +56,7 @@ vi.mock('@/context/ServerContext', () => ({
   useServerContext: () => ({
     serverList,
     refreshAll: vi.fn(),
+    refreshServerList: vi.fn(),
     refreshOne: vi.fn(),
     pinServer: state.pinServer,
     unpinServer: state.unpinServer,

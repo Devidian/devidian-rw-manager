@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useEffect, useState } from 'react';
+import { createContext, useContext, ReactNode, useEffect, useMemo, useState } from 'react';
 import { useServers } from '@/hooks/useServers';
 import { useServerStatus } from '@/hooks/useServerStatus';
 import { useStorageMode } from '@/context/StorageModeContext';
@@ -18,6 +18,7 @@ interface ServerContextValue {
   isPinned: (id: string) => boolean;
   getServer: (id: string) => ServerConfig | undefined;
   refreshAll: () => void;
+  refreshServerList: () => void;
   refreshOne: (id: string) => void;
 }
 
@@ -28,7 +29,14 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const { user, applyUserUpdate } = useAuth();
   const [localPinnedServers, setLocalPinnedServers] = useState<string[]>([]);
   const { servers=[], refreshServers, addServer, updateServer, removeServer, getServer } = useServers(adapter);
-  const { statusMap, refreshOne } = useServerStatus(servers, adapter);
+  const pinnedIds = useMemo(() => new Set(user?.pinnedServers ?? localPinnedServers), [localPinnedServers, user?.pinnedServers]);
+  const dashboardServers = useMemo(
+    () => servers.filter(server =>
+      pinnedIds.has(server.id) || (!!user?.steamId && server.adminUid === user.steamId)
+    ),
+    [pinnedIds, servers, user?.steamId],
+  );
+  const { statusMap, refreshAll, refreshOne } = useServerStatus(servers, adapter, dashboardServers);
 
   useEffect(() => {
     if (user) {
@@ -42,7 +50,6 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     const status = statusMap[s.id];
     return status ? { ...status, ...s, status: status.status } : { ...s, status: 'unknown' as const };
   });
-  const pinnedIds = new Set(user?.pinnedServers ?? localPinnedServers);
   const pinnedServerList = serverList.filter(server => pinnedIds.has(server.id));
   const dashboardServerList = serverList.filter(server =>
     pinnedIds.has(server.id) || (!!user?.steamId && server.adminUid === user.steamId)
@@ -79,7 +86,8 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       unpinServer,
       isPinned: (id: string) => pinnedIds.has(id),
       getServer,
-      refreshAll: () => { void refreshServers(); },
+      refreshAll,
+      refreshServerList: () => { void refreshServers(); },
       refreshOne,
     }}>
       {children}

@@ -88,11 +88,11 @@ function compareValues(left: string | number, right: string | number): number {
 
 export default function ServerListPage() {
   const { t } = useTranslation();
-  const [sortKey, setSortKey] = useState<SortKey>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortKey, setSortKey] = useState<SortKey>('players');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const {
     serverList,
-    refreshAll,
+    refreshServerList,
     refreshOne,
     pinServer,
     unpinServer,
@@ -145,7 +145,7 @@ export default function ServerListPage() {
             {t('serverListSummary', { online: onlineCount, total: serverList.length })}
           </p>
         </div>
-        <Button size="sm" variant="outline" className="gap-2" onClick={refreshAll}>
+        <Button size="sm" variant="outline" className="gap-2" onClick={refreshServerList}>
           <RefreshCw className="h-4 w-4" />
           {t('refreshAll')}
         </Button>
