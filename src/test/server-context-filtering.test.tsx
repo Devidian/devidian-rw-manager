@@ -22,6 +22,7 @@ const statusMap = Object.fromEntries(
 
 const adapter: StorageAdapter = {
   getServers: vi.fn(async () => servers),
+  refreshServers: vi.fn(async () => servers),
   addServer: vi.fn(),
   updateServer: vi.fn(),
   deleteServer: vi.fn(),
@@ -43,6 +44,7 @@ vi.mock('@/context/AuthContext', () => ({
 vi.mock('@/hooks/useServers', () => ({
   useServers: () => ({
     servers,
+    refreshServers: vi.fn(),
     addServer: vi.fn(),
     updateServer: vi.fn(),
     removeServer: vi.fn(),

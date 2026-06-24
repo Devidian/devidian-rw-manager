@@ -21,6 +21,7 @@ const updatedUser: AuthUser = {
 
 const adapter: StorageAdapter = {
   getServers: vi.fn(),
+  refreshServers: vi.fn(),
   addServer: vi.fn(),
   updateServer: vi.fn(),
   deleteServer: vi.fn(),

@@ -27,8 +27,8 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const { adapter } = useStorageMode();
   const { user, applyUserUpdate } = useAuth();
   const [localPinnedServers, setLocalPinnedServers] = useState<string[]>([]);
-  const { servers=[], addServer, updateServer, removeServer, getServer } = useServers(adapter);
-  const { statusMap, refreshAll, refreshOne } = useServerStatus(servers, adapter);
+  const { servers=[], refreshServers, addServer, updateServer, removeServer, getServer } = useServers(adapter);
+  const { statusMap, refreshOne } = useServerStatus(servers, adapter);
 
   useEffect(() => {
     if (user) {
@@ -38,7 +38,10 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     adapter.getPinnedServers().then(setLocalPinnedServers).catch(() => setLocalPinnedServers([]));
   }, [adapter, user]);
 
-  const serverList: ServerWithStatus[] = servers.map(s => statusMap[s.id] ?? { ...s, status: 'unknown' as const });
+  const serverList: ServerWithStatus[] = servers.map(s => {
+    const status = statusMap[s.id];
+    return status ? { ...status, ...s, status: status.status } : { ...s, status: 'unknown' as const };
+  });
   const pinnedIds = new Set(user?.pinnedServers ?? localPinnedServers);
   const pinnedServerList = serverList.filter(server => pinnedIds.has(server.id));
   const dashboardServerList = serverList.filter(server =>
@@ -76,7 +79,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       unpinServer,
       isPinned: (id: string) => pinnedIds.has(id),
       getServer,
-      refreshAll,
+      refreshAll: () => { void refreshServers(); },
       refreshOne,
     }}>
       {children}

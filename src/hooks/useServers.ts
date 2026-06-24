@@ -9,6 +9,12 @@ export function useServers(adapter: StorageAdapter) {
     adapter.getServers().then(setServers).catch(() => setServers([]));
   }, [adapter]);
 
+  const refreshServers = useCallback(async (): Promise<ServerConfig[]> => {
+    const refreshed = await adapter.refreshServers();
+    setServers(refreshed);
+    return refreshed;
+  }, [adapter]);
+
   const addServer = useCallback(async (data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig> => {
     const newServer = await adapter.addServer(data);
     setServers(prev => [...prev, newServer]);
@@ -30,5 +36,5 @@ export function useServers(adapter: StorageAdapter) {
     return servers.find(s => s.id === id);
   }, [servers]);
 
-  return { servers, addServer, updateServer, removeServer, getServer };
+  return { servers, refreshServers, addServer, updateServer, removeServer, getServer };
 }

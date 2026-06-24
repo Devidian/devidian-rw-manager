@@ -2,7 +2,7 @@
   "dashboard": "Dashboard",
   "addServer": "Server hinzufügen",
   "addFirstServer": "Ersten Server hinzufügen",
-  "refreshAll": "Alle prüfen",
+  "refreshAll": "Alle aktualisieren",
   "noServersYet": "Noch kein Server eingetragen",
   "noServersDesc": "Füge einen RisingWorld-Server mit seiner Query-URL hinzu, um Status, Spieler und mehr im Blick zu behalten.",
   "serversOnline": "{{online}} von {{total}} Server{{plural}} online",

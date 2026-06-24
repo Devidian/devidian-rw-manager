@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { RichText } from '@/components/RichText';
-import { ServerWithStatus } from '@/types/server';
+import { ServerInfoResponse, ServerWithStatus } from '@/types/server';
 import { cn } from '@/lib/utils';
 
 function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
@@ -56,9 +56,24 @@ function getAddress(server: ServerWithStatus): string {
 type SortKey = 'name' | 'status' | 'players' | 'map' | 'version' | 'address';
 type SortDirection = 'asc' | 'desc';
 
+function getInfo(server: ServerWithStatus): Partial<ServerInfoResponse> | undefined {
+  if (server.infoData) return server.infoData;
+  return server.info && typeof server.info === 'object' ? server.info as Partial<ServerInfoResponse> : undefined;
+}
+
+function getDisplayName(server: ServerWithStatus): string {
+  const info = getInfo(server);
+  return info?.name || server.queryData?.name || server.name || server.label || server.id;
+}
+
+function getSecondaryName(server: ServerWithStatus): string | undefined {
+  const shortname = getInfo(server)?.shortname;
+  return shortname && shortname !== getDisplayName(server) ? shortname : undefined;
+}
+
 function sortValue(server: ServerWithStatus, key: SortKey): string | number {
   const data = server.queryData;
-  if (key === 'name') return (server.label || server.name || data?.name || '').toLocaleLowerCase();
+  if (key === 'name') return getDisplayName(server).toLocaleLowerCase();
   if (key === 'status') return server.status;
   if (key === 'players') return data?.playercount ?? server.onlinePlayers?.length ?? 0;
   if (key === 'map') return (data?.map ?? '').toLocaleLowerCase();
@@ -161,8 +176,8 @@ export default function ServerListPage() {
             <TableBody>
               {sortedServers.map(server => {
                 const data = server.queryData;
-                const name = server.label || server.name || data?.name || server.id;
-                const secondaryName = data?.name ?? server.name;
+                const name = getDisplayName(server);
+                const secondaryName = getSecondaryName(server);
                 const map = data?.map ?? '-';
                 const playerCount = data?.playercount ?? server.onlinePlayers?.length ?? 0;
                 const maxPlayers = data?.maxplayers ?? '?';

@@ -28,6 +28,7 @@ export function clearLocalPinnedServers(): void {
 
 export interface StorageAdapter {
   getServers(): Promise<ServerConfig[]>;
+  refreshServers(): Promise<ServerConfig[]>;
   addServer(data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig>;
   updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl' | 'public'>>): Promise<ServerConfig>;
   deleteServer(id: string): Promise<void>;
@@ -59,6 +60,10 @@ export class LocalStorageAdapter implements StorageAdapter {
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([...servers, newServer]));
     return newServer;
+  }
+
+  async refreshServers(): Promise<ServerConfig[]> {
+    return this.getServers();
   }
 
   async updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl' | 'public'>>): Promise<ServerConfig> {
@@ -143,6 +148,18 @@ export class BackendStorageAdapter implements StorageAdapter {
     });
     if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
     return res.json().then(json => json.server as ServerConfig);
+  }
+
+  async refreshServers(): Promise<ServerConfig[]> {
+    if (localStorage.getItem(TOKEN_KEY)) {
+      const res = await fetch(`${this.base}/api/storage/server/refresh-query-data`, {
+        method: 'POST',
+        headers: authHeaders(),
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!res.ok && res.status !== 403) throw new Error(`Backend returned HTTP ${res.status}`);
+    }
+    return this.getServers();
   }
 
   async updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl' | 'public'>>): Promise<ServerConfig> {
