@@ -28,7 +28,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const { user, applyUserUpdate } = useAuth();
   const [localPinnedServers, setLocalPinnedServers] = useState<string[]>([]);
   const { servers=[], addServer, updateServer, removeServer, getServer } = useServers(adapter);
-  const { statusMap, refreshAll, refreshOne } = useServerStatus(servers);
+  const { statusMap, refreshAll, refreshOne } = useServerStatus(servers, adapter);
 
   useEffect(() => {
     if (user) {

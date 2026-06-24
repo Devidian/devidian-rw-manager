@@ -11,18 +11,20 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { User, Save, Loader2, Link2, Unlink, Trash2 } from 'lucide-react';
+import { KeyRound, User, Save, Loader2, Link2, Unlink, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, updateProfile, loginWithSteam, disconnectSteam, deleteAccount, logout } = useAuth();
+  const { user, isAuthenticated, updateProfile, loginWithSteam, disconnectSteam, deleteAccount, generateApiToken } = useAuth();
   const { toast } = useToast();
 
   const [name, setName] = useState(user?.username || '');
   const [saving, setSaving] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [generatingToken, setGeneratingToken] = useState(false);
+  const [apiToken, setApiToken] = useState<string | null>(null);
 
   if (!isAuthenticated || !user) {
     return (
@@ -63,6 +65,18 @@ export default function ProfilePage() {
       navigate('/', { replace: true });
     } catch {
       toast({ title: t('backendError'), variant: 'destructive' });
+    }
+  };
+
+  const handleGenerateApiToken = async () => {
+    setGeneratingToken(true);
+    try {
+      setApiToken(await generateApiToken());
+      toast({ title: t('apiTokenGenerated') });
+    } catch {
+      toast({ title: t('backendError'), variant: 'destructive' });
+    } finally {
+      setGeneratingToken(false);
     }
   };
 
@@ -147,6 +161,27 @@ export default function ProfilePage() {
                   <Link2 className="h-4 w-4" />
                   {t('connectSteam')}
                 </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <label className="text-xs text-muted-foreground">{t('apiToken')}</label>
+            <p className="text-xs text-muted-foreground mt-1">{t('apiTokenDesc')}</p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 mt-3"
+              onClick={handleGenerateApiToken}
+              disabled={generatingToken}
+            >
+              {generatingToken ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+              {t('generateApiToken')}
+            </Button>
+            {apiToken && (
+              <div className="mt-3 rounded border border-primary/30 bg-primary/10 p-3">
+                <p className="text-xs text-primary mb-2">{t('apiTokenOneTime')}</p>
+                <code className="block break-all text-xs text-foreground">{apiToken}</code>
               </div>
             )}
           </div>

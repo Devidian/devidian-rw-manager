@@ -1,4 +1,4 @@
-import { AuthUser, ServerConfig } from '@/types/server';
+import { AuthUser, ServerConfig, ServerLiveStatusPayload } from '@/types/server';
 import { authHeaders, TOKEN_KEY } from './authApi';
 
 const LOCAL_STORAGE_KEY = 'risingworld_servers';
@@ -34,6 +34,7 @@ export interface StorageAdapter {
   getPinnedServers(): Promise<string[]>;
   pinServer(id: string): Promise<AuthUser | null>;
   unpinServer(id: string): Promise<AuthUser | null>;
+  getServerLiveStatus(server: ServerConfig): Promise<ServerLiveStatusPayload>;
 }
 
 // ─── Local Storage Adapter ───────────────────────────────────────────────────
@@ -91,6 +92,27 @@ export class LocalStorageAdapter implements StorageAdapter {
     pinned.delete(id);
     writeLocalPinnedServers([...pinned]);
     return null;
+  }
+
+  async getServerLiveStatus(server: ServerConfig): Promise<ServerLiveStatusPayload> {
+    const base = server.queryUrl.endsWith('/') ? server.queryUrl : server.queryUrl + '/';
+    const [query, info, playerlist] = await Promise.allSettled([
+      fetchLocalJson(base),
+      fetchLocalJson(base + 'info'),
+      fetchLocalJson(base + 'playerlist'),
+    ]);
+    const queryResult = query.status === 'fulfilled' ? query.value : { ok: false as const, error: 'Failed' };
+    const infoResult = info.status === 'fulfilled' ? info.value : { ok: false as const, error: 'Failed' };
+    const playerlistResult = playerlist.status === 'fulfilled' ? playerlist.value : { ok: false as const, error: 'Failed' };
+
+    return {
+      status: queryResult.ok ? 'online' : 'offline',
+      queryData: queryResult.ok ? queryResult.data as ServerLiveStatusPayload['queryData'] : undefined,
+      infoData: infoResult.ok ? infoResult.data as ServerLiveStatusPayload['infoData'] : undefined,
+      onlinePlayers: playerlistResult.ok ? playersFromPayload(playerlistResult.data) : undefined,
+      lastChecked: new Date().toISOString(),
+      errorMessage: queryResult.ok ? undefined : queryResult.error,
+    };
   }
 }
 
@@ -178,6 +200,15 @@ export class BackendStorageAdapter implements StorageAdapter {
     if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
     return res.json().then(json => json.user as AuthUser);
   }
+
+  async getServerLiveStatus(server: ServerConfig): Promise<ServerLiveStatusPayload> {
+    const res = await fetch(`${this.base}/api/storage/server/${server.id}/live`, {
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
+    return res.json() as Promise<ServerLiveStatusPayload>;
+  }
 }
 
 // ─── Backend Health Check ────────────────────────────────────────────────────
@@ -212,4 +243,20 @@ export async function checkBackend(url: string, requiredService: string): Promis
   } catch {
     return { ok: false, reason: 'unreachable' };
   }
+}
+
+async function fetchLocalJson(url: string): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!response.ok) return { ok: false, error: `HTTP ${response.status}` };
+    return { ok: true, data: await response.json() };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+function playersFromPayload(payload: unknown): ServerLiveStatusPayload['onlinePlayers'] {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const players = (payload as { players?: unknown }).players;
+  return Array.isArray(players) ? players as ServerLiveStatusPayload['onlinePlayers'] : undefined;
 }

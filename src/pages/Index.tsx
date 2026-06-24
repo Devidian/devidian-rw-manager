@@ -1,18 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { useServerContext } from '@/context/ServerContext';
-import { AddServerDialog } from '@/components/AddServerDialog';
 import { ServerCard } from '@/components/ServerCard';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
-import { Plus, Server, RefreshCw } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { Server, RefreshCw } from 'lucide-react';
 
 export default function Index() {
   const { t } = useTranslation();
-  const [addOpen, setAddOpen] = useState(false);
   const {
-    addServer,
-    removeServer,
     refreshAll,
     refreshOne,
     dashboardServerList,
@@ -20,8 +14,6 @@ export default function Index() {
     unpinServer,
     isPinned,
   } = useServerContext();
-  const { isAdmin } = useAuth();
-  const canManage = isAdmin;
 
   const onlineCount = dashboardServerList.filter(s => s.status === 'online').length;
   const plural = dashboardServerList.length !== 1 ? (t('server') === 'Server' ? 'n' : 's') : '';
@@ -44,16 +36,6 @@ export default function Index() {
               {t('refreshAll')}
             </Button>
           )}
-          {canManage && (
-            <Button
-              size="sm"
-              className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => setAddOpen(true)}
-            >
-              <Plus className="h-4 w-4" />
-              {t('addServer')}
-            </Button>
-          )}
         </div>
       </div>
 
@@ -64,15 +46,6 @@ export default function Index() {
           </div>
           <h2 className="text-xl font-semibold text-foreground mb-2">{t('noServersYet')}</h2>
           <p className="text-muted-foreground text-sm max-w-sm mb-6">{t('noServersDesc')}</p>
-          {canManage && (
-            <Button
-              onClick={() => setAddOpen(true)}
-              className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4" />
-              {t('addFirstServer')}
-            </Button>
-          )}
         </div>
       )}
 
@@ -85,13 +58,10 @@ export default function Index() {
               onRefresh={() => refreshOne(server.id)}
               isPinned={isPinned(server.id)}
               onTogglePin={() => void (isPinned(server.id) ? unpinServer(server.id) : pinServer(server.id))}
-              onDelete={canManage ? () => void removeServer(server.id) : undefined}
             />
           ))}
         </div>
       )}
-
-      {canManage && <AddServerDialog open={addOpen} onOpenChange={setAddOpen} onAdd={addServer} isBackendMode />}
     </div>
   );
 }

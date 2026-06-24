@@ -24,6 +24,7 @@ interface AuthContextValue {
   disconnectSteam: () => Promise<void>;
   updateProfile: (data: { name: string }) => Promise<void>;
   deleteAccount: () => Promise<void>;
+  generateApiToken: () => Promise<string>;
   applyUserUpdate: (user: AuthUser) => void;
 }
 
@@ -166,6 +167,13 @@ export function AuthProvider({
     setUser(null);
   }, [baseUrl]);
 
+  const generateApiToken = useCallback(async () => {
+    const token = getToken();
+    if (!token) throw new Error('missing auth token');
+    const res = await authApi.generateApiToken(baseUrl, token);
+    return res.apiToken;
+  }, [baseUrl]);
+
   const applyUserUpdate = useCallback((nextUser: AuthUser) => {
     setUser(nextUser);
   }, []);
@@ -190,6 +198,7 @@ export function AuthProvider({
       disconnectSteam,
       updateProfile,
       deleteAccount,
+      generateApiToken,
       applyUserUpdate,
     }}>
       {children}

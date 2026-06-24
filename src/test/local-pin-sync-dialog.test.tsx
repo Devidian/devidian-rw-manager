@@ -27,6 +27,7 @@ const adapter: StorageAdapter = {
   getPinnedServers: vi.fn(async () => ['server-a', 'server-b', 'server-a']),
   pinServer: vi.fn(async () => updatedUser),
   unpinServer: vi.fn(),
+  getServerLiveStatus: vi.fn(),
 };
 
 vi.mock('react-i18next', () => ({

@@ -155,3 +155,12 @@ export interface ServerWithStatus extends ServerConfig {
   lastChecked?: Date;
   errorMessage?: string;
 }
+
+export interface ServerLiveStatusPayload {
+  status: 'online' | 'offline';
+  queryData?: RisingWorldQueryData;
+  infoData?: ServerInfoResponse;
+  onlinePlayers?: ServerPlayerListPlayer[];
+  lastChecked: string;
+  errorMessage?: string;
+}

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RefreshCw, Star, Users, MapPin, Server as ServerIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, RefreshCw, Star, Users, MapPin, Server as ServerIcon } from 'lucide-react';
 import { useServerContext } from '@/context/ServerContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,8 +53,28 @@ function getAddress(server: ServerWithStatus): string {
   return '-';
 }
 
+type SortKey = 'name' | 'status' | 'players' | 'map' | 'version' | 'address';
+type SortDirection = 'asc' | 'desc';
+
+function sortValue(server: ServerWithStatus, key: SortKey): string | number {
+  const data = server.queryData;
+  if (key === 'name') return (server.label || server.name || data?.name || '').toLocaleLowerCase();
+  if (key === 'status') return server.status;
+  if (key === 'players') return data?.playercount ?? server.onlinePlayers?.length ?? 0;
+  if (key === 'map') return (data?.map ?? '').toLocaleLowerCase();
+  if (key === 'version') return (data?.version ?? server.version ?? '').toLocaleLowerCase();
+  return getAddress(server).toLocaleLowerCase();
+}
+
+function compareValues(left: string | number, right: string | number): number {
+  if (typeof left === 'number' && typeof right === 'number') return left - right;
+  return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' });
+}
+
 export default function ServerListPage() {
   const { t } = useTranslation();
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const {
     serverList,
     refreshAll,
@@ -64,6 +85,41 @@ export default function ServerListPage() {
   } = useServerContext();
 
   const onlineCount = serverList.filter(server => server.status === 'online').length;
+  const sortedServers = useMemo(() => {
+    return [...serverList].sort((left, right) => {
+      const leftPinned = isPinned(left.id);
+      const rightPinned = isPinned(right.id);
+      if (leftPinned !== rightPinned) return leftPinned ? -1 : 1;
+
+      const result = compareValues(sortValue(left, sortKey), sortValue(right, sortKey));
+      return sortDirection === 'asc' ? result : -result;
+    });
+  }, [isPinned, serverList, sortDirection, sortKey]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(current => current === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setSortKey(key);
+    setSortDirection('asc');
+  };
+
+  const SortHeader = ({ label, column }: { label: string; column: SortKey }) => {
+    const active = sortKey === column;
+    const Icon = !active ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 px-0 gap-1.5 text-muted-foreground hover:text-foreground"
+        onClick={() => toggleSort(column)}
+      >
+        {label}
+        <Icon className="h-3.5 w-3.5" />
+      </Button>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -93,19 +149,20 @@ export default function ServerListPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead>{t('server')}</TableHead>
-                <TableHead>{t('status')}</TableHead>
-                <TableHead>{t('players')}</TableHead>
-                <TableHead>{t('map')}</TableHead>
-                <TableHead>{t('version')}</TableHead>
-                <TableHead>{t('ipPort')}</TableHead>
+                <TableHead><SortHeader label={t('server')} column="name" /></TableHead>
+                <TableHead><SortHeader label={t('status')} column="status" /></TableHead>
+                <TableHead><SortHeader label={t('players')} column="players" /></TableHead>
+                <TableHead><SortHeader label={t('map')} column="map" /></TableHead>
+                <TableHead><SortHeader label={t('version')} column="version" /></TableHead>
+                <TableHead><SortHeader label={t('ipPort')} column="address" /></TableHead>
                 <TableHead className="text-right">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {serverList.map(server => {
+              {sortedServers.map(server => {
                 const data = server.queryData;
-                const name = data?.name ?? server.name ?? server.label;
+                const name = server.label || server.name || data?.name || server.id;
+                const secondaryName = data?.name ?? server.name;
                 const map = data?.map ?? '-';
                 const playerCount = data?.playercount ?? server.onlinePlayers?.length ?? 0;
                 const maxPlayers = data?.maxplayers ?? '?';
@@ -118,8 +175,8 @@ export default function ServerListPage() {
                       <Link to={`/server/${server.id}`} className="font-medium text-foreground hover:text-primary">
                         <RichText text={name} />
                       </Link>
-                      {server.label !== name && (
-                        <div className="text-xs text-muted-foreground truncate max-w-[20rem]">{server.label}</div>
+                      {secondaryName && secondaryName !== name && (
+                        <div className="text-xs text-muted-foreground truncate max-w-[20rem]">{secondaryName}</div>
                       )}
                     </TableCell>
                     <TableCell>

@@ -506,7 +506,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const { updateServer } = useServerContext();
   const { mode } = useStorageMode();
   const { isAdmin, isAuthenticated } = useAuth();
-  const canEdit = isAdmin;
+  const canEdit = false;
   const showPublicFlag = mode === 'fixed' || mode === 'backend';
   const [editOpen, setEditOpen] = useState(false);
   const adminMapping = useAdminMapping(server?.backendUrl);
@@ -530,7 +530,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const playercount = data?.playercount ?? 0;
   const maxplayers = data?.maxplayers ?? '?';
   const gamemodeLabel = data?.gamemode === 0 ? t('survival') : data?.gamemode === 1 ? t('creative') : '—';
-  const headerImageUrl = info?.headerimage ? `${server.queryUrl.replace(/\/$/, '')}/images/header` : null;
+  const headerImageUrl = null;
   const hasBackend = !!server.backendUrl;
 
   return (

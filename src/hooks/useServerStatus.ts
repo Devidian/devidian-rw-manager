@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ServerConfig, ServerStatus, RisingWorldQueryData, ServerInfoResponse, ServerPlayerListResponse, ServerPlayerListPlayer, ServerWithStatus } from '@/types/server';
+import { StorageAdapter } from '@/lib/storage';
+import { ServerConfig, ServerStatus, ServerWithStatus } from '@/types/server';
 
 const DEFAULT_REFRESH_INTERVAL_MS = 30_000;
 const MIN_REFRESH_INTERVAL_MS = 5_000;
@@ -11,48 +12,21 @@ function getRefreshIntervalMs(): number {
   return Math.max(MIN_REFRESH_INTERVAL_MS, parsed);
 }
 
-async function fetchJson<T>(url: string): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!response.ok) return { ok: false, error: `HTTP ${response.status}` };
-    const data = await response.json();
-    return { ok: true, data };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
-  }
-}
-
-async function fetchServerFull(server: ServerConfig): Promise<Partial<ServerWithStatus>> {
-  const base = server.queryUrl.endsWith('/') ? server.queryUrl : server.queryUrl + '/';
-
-  const [mainResult, infoResult, playerlistResult] = await Promise.allSettled([
-    fetchJson<RisingWorldQueryData>(base),
-    fetchJson<ServerInfoResponse>(base + 'info'),
-    fetchJson<ServerPlayerListResponse>(base + 'playerlist'),
-  ]);
-
-  const main = mainResult.status === 'fulfilled' ? mainResult.value : { ok: false as const, error: 'Failed' };
-
-  const status: ServerStatus = main.ok ? 'online' : 'offline';
-  const queryData = main.ok ? main.data : undefined;
-  const errorMessage = !main.ok ? ('error' in main ? main.error : 'Unknown error') : undefined;
-
-  const info = infoResult.status === 'fulfilled' && infoResult.value.ok ? infoResult.value.data : undefined;
-  const playerlist = playerlistResult.status === 'fulfilled' && playerlistResult.value.ok ? playerlistResult.value.data : undefined;
-
-  return {
-    status,
-    queryData,
-    infoData: info,
-    onlinePlayers: playerlist?.players,
-    lastChecked: new Date(),
-    errorMessage,
-  };
-}
-
-export function useServerStatus(servers: ServerConfig[]) {
+export function useServerStatus(servers: ServerConfig[], adapter: StorageAdapter) {
   const [statusMap, setStatusMap] = useState<Record<string, ServerWithStatus>>({});
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchServerFull = useCallback(async (server: ServerConfig): Promise<Partial<ServerWithStatus>> => {
+    const response = await adapter.getServerLiveStatus(server);
+    return {
+      status: response.status,
+      queryData: response.queryData,
+      infoData: response.infoData,
+      onlinePlayers: response.onlinePlayers,
+      lastChecked: new Date(response.lastChecked),
+      errorMessage: response.errorMessage,
+    };
+  }, [adapter]);
 
   const refreshAll = useCallback(async () => {
     if (servers.length === 0) return;
@@ -84,7 +58,7 @@ export function useServerStatus(servers: ServerConfig[]) {
       });
       return next;
     });
-  }, [servers]);
+  }, [fetchServerFull, servers]);
 
   const refreshOne = useCallback(async (serverId: string) => {
     const server = servers.find(s => s.id === serverId);
@@ -100,7 +74,7 @@ export function useServerStatus(servers: ServerConfig[]) {
       ...prev,
       [serverId]: { ...server, ...result } as ServerWithStatus,
     }));
-  }, [servers]);
+  }, [fetchServerFull, servers]);
 
   useEffect(() => {
     refreshAll();

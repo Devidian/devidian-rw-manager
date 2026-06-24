@@ -123,6 +123,17 @@ export async function deleteSelf(
   });
 }
 
+export async function generateApiToken(
+  baseUrl: string,
+  token: string,
+): Promise<{ apiToken: string }> {
+  return authFetch(`${baseUrl}/api/auth/api-token`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: '{}',
+  });
+}
+
 export async function steamCallback(
   baseUrl: string,
   openIdParams: Record<string, string>,

@@ -28,6 +28,7 @@ const adapter: StorageAdapter = {
   getPinnedServers: vi.fn(async () => state.localPins),
   pinServer: vi.fn(),
   unpinServer: vi.fn(),
+  getServerLiveStatus: vi.fn(),
 };
 
 vi.mock('@/context/StorageModeContext', () => ({

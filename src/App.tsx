@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
-import { AddServerDialog } from '@/components/AddServerDialog';
 import { ServerProvider, useServerContext } from '@/context/ServerContext';
 import { StorageModeProvider, useStorageMode } from '@/context/StorageModeContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -57,21 +56,13 @@ function SessionExpiredDialog() {
 }
 
 function Layout() {
-  const [addOpen, setAddOpen] = useState(false);
-  const { pinnedServerList, addServer } = useServerContext();
-  const { mode, fixedBackendUrl } = useStorageMode();
-  const { isAdmin } = useAuth();
-
-  const canAddServer = isAdmin;
+  const { pinnedServerList } = useServerContext();
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar
           servers={pinnedServerList}
-          onAddServer={canAddServer ? () => setAddOpen(true) : undefined}
-          storageMode={mode}
-          backendUrl={fixedBackendUrl}
         />
 
         <div className="flex flex-col flex-1 min-w-0">
@@ -94,15 +85,6 @@ function Layout() {
           </main>
         </div>
       </div>
-
-      {canAddServer && (
-        <AddServerDialog
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          onAdd={addServer}
-          isBackendMode
-        />
-      )}
 
       <LocalPinSyncDialog />
       <SessionExpiredDialog />
