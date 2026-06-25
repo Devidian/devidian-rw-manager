@@ -55,6 +55,7 @@ describe('server detail mapping tabs', () => {
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'overview',
       'players',
+      'statistics',
       'map',
       'plugins',
       'configuration',

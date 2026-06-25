@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ServerWithStatus, DbPlayer, ServerPlayerListPlayer, ServerConfig } from '@/types/server';
+import { ServerWithStatus, DbPlayer, ServerPlayerListPlayer, ServerConfig, ServerStatisticsBucket } from '@/types/server';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import {
   Search, Loader2, WifiOff, HardDrive, Globe, Shield,
   Clock, Monitor, Sword, Heart, Star, ExternalLink, Settings, Pencil,
   ArrowUp, ArrowDown,
-  Map, Plug,
+  Map, Plug, BarChart3,
 } from 'lucide-react';
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
 import { useServerConfig } from '@/hooks/useServerConfig';
@@ -37,6 +37,16 @@ import {
 import { useAdminMapping } from '@/hooks/useAdminMapping';
 import { AdminMapTab } from '@/components/AdminMapTab';
 import { PluginsTab } from '@/components/PluginsTab';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 interface ServerDetailProps {
   server: ServerWithStatus | undefined;
@@ -507,12 +517,234 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
   );
 }
 
+type StatisticsView = 'day' | 'week' | 'month' | 'weekday';
+
+interface StatisticsPoint {
+  label: string;
+  averagePlayers: number;
+  maxPlayers: number;
+  availability: number;
+  samples: number;
+}
+
+function startOfLocalDay(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+function isoDate(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+function addDays(value: Date, days: number): Date {
+  const next = new Date(value);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function addMonths(value: Date, months: number): Date {
+  const next = new Date(value);
+  next.setMonth(next.getMonth() + months);
+  return next;
+}
+
+function aggregateBucketGroup(label: string, buckets: ServerStatisticsBucket[]): StatisticsPoint {
+  const samples = buckets.reduce((sum, bucket) => sum + bucket.sampleCount, 0);
+  const playerTotal = buckets.reduce((sum, bucket) => sum + bucket.playerSampleTotal, 0);
+  const onlineSamples = buckets.reduce((sum, bucket) => sum + bucket.onlineSampleCount, 0);
+  return {
+    label,
+    averagePlayers: samples > 0 ? Number((playerTotal / samples).toFixed(1)) : 0,
+    maxPlayers: buckets.reduce((max, bucket) => Math.max(max, bucket.maxPlayers), 0),
+    availability: samples > 0 ? Number(((onlineSamples / samples) * 100).toFixed(1)) : 0,
+    samples,
+  };
+}
+
+function buildStatisticsPoints(
+  buckets: ServerStatisticsBucket[],
+  view: StatisticsView,
+  dateValue: string,
+  locale: string,
+): StatisticsPoint[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+  if (view === 'weekday') {
+    return Array.from({ length: 7 }, (_, index) => {
+      const dayBuckets = buckets.filter((bucket) => new Date(bucket.hourStart).getDay() === index);
+      const label = formatter.format(addDays(new Date('2026-06-21T00:00:00.000Z'), index));
+      return aggregateBucketGroup(label, dayBuckets);
+    });
+  }
+
+  const start = startOfLocalDay(dateValue);
+  const hours = view === 'day' ? 24 : view === 'week' ? 24 * 7 : 24 * 31;
+  const end = view === 'month' ? addMonths(start, 1) : addDays(start, hours / 24);
+  const grouped = new Map<string, ServerStatisticsBucket[]>();
+
+  for (const bucket of buckets) {
+    const date = new Date(bucket.hourStart);
+    if (date < start || date >= end) continue;
+    const key = view === 'day'
+      ? date.getHours().toString().padStart(2, '0') + ':00'
+      : isoDate(date);
+    grouped.set(key, [...(grouped.get(key) ?? []), bucket]);
+  }
+
+  if (view === 'day') {
+    return Array.from({ length: 24 }, (_, hour) => {
+      const label = hour.toString().padStart(2, '0') + ':00';
+      return aggregateBucketGroup(label, grouped.get(label) ?? []);
+    });
+  }
+
+  const days = view === 'week' ? 7 : Math.ceil((end.getTime() - start.getTime()) / 86400000);
+  return Array.from({ length: days }, (_, index) => {
+    const date = addDays(start, index);
+    const label = isoDate(date);
+    return aggregateBucketGroup(label, grouped.get(label) ?? []);
+  });
+}
+
+function statisticsRange(view: StatisticsView, dateValue: string): { from?: string; to?: string } {
+  if (view === 'weekday') return {};
+  const from = startOfLocalDay(dateValue);
+  const to = view === 'day'
+    ? addDays(from, 1)
+    : view === 'week'
+      ? addDays(from, 7)
+      : addMonths(from, 1);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+function ServerStatisticsTab({ server }: { server: ServerConfig }) {
+  const { t, i18n } = useTranslation();
+  const { adapter } = useStorageMode();
+  const [view, setView] = useState<StatisticsView>('day');
+  const [dateValue, setDateValue] = useState(() => isoDate(new Date()));
+  const [buckets, setBuckets] = useState<ServerStatisticsBucket[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    adapter.getServerStatistics(server, statisticsRange(view, dateValue))
+      .then((payload) => {
+        if (!cancelled) setBuckets(payload.buckets);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'UNKNOWN_ERROR');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [adapter, dateValue, server, view]);
+
+  const points = useMemo(
+    () => buildStatisticsPoints(buckets, view, dateValue, i18n.language || 'en'),
+    [buckets, dateValue, i18n.language, view],
+  );
+  const hasData = points.some((point) => point.samples > 0);
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader className="pb-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            {t('statistics')}
+          </CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={view} onValueChange={(value) => setView(value as StatisticsView)}>
+              <SelectTrigger className="h-8 w-40 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day">{t('statisticsDay')}</SelectItem>
+                <SelectItem value="week">{t('statisticsWeek')}</SelectItem>
+                <SelectItem value="month">{t('statisticsMonth')}</SelectItem>
+                <SelectItem value="weekday">{t('statisticsWeekday')}</SelectItem>
+              </SelectContent>
+            </Select>
+            {view !== 'weekday' && (
+              <Input
+                type="date"
+                value={dateValue}
+                onChange={(event) => setDateValue(event.target.value)}
+                className="h-8 w-36 text-xs"
+              />
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading && (
+          <div className="flex items-center gap-2 text-muted-foreground text-sm py-6">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t('loadingStatistics')}
+          </div>
+        )}
+        {error && (
+          <div className="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            {t('backendError')}: {error}
+          </div>
+        )}
+        {!loading && !error && !hasData && (
+          <div className="text-center py-12 text-muted-foreground">
+            <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">{t('noStatistics')}</p>
+          </div>
+        )}
+        {!loading && !error && hasData && (
+          <div className="space-y-5">
+            <ChartContainer
+              config={{
+                averagePlayers: { label: t('averagePlayers'), color: 'hsl(var(--primary))' },
+                maxPlayers: { label: t('maxPlayers'), color: 'hsl(var(--muted-foreground))' },
+              }}
+              className="h-72 w-full"
+            >
+              <BarChart data={points}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
+                <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="averagePlayers" fill="var(--color-averagePlayers)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="maxPlayers" fill="var(--color-maxPlayers)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+            <ChartContainer
+              config={{
+                availability: { label: t('availability'), color: 'hsl(120 55% 45%)' },
+              }}
+              className="h-48 w-full"
+            >
+              <LineChart data={points}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
+                <YAxis tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line type="monotone" dataKey="availability" stroke="var(--color-availability)" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ChartContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { updateServer } = useServerContext();
   const { mode } = useStorageMode();
   const { isAdmin, isAuthenticated } = useAuth();
+  const [activeTab, setActiveTab] = useState('overview');
   const canEdit = false;
   const showPublicFlag = mode === 'fixed' || mode === 'backend';
   const [editOpen, setEditOpen] = useState(false);
@@ -623,7 +855,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
         ))}
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-muted/30 border border-border">
           <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-muted">
             <Globe className="h-4 w-4" />
@@ -635,6 +867,10 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
             {playercount > 0 && (
               <Badge variant="secondary" className="h-5 px-1.5 text-xs">{playercount}</Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="statistics" className="gap-2 data-[state=active]:bg-muted">
+            <BarChart3 className="h-4 w-4" />
+            {t('statistics')}
           </TabsTrigger>
           {hasBackend && adminMapping.map.available && (
             <TabsTrigger value="admin-map" className="gap-2 data-[state=active]:bg-muted">
@@ -714,6 +950,10 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
 
         <TabsContent value="players" className="mt-4">
           <PlayersTab server={server} />
+        </TabsContent>
+
+        <TabsContent value="statistics" className="mt-4">
+          {activeTab === 'statistics' && <ServerStatisticsTab server={server} />}
         </TabsContent>
 
         {hasBackend && adminMapping.map.available && (

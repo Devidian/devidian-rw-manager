@@ -170,3 +170,23 @@ export interface ServerLiveStatusPayload {
   lastChecked: string;
   errorMessage?: string;
 }
+
+export interface ServerStatisticsBucket {
+  id: string;
+  serverId: string;
+  hourStart: string;
+  sampleCount: number;
+  onlineSampleCount: number;
+  playerSampleTotal: number;
+  maxPlayers: number;
+  averagePlayers: number;
+  availability: number;
+  updatedAt: string;
+}
+
+export interface ServerStatisticsPayload {
+  serverId: string;
+  from?: string;
+  to?: string;
+  buckets: ServerStatisticsBucket[];
+}

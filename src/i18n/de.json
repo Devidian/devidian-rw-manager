@@ -253,5 +253,15 @@
   "page": "Seite",
   "of": "von",
   "all": "Alle",
+  "statistics": "Statistiken",
+  "statisticsDay": "Tag",
+  "statisticsWeek": "Woche",
+  "statisticsMonth": "Monat",
+  "statisticsWeekday": "Wochentage",
+  "loadingStatistics": "Statistiken werden geladen",
+  "noStatistics": "Noch keine Statistiken verfügbar",
+  "averagePlayers": "Spieler im Schnitt",
+  "maxPlayers": "Max. Spieler",
+  "availability": "Verfügbarkeit",
   "configRequiresAuth": "Anmeldung erforderlich"
 }

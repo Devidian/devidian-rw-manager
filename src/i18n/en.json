@@ -253,5 +253,15 @@
   "page": "Page",
   "of": "of",
   "all": "All",
+  "statistics": "Statistics",
+  "statisticsDay": "Day",
+  "statisticsWeek": "Week",
+  "statisticsMonth": "Month",
+  "statisticsWeekday": "Weekdays",
+  "loadingStatistics": "Loading statistics",
+  "noStatistics": "No statistics available yet",
+  "averagePlayers": "Average players",
+  "maxPlayers": "Max players",
+  "availability": "Availability",
   "configRequiresAuth": "Authentication required"
 }

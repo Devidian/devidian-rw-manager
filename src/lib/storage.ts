@@ -1,4 +1,4 @@
-import { AuthUser, ServerConfig, ServerLiveStatusPayload } from '@/types/server';
+import { AuthUser, ServerConfig, ServerLiveStatusPayload, ServerStatisticsPayload } from '@/types/server';
 import { authHeaders, TOKEN_KEY } from './authApi';
 
 const LOCAL_STORAGE_KEY = 'risingworld_servers';
@@ -36,6 +36,7 @@ export interface StorageAdapter {
   pinServer(id: string): Promise<AuthUser | null>;
   unpinServer(id: string): Promise<AuthUser | null>;
   getServerLiveStatus(server: ServerConfig): Promise<ServerLiveStatusPayload>;
+  getServerStatistics(server: ServerConfig, range?: { from?: string; to?: string }): Promise<ServerStatisticsPayload>;
 }
 
 // ─── Local Storage Adapter ───────────────────────────────────────────────────
@@ -117,6 +118,13 @@ export class LocalStorageAdapter implements StorageAdapter {
       onlinePlayers: playerlistResult.ok ? playersFromPayload(playerlistResult.data) : undefined,
       lastChecked: new Date().toISOString(),
       errorMessage: queryResult.ok ? undefined : queryResult.error,
+    };
+  }
+
+  async getServerStatistics(server: ServerConfig): Promise<ServerStatisticsPayload> {
+    return {
+      serverId: server.id,
+      buckets: [],
     };
   }
 }
@@ -225,6 +233,19 @@ export class BackendStorageAdapter implements StorageAdapter {
     });
     if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
     return res.json() as Promise<ServerLiveStatusPayload>;
+  }
+
+  async getServerStatistics(server: ServerConfig, range: { from?: string; to?: string } = {}): Promise<ServerStatisticsPayload> {
+    const params = new URLSearchParams();
+    if (range.from) params.set('from', range.from);
+    if (range.to) params.set('to', range.to);
+    const query = params.toString();
+    const res = await fetch(`${this.base}/api/storage/server/${server.id}/statistics${query ? `?${query}` : ''}`, {
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
+    return res.json() as Promise<ServerStatisticsPayload>;
   }
 }
 

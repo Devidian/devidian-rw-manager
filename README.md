@@ -60,6 +60,10 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+Server detail pages include a lazy-loaded statistics tab when a manager backend
+is configured. The tab reads `/api/storage/server/:id/statistics` and renders
+hourly, weekly, monthly, and accumulated weekday availability/player charts.
+
 ## Runtime configuration
 
 Optional deployment variables:
