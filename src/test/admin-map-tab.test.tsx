@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { useEffect } from 'react';
 import { vi } from 'vitest';
@@ -29,6 +29,7 @@ vi.mock('react-leaflet', () => ({
   useMap: () => ({
     addLayer: vi.fn(),
     removeLayer: vi.fn(),
+    invalidateSize: vi.fn(),
   }),
   useMapEvents: () => ({
     getBounds: vi.fn(),
@@ -97,6 +98,21 @@ describe('AdminMapTab', () => {
 
     expect(mapContainerProps.mounts).toBe(2);
     expect(mapContainerProps.unmounts).toBe(1);
+  });
+
+  it('keeps layer selectors visible when the map enters fullscreen mode', () => {
+    render(
+      <AdminMapTab
+        backendUrl="https://backend.example.com"
+        metadata={metadata('world-a', 'World A')}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /mapFullscreen/i }));
+
+    expect(screen.getByRole('button', { name: /mapExitFullscreen/i })).toBeInTheDocument();
+    expect(screen.getByText('mapLayerSectors')).toBeInTheDocument();
+    expect(screen.getByText('mapLayerOnlinePlayers')).toBeInTheDocument();
   });
 });
 

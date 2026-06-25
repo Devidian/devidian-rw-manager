@@ -44,6 +44,8 @@
   "mapLayerLongTermPlayers": "Länger offline",
   "mapLayerGpsGlobalMarkers": "Globale GPS-Marker",
   "mapLayerError": "Layer-Daten konnten nicht geladen werden.",
+  "mapFullscreen": "Vollbild",
+  "mapExitFullscreen": "Vollbild schließen",
   "mapClaimOwner": "Besitzer",
   "mapClaimCreated": "Erstellt",
   "mapClaimForSale": "Zum Verkauf",

@@ -32,6 +32,7 @@ export default function GlobalIntercomChatPage() {
   const socketRef = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const guestIdRef = useRef(`web-${Math.random().toString(36).slice(2)}`);
+  const pendingEchoKeysRef = useRef(new Set<string>());
   const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
   const [messages, setMessages] = useState<ChatEntry[]>([]);
   const [draft, setDraft] = useState('');
@@ -58,6 +59,8 @@ export default function GlobalIntercomChatPage() {
     socket.addEventListener('message', (event) => {
       const entry = parseChatEntry(event.data, 'incoming');
       if (!entry || entry.chatChannel !== GLOBAL_INTERCOM_CHANNEL) return;
+      const echoKey = messageEchoKey(entry);
+      if (entry.playerUID === playerUID && pendingEchoKeysRef.current.delete(echoKey)) return;
       setMessages(current => [...current, entry]);
     });
 
@@ -95,6 +98,7 @@ export default function GlobalIntercomChatPage() {
     };
 
     socketRef.current.send(JSON.stringify(envelope));
+    pendingEchoKeysRef.current.add(messageEchoKey(message));
     setMessages(current => [...current, toChatEntry(message, 'outgoing')]);
     setDraft('');
   };
@@ -204,6 +208,10 @@ function toChatEntry(message: GlobalIntercomChatMessage, direction: ChatEntry['d
     id: `${direction}-${message.createdOn}-${message.playerUID}-${Math.random().toString(36).slice(2)}`,
     direction,
   };
+}
+
+function messageEchoKey(message: Pick<GlobalIntercomChatMessage, 'createdOn' | 'chatChannel' | 'chatContent' | 'playerUID'>): string {
+  return `${message.createdOn}|${message.chatChannel}|${message.playerUID}|${message.chatContent}`;
 }
 
 function sendPlayerState(socket: WebSocket, playerName: string, playerUID: string): void {

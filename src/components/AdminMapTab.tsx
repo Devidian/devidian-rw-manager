@@ -1,4 +1,8 @@
 import {
+  Maximize2,
+  Minimize2,
+} from 'lucide-react';
+import {
   CRS,
   DivIcon,
   TileLayer,
@@ -26,7 +30,9 @@ import {
 } from '@/lib/mapCoordinates';
 import { useTranslation } from 'react-i18next';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import { fetchMarketplaceOffers, useMapLayers } from '@/hooks/useMapLayers';
+import { cn } from '@/lib/utils';
 
 interface LayerVisibility {
   sectors: boolean;
@@ -62,6 +68,7 @@ export function AdminMapTab({
     longTerm: false,
     gpsGlobalMarkers: false,
   });
+  const [fullscreen, setFullscreen] = useState(false);
   const bounds = metadata.generatedTileBounds;
   const mapBounds = latLngBounds(
     [bounds.minZ, bounds.minX],
@@ -83,8 +90,23 @@ export function AdminMapTab({
   }, [mapIdentity]);
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">{t('mapCaptureHint')}</p>
+    <div className={cn(
+      'space-y-3',
+      fullscreen && 'fixed inset-0 z-50 flex flex-col space-y-3 bg-background p-4',
+    )}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">{t('mapCaptureHint')}</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => setFullscreen((value) => !value)}
+        >
+          {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          {fullscreen ? t('mapExitFullscreen') : t('mapFullscreen')}
+        </Button>
+      </div>
       <div className="flex flex-wrap gap-x-5 gap-y-2 rounded-md border border-border bg-muted/20 px-3 py-2 text-sm">
         <LayerToggle label={t('mapLayerSectors')} checked={visible.sectors}
           onChange={(checked) => setVisible((value) => ({ ...value, sectors: checked }))} />
@@ -111,7 +133,7 @@ export function AdminMapTab({
           }))} />
         {error && <span className="text-destructive">{t('mapLayerError')}</span>}
       </div>
-      <div className="overflow-hidden rounded-lg border border-border">
+      <div className={cn('overflow-hidden rounded-lg border border-border', fullscreen && 'min-h-0 flex-1')}>
         <MapContainer
           key={mapIdentity}
           crs={CRS.Simple}
@@ -119,8 +141,9 @@ export function AdminMapTab({
           minZoom={metadata.minZoom}
           maxZoom={metadata.nativeZoom}
           zoom={metadata.nativeZoom}
-          className="h-[65vh] min-h-[420px] w-full bg-muted"
+          className={cn('h-[65vh] min-h-[420px] w-full bg-muted', fullscreen && 'h-full min-h-0')}
         >
+          <InvalidateMapSize active={fullscreen} />
           <SignedZTileLayer
             url={tileUrl}
             tileSize={metadata.tileSize}
@@ -155,6 +178,14 @@ export function AdminMapTab({
       </div>
     </div>
   );
+}
+
+function InvalidateMapSize({ active }: { active: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    window.setTimeout(() => map.invalidateSize(), 0);
+  }, [active, map]);
+  return null;
 }
 
 function GpsGlobalMarkerLayer({

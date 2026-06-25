@@ -44,6 +44,8 @@
   "mapLayerLongTermPlayers": "Long-term offline",
   "mapLayerGpsGlobalMarkers": "Global GPS markers",
   "mapLayerError": "Layer data could not be loaded.",
+  "mapFullscreen": "Fullscreen",
+  "mapExitFullscreen": "Exit fullscreen",
   "mapClaimOwner": "Owner",
   "mapClaimCreated": "Created",
   "mapClaimForSale": "For sale",

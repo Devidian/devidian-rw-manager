@@ -41,6 +41,10 @@ class MockWebSocket extends EventTarget {
     this.readyState = 1;
     this.dispatchEvent(new Event('open'));
   }
+
+  receive(data: unknown) {
+    this.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(data) }));
+  }
 }
 
 const { default: GlobalIntercomChatPage } = await import('@/pages/GlobalIntercomChatPage');
@@ -101,6 +105,28 @@ describe('global intercom chat page', () => {
         playerUID: '7656',
       },
     });
+  });
+
+  it('ignores the relay echo for messages sent by the current user', async () => {
+    state.user = {
+      id: 'user-1',
+      username: 'Maik',
+      steamId: '7656',
+      role: 'user',
+      pinnedServers: [],
+    };
+
+    renderPage();
+    act(() => MockWebSocket.instances[0].open());
+
+    fireEvent.change(screen.getByLabelText('globalIntercomMessage'), { target: { value: 'Hello global' } });
+    fireEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    await waitFor(() => expect(MockWebSocket.instances[0].sent).toHaveLength(3));
+    const sent = JSON.parse(MockWebSocket.instances[0].sent[2]);
+    act(() => MockWebSocket.instances[0].receive(sent));
+
+    expect(screen.getAllByText('Hello global')).toHaveLength(1);
   });
 });
 
