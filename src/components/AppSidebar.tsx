@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/sidebar';
 import { ServerWithStatus } from '@/types/server';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, Server, Loader2, LogOut, LogIn, User, Users, List } from 'lucide-react';
+import { LayoutDashboard, Server, Loader2, LogOut, LogIn, User, Users, List, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RichText } from '@/components/RichText';
@@ -21,6 +21,13 @@ function StatusIcon({ status }: { status: ServerWithStatus['status'] }) {
   if (status === 'offline') return <span className="h-2 w-2 rounded-full status-dot-offline shrink-0" />;
   if (status === 'loading') return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />;
   return <span className="h-2 w-2 rounded-full status-dot-unknown shrink-0" />;
+}
+
+function getPlayerCount(server: ServerWithStatus): { current: number | string; max: number | string } {
+  return {
+    current: server.queryData?.playercount ?? server.onlinePlayers?.length ?? 0,
+    max: server.queryData?.maxplayers ?? '?',
+  };
 }
 
 function LanguageToggle() {
@@ -92,6 +99,18 @@ export function AppSidebar({ servers }: AppSidebarProps) {
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/global-intercom"
+                    className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                    activeClassName="bg-sidebar-accent text-primary font-medium"
+                  >
+                    <MessageSquare className="h-4 w-4 shrink-0" />
+                    <span>{t('globalIntercomChat')}</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               {isSuperAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
@@ -117,22 +136,28 @@ export function AppSidebar({ servers }: AppSidebarProps) {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {servers.map(server => (
-                  <SidebarMenuItem key={server.id}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={`/server/${server.id}`}
-                        className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                        activeClassName="bg-sidebar-accent text-primary font-medium"
-                      >
-                        <StatusIcon status={server.status} />
-                        <span className="truncate text-sm">
-                          <RichText text={server.label} />
-                        </span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {servers.map(server => {
+                  const players = getPlayerCount(server);
+                  return (
+                    <SidebarMenuItem key={server.id}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={`/server/${server.id}`}
+                          className="flex min-w-0 items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                          activeClassName="bg-sidebar-accent text-primary font-medium"
+                        >
+                          <StatusIcon status={server.status} />
+                          <span className="min-w-0 flex-1 truncate text-sm">
+                            <RichText text={server.label} />
+                          </span>
+                          <span className="shrink-0 rounded border border-sidebar-border bg-sidebar-accent/40 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                            {players.current}/{players.max}
+                          </span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
