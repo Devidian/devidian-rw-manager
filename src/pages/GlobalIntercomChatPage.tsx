@@ -166,6 +166,13 @@ export default function GlobalIntercomChatPage() {
                       <RichText text={message.sourceName} />
                     </div>
                     <p className="whitespace-pre-wrap break-words text-sm text-foreground">{message.chatContent}</p>
+                    {message.attachment && (
+                      <img
+                        src={`data:image/jpeg;base64,${message.attachment}`}
+                        alt=""
+                        className="mt-2 max-h-80 rounded border border-border object-contain"
+                      />
+                    )}
                   </div>
                 </div>
               ))}

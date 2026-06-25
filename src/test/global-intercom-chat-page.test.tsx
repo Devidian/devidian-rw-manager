@@ -151,6 +151,31 @@ describe('global intercom chat page', () => {
     const source = await screen.findByText('GS1');
     expect(source).toHaveStyle({ color: '#ff8800' });
   });
+
+  it('renders screenshot attachments from relay messages', async () => {
+    renderPage();
+    act(() => MockWebSocket.instances[0].open());
+
+    act(() => MockWebSocket.instances[0].receive({
+      event: 'broadcastMessage',
+      payload: {
+        createdOn: '2026-06-25T09:00:00.000Z',
+        chatVersion: 2,
+        chatContent: 'look here 🖼️',
+        chatChannel: 'global',
+        playerName: 'Alice',
+        playerUID: 'alice-uid',
+        sourceName: 'GS1',
+        sourceIP: '127.0.0.1',
+        sourceVersion: '1.0.0',
+        attachment: '/9j/4AAQSkZJRgABAQAAAQABAAD',
+      },
+    }));
+
+    await screen.findByText('look here 🖼️');
+    const image = document.querySelector('img[src^="data:image/jpeg;base64,"]');
+    expect(image).toHaveAttribute('src', 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD');
+  });
 });
 
 function renderPage() {
