@@ -48,7 +48,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
 
   const serverList: ServerWithStatus[] = servers.map(s => {
     const status = statusMap[s.id];
-    return status ? { ...status, ...s, status: status.status } : { ...s, status: 'unknown' as const };
+    return status ? { ...s, ...status, status: status.status } : { ...s, status: s.status ?? 'unknown' as const };
   });
   const pinnedServerList = serverList.filter(server => pinnedIds.has(server.id));
   const dashboardServerList = serverList.filter(server =>

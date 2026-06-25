@@ -123,7 +123,7 @@ export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTo
             <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
               <Clock className="h-3.5 w-3.5 shrink-0" />
               <span className="text-xs">
-                {formatDistanceToNow(server.lastChecked, { addSuffix: true, locale: dateLocale })}
+                {formatDistanceToNow(new Date(server.lastChecked), { addSuffix: true, locale: dateLocale })}
               </span>
             </div>
           )}

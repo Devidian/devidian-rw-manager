@@ -38,7 +38,7 @@ export function useServerStatus(
     setStatusMap(prev => {
       const next = { ...prev };
       autoRefreshServers.forEach(s => {
-        next[s.id] = { ...s, status: 'loading', ...(prev[s.id] ?? {}) };
+        next[s.id] = { ...s, ...(prev[s.id] ?? {}), status: 'loading' };
       });
       return next;
     });
@@ -70,7 +70,7 @@ export function useServerStatus(
 
     setStatusMap(prev => ({
       ...prev,
-      [serverId]: { ...server, status: 'loading', ...(prev[serverId] ?? {}) },
+      [serverId]: { ...server, ...(prev[serverId] ?? {}), status: 'loading' },
     }));
 
     const result = await fetchServerFull(server);

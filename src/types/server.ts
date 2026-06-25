@@ -18,6 +18,12 @@ export interface ServerConfig {
   backendUrl?: string;
   data?: unknown;
   info?: unknown;
+  status?: ServerStatus;
+  queryData?: RisingWorldQueryData;
+  infoData?: ServerInfoResponse;
+  onlinePlayers?: ServerPlayerListPlayer[];
+  lastChecked?: string;
+  errorMessage?: string;
   firstSeen?: string;
   lastSeen?: string;
   queryDataUpdatedAt?: string;
@@ -152,7 +158,7 @@ export interface ServerWithStatus extends ServerConfig {
   queryData?: RisingWorldQueryData;
   infoData?: ServerInfoResponse;
   onlinePlayers?: ServerPlayerListPlayer[];
-  lastChecked?: Date;
+  lastChecked?: Date | string;
   errorMessage?: string;
 }
 

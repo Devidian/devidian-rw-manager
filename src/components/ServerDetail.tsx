@@ -29,7 +29,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { de as deFns } from 'date-fns/locale';
 import { enUS } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { RichText } from '@/components/RichText';
+import { hasRichTextTags, RichText } from '@/components/RichText';
 import { EditServerDialog } from '@/components/EditServerDialog';
 import {
   Tooltip, TooltipContent, TooltipTrigger,
@@ -103,8 +103,15 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
       </div>
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
-        {display.includes('\n')?<pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono mt-1">{display}</pre>:
-        <p className="text-sm text-foreground font-medium mt-0.5">{display.includes('<color')?<RichText text={display} />:display}</p>}
+        {display.includes('\n') ? (
+          hasRichTextTags(display) ? (
+            <RichText text={display} className="text-sm text-muted-foreground whitespace-pre-wrap font-mono mt-1 block" />
+          ) : (
+            <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono mt-1">{display}</pre>
+          )
+        ) : (
+          <p className="text-sm text-foreground font-medium mt-0.5">{hasRichTextTags(display) ? <RichText text={display} /> : display}</p>
+        )}
       </div>
     </div>
   );
@@ -212,7 +219,7 @@ function ConfigTab({ backendUrl }: { backendUrl: string }) {
                       const shortKey = key.replace(`${group}_`, '');
                       const isSensitive = val === '***';
                       const isBool = val === 'True' || val === 'False';
-                      const isRichText = typeof val === 'string' && (val.includes('<color'));
+                      const isRichText = typeof val === 'string' && hasRichTextTags(val);
                       const strVal = String(val);
 
                       return (
