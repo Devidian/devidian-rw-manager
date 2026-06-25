@@ -23,6 +23,7 @@ const replacements = {
   fixedBackendUrl: env.FIXED_BACKEND_URL || "",
   fixedBackendAdminId: env.FIXED_BACKEND_ADMIN || "",
   steamApiKey: env.STEAM_API_KEY || "",
+  globalIntercomWsUrl: env.GLOBAL_INTERCOM_WS_URL || "",
 };
 
 const applyReplacements = (text) => {
@@ -44,6 +45,12 @@ const applyReplacements = (text) => {
     .replace(
       /VITE_STEAM_API_KEY_PLACEHOLDER/g,
       replacements.steamApiKey ? `${replacements.steamApiKey}` : "",
+    )
+    .replace(
+      /VITE_GLOBAL_INTERCOM_WS_URL_PLACEHOLDER/g,
+      replacements.globalIntercomWsUrl
+        ? `${replacements.globalIntercomWsUrl}`
+        : "",
     );
 };
 
