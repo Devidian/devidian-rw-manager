@@ -128,6 +128,29 @@ describe('global intercom chat page', () => {
 
     expect(screen.getAllByText('Hello global')).toHaveLength(1);
   });
+
+  it('renders rich text colors in the message source', async () => {
+    renderPage();
+    act(() => MockWebSocket.instances[0].open());
+
+    act(() => MockWebSocket.instances[0].receive({
+      event: 'broadcastMessage',
+      payload: {
+        createdOn: '2026-06-25T09:00:00.000Z',
+        chatVersion: 2,
+        chatContent: 'Hello from server',
+        chatChannel: 'global',
+        playerName: 'Alice',
+        playerUID: 'alice-uid',
+        sourceName: '<color=#ff8800>GS1</color>',
+        sourceIP: '127.0.0.1',
+        sourceVersion: '1.0.0',
+      },
+    }));
+
+    const source = await screen.findByText('GS1');
+    expect(source).toHaveStyle({ color: '#ff8800' });
+  });
 });
 
 function renderPage() {

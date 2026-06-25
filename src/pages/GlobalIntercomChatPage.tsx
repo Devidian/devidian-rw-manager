@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RichText } from '@/components/RichText';
 import { useAuth } from '@/context/AuthContext';
 import {
   createGlobalIntercomMessage,
@@ -162,7 +163,7 @@ export default function GlobalIntercomChatPage() {
                     <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                       <span className="font-medium text-foreground">{message.playerName}</span>
                       <span>{formatTime(message.createdOn)}</span>
-                      <span>{message.sourceName}</span>
+                      <RichText text={message.sourceName} />
                     </div>
                     <p className="whitespace-pre-wrap break-words text-sm text-foreground">{message.chatContent}</p>
                   </div>
