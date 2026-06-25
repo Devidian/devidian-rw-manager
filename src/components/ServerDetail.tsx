@@ -17,7 +17,7 @@ import {
   Search, Loader2, WifiOff, HardDrive, Globe, Shield,
   Clock, Monitor, Sword, Heart, Star, ExternalLink, Settings, Pencil,
   ArrowUp, ArrowDown,
-  Map, Plug, BarChart3,
+  Map as MapIcon, Plug, BarChart3,
 } from 'lucide-react';
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
 import { useServerConfig } from '@/hooks/useServerConfig';
@@ -874,7 +874,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           </TabsTrigger>
           {hasBackend && adminMapping.map.available && (
             <TabsTrigger value="admin-map" className="gap-2 data-[state=active]:bg-muted">
-              <Map className="h-4 w-4" />
+              <MapIcon className="h-4 w-4" />
               {t('map')}
             </TabsTrigger>
           )}

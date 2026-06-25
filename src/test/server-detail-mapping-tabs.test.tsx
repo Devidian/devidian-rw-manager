@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServerWithStatus } from '@/types/server';
 
 const state = vi.hoisted(() => ({
   mapAvailable: true,
+  getServerStatistics: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -16,7 +17,7 @@ vi.mock('@/context/ServerContext', () => ({
   useServerContext: () => ({ updateServer: vi.fn() }),
 }));
 vi.mock('@/context/StorageModeContext', () => ({
-  useStorageMode: () => ({ mode: 'fixed' }),
+  useStorageMode: () => ({ mode: 'fixed', adapter: { getServerStatistics: state.getServerStatistics } }),
 }));
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({ isAdmin: false, isAuthenticated: true }),
@@ -47,6 +48,23 @@ const { ServerDetail } = await import('@/components/ServerDetail');
 describe('server detail mapping tabs', () => {
   beforeEach(() => {
     state.mapAvailable = true;
+    state.getServerStatistics.mockResolvedValue({
+      serverId: 'server-1',
+      buckets: [
+        {
+          id: 'bucket-1',
+          serverId: 'server-1',
+          hourStart: '2026-06-25T10:00:00.000Z',
+          sampleCount: 2,
+          onlineSampleCount: 2,
+          playerSampleTotal: 6,
+          maxPlayers: 4,
+          averagePlayers: 3,
+          availability: 100,
+          updatedAt: '2026-06-25T10:30:00.000Z',
+        },
+      ],
+    });
   });
 
   it('orders players, available map, plugins, and configuration tabs', () => {
@@ -76,6 +94,14 @@ describe('server detail mapping tabs', () => {
 
     expect(screen.queryByRole('tab', { name: 'map' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'plugins' })).not.toBeInTheDocument();
+  });
+
+  it('opens the statistics tab without shadowing the Map constructor', async () => {
+    render(<ServerDetail server={server()} onRefresh={vi.fn()} />);
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'statistics' }), { button: 0, ctrlKey: false });
+
+    await waitFor(() => expect(state.getServerStatistics).toHaveBeenCalled());
   });
 });
 
