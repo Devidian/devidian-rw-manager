@@ -26,11 +26,13 @@ interface ChatEntry extends GlobalIntercomChatMessage {
 }
 
 const MAX_MESSAGE_LENGTH = 500;
+const RECONNECT_DELAY_MS = 3000;
 
 export default function GlobalIntercomChatPage() {
   const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
   const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const guestIdRef = useRef(`web-${Math.random().toString(36).slice(2)}`);
   const pendingEchoKeysRef = useRef(new Set<string>());
@@ -47,33 +49,69 @@ export default function GlobalIntercomChatPage() {
       return;
     }
 
-    setConnectionState('connecting');
-    const socket = new WebSocket(wsUrl);
-    socketRef.current = socket;
+    let active = true;
 
-    socket.addEventListener('open', () => {
-      setConnectionState('connected');
-      sendPlayerState(socket, displayName, playerUID);
-    });
-    socket.addEventListener('close', () => setConnectionState('disconnected'));
-    socket.addEventListener('error', () => setConnectionState('error'));
-    socket.addEventListener('message', (event) => {
-      const entry = parseChatEntry(event.data, 'incoming');
-      if (!entry || entry.chatChannel !== GLOBAL_INTERCOM_CHANNEL) return;
-      const echoKey = messageEchoKey(entry);
-      if (entry.playerUID === playerUID && pendingEchoKeysRef.current.delete(echoKey)) return;
-      setMessages(current => [...current, entry]);
-    });
+    const clearReconnectTimeout = () => {
+      if (reconnectTimeoutRef.current) {
+        window.clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (!active || reconnectTimeoutRef.current) return;
+      reconnectTimeoutRef.current = window.setTimeout(() => {
+        reconnectTimeoutRef.current = null;
+        connect();
+      }, RECONNECT_DELAY_MS);
+    };
+
+    const connect = () => {
+      if (!active) return;
+      setConnectionState('connecting');
+      const socket = new WebSocket(wsUrl);
+      socketRef.current = socket;
+
+      socket.addEventListener('open', () => {
+        if (!active || socketRef.current !== socket) return;
+        setConnectionState('connected');
+        sendPlayerState(socket, displayName, playerUID);
+      });
+      socket.addEventListener('close', () => {
+        if (!active || socketRef.current !== socket) return;
+        socketRef.current = null;
+        setConnectionState('disconnected');
+        scheduleReconnect();
+      });
+      socket.addEventListener('error', () => {
+        if (!active || socketRef.current !== socket) return;
+        setConnectionState('error');
+        scheduleReconnect();
+      });
+      socket.addEventListener('message', (event) => {
+        if (!active || socketRef.current !== socket) return;
+        const entry = parseChatEntry(event.data, 'incoming');
+        if (!entry || entry.chatChannel !== GLOBAL_INTERCOM_CHANNEL) return;
+        const echoKey = messageEchoKey(entry);
+        if (entry.playerUID === playerUID && pendingEchoKeysRef.current.delete(echoKey)) return;
+        setMessages(current => [...current, entry]);
+      });
+    };
+
+    connect();
 
     return () => {
+      active = false;
+      clearReconnectTimeout();
+      const socket = socketRef.current;
       socketRef.current = null;
-      if (socket.readyState === WebSocket.OPEN) {
+      if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           event: 'playerOffline',
           payload: { playerName: displayName, playerUID },
         }));
       }
-      socket.close();
+      socket?.close();
     };
   }, [displayName, playerUID, wsUrl]);
 

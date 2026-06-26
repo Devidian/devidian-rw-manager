@@ -37,6 +37,11 @@ class MockWebSocket extends EventTarget {
     this.readyState = 3;
   }
 
+  disconnect() {
+    this.readyState = 3;
+    this.dispatchEvent(new Event('close'));
+  }
+
   open() {
     this.readyState = 1;
     this.dispatchEvent(new Event('open'));
@@ -127,6 +132,44 @@ describe('global intercom chat page', () => {
     act(() => MockWebSocket.instances[0].receive(sent));
 
     expect(screen.getAllByText('Hello global')).toHaveLength(1);
+  });
+
+  it('reconnects after the relay socket closes and restores player state', () => {
+    vi.useFakeTimers();
+    state.user = {
+      id: 'user-1',
+      username: 'Maik',
+      steamId: '7656',
+      role: 'user',
+      pinnedServers: [],
+    };
+
+    try {
+      renderPage();
+      act(() => MockWebSocket.instances[0].open());
+
+      expect(MockWebSocket.instances[0].sent).toHaveLength(2);
+
+      act(() => MockWebSocket.instances[0].disconnect());
+      expect(screen.getByText('globalIntercomStatus.disconnected')).toBeInTheDocument();
+
+      act(() => vi.advanceTimersByTime(3000));
+
+      expect(MockWebSocket.instances).toHaveLength(2);
+      act(() => MockWebSocket.instances[1].open());
+
+      expect(MockWebSocket.instances[1].sent).toHaveLength(2);
+      expect(JSON.parse(MockWebSocket.instances[1].sent[0])).toMatchObject({
+        event: 'playerOnline',
+        payload: { playerName: 'Maik', playerUID: '7656' },
+      });
+      expect(JSON.parse(MockWebSocket.instances[1].sent[1])).toMatchObject({
+        event: 'playerJoinChannel',
+        payload: { playerName: 'Maik', playerUID: '7656', channel: 'global' },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('renders rich text colors in the message source', async () => {
