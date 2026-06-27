@@ -9,6 +9,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { ServerProvider, useServerContext } from '@/context/ServerContext';
 import { StorageModeProvider, useStorageMode } from '@/context/StorageModeContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { GlobalIntercomProvider } from '@/context/GlobalIntercomContext';
 import { checkBackend } from '@/lib/storage';
 import {
   AlertDialog, AlertDialogAction, AlertDialogContent,
@@ -60,37 +61,39 @@ function Layout() {
   const { pinnedServerList } = useServerContext();
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar
-          servers={pinnedServerList}
-        />
+    <GlobalIntercomProvider>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full">
+          <AppSidebar
+            servers={pinnedServerList}
+          />
 
-        <div className="flex flex-col flex-1 min-w-0">
-          <header className="h-12 flex items-center border-b border-border bg-card/50 backdrop-blur-sm px-4 shrink-0">
-            <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
-            <div className="ml-3 text-xs text-muted-foreground select-none">
-              RisingWorld Server Manager
-            </div>
-          </header>
+          <div className="flex flex-col flex-1 min-w-0">
+            <header className="h-12 flex items-center border-b border-border bg-card/50 backdrop-blur-sm px-4 shrink-0">
+              <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+              <div className="ml-3 text-xs text-muted-foreground select-none">
+                RisingWorld Server Manager
+              </div>
+            </header>
 
-          <main className="flex-1 p-6 overflow-auto">
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/serverliste" element={<ServerListPage />} />
-              <Route path="/global-intercom" element={<GlobalIntercomChatPage />} />
-              <Route path="/server/:id" element={<ServerDetailPage />} />
-              <Route path="/admin/users" element={<UserManagementPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </main>
+            <main className="flex-1 p-6 overflow-auto">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/serverliste" element={<ServerListPage />} />
+                <Route path="/global-intercom" element={<GlobalIntercomChatPage />} />
+                <Route path="/server/:id" element={<ServerDetailPage />} />
+                <Route path="/admin/users" element={<UserManagementPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+          </div>
         </div>
-      </div>
 
-      <LocalPinSyncDialog />
-      <SessionExpiredDialog />
-    </SidebarProvider>
+        <LocalPinSyncDialog />
+        <SessionExpiredDialog />
+      </SidebarProvider>
+    </GlobalIntercomProvider>
   );
 }
 

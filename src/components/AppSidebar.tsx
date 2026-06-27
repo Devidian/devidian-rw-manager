@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/sidebar';
 import { ServerWithStatus } from '@/types/server';
 import { useAuth } from '@/context/AuthContext';
+import { useGlobalIntercom } from '@/context/GlobalIntercomContext';
 import { LayoutDashboard, Server, Loader2, LogOut, LogIn, User, Users, List, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +52,7 @@ export function AppSidebar({ servers }: AppSidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, isAuthenticated, isAdmin, isSuperAdmin, hasAuthService, logout } = useAuth();
+  const { unreadCount } = useGlobalIntercom();
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -107,7 +109,12 @@ export function AppSidebar({ servers }: AppSidebarProps) {
                     activeClassName="bg-sidebar-accent text-primary font-medium"
                   >
                     <MessageSquare className="h-4 w-4 shrink-0" />
-                    <span>{t('globalIntercomChat')}</span>
+                    <span className="min-w-0 flex-1 truncate">{t('globalIntercomChat')}</span>
+                    {unreadCount > 0 && (
+                      <Badge className="h-5 min-w-5 shrink-0 justify-center px-1.5 text-[10px] tabular-nums">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </Badge>
+                    )}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

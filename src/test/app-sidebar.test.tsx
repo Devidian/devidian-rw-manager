@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import type { ServerWithStatus } from '@/types/server';
 
@@ -22,9 +22,23 @@ vi.mock('@/context/AuthContext', () => ({
   }),
 }));
 
+const intercomState = vi.hoisted(() => ({
+  unreadCount: 0,
+}));
+
+vi.mock('@/context/GlobalIntercomContext', () => ({
+  useGlobalIntercom: () => ({
+    unreadCount: intercomState.unreadCount,
+  }),
+}));
+
 const { AppSidebar } = await import('@/components/AppSidebar');
 
 describe('app sidebar', () => {
+  beforeEach(() => {
+    intercomState.unreadCount = 0;
+  });
+
   it('renders the Global Intercom navigation item and player counts for pinned servers', () => {
     render(
       <MemoryRouter>
@@ -37,6 +51,20 @@ describe('app sidebar', () => {
     expect(screen.getByText('globalIntercomChat')).toBeInTheDocument();
     expect(screen.getByText('Pinned Server')).toBeInTheDocument();
     expect(screen.getByText('3/12')).toBeInTheDocument();
+  });
+
+  it('renders the unread Global Intercom badge', () => {
+    intercomState.unreadCount = 7;
+
+    render(
+      <MemoryRouter>
+        <SidebarProvider>
+          <AppSidebar servers={[]} />
+        </SidebarProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('7')).toBeInTheDocument();
   });
 });
 

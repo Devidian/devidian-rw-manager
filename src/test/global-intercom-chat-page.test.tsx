@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AuthUser } from '@/types/server';
 
@@ -52,6 +52,7 @@ class MockWebSocket extends EventTarget {
   }
 }
 
+const { GlobalIntercomProvider, useGlobalIntercom } = await import('@/context/GlobalIntercomContext');
 const { default: GlobalIntercomChatPage } = await import('@/pages/GlobalIntercomChatPage');
 
 describe('global intercom chat page', () => {
@@ -219,12 +220,78 @@ describe('global intercom chat page', () => {
     const image = document.querySelector('img[src^="data:image/jpeg;base64,"]');
     expect(image).toHaveAttribute('src', 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD');
   });
+
+  it('keeps only the latest 100 chat messages', async () => {
+    renderPage();
+    act(() => MockWebSocket.instances[0].open());
+
+    for (let index = 0; index < 101; index += 1) {
+      act(() => MockWebSocket.instances[0].receive(messageEnvelope(`message-${index}`)));
+    }
+
+    expect(screen.queryByText('message-0')).not.toBeInTheDocument();
+    expect(await screen.findByText('message-1')).toBeInTheDocument();
+    expect(screen.getByText('message-100')).toBeInTheDocument();
+  });
+
+  it('counts unread messages outside the chat route and clears them when opened', async () => {
+    renderUnreadApp();
+    act(() => MockWebSocket.instances[0].open());
+
+    act(() => MockWebSocket.instances[0].receive(messageEnvelope('background message')));
+
+    expect(await screen.findByTestId('unread-count')).toHaveTextContent('1');
+
+    fireEvent.click(screen.getByRole('link', { name: 'open chat' }));
+
+    expect(await screen.findByText('background message')).toBeInTheDocument();
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('0');
+  });
 });
 
 function renderPage() {
   render(
     <MemoryRouter>
-      <GlobalIntercomChatPage />
+      <GlobalIntercomProvider>
+        <GlobalIntercomChatPage />
+      </GlobalIntercomProvider>
     </MemoryRouter>,
   );
+}
+
+function renderUnreadApp() {
+  render(
+    <MemoryRouter initialEntries={['/']}>
+      <GlobalIntercomProvider>
+        <UnreadCounter />
+        <Link to="/global-intercom">open chat</Link>
+        <Routes>
+          <Route path="/global-intercom" element={<GlobalIntercomChatPage />} />
+          <Route path="/" element={<div />} />
+        </Routes>
+      </GlobalIntercomProvider>
+    </MemoryRouter>,
+  );
+}
+
+function UnreadCounter() {
+  const { unreadCount } = useGlobalIntercom();
+  return <div data-testid="unread-count">{unreadCount}</div>;
+}
+
+function messageEnvelope(content: string) {
+  return {
+    event: 'broadcastMessage',
+    payload: {
+      createdOn: '2026-06-25T09:00:00.000Z',
+      chatVersion: 2,
+      chatContent: content,
+      chatChannel: 'global',
+      playerName: 'Alice',
+      playerUID: 'alice-uid',
+      sourceName: 'GS1',
+      sourceIP: '127.0.0.1',
+      sourceVersion: '1.0.0',
+    },
+  };
 }
