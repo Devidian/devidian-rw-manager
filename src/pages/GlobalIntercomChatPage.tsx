@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LogIn, MessageSquare, Send } from 'lucide-react';
+import { Info, LogIn, MessageSquare, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -67,6 +67,18 @@ export default function GlobalIntercomChatPage() {
           </AlertDescription>
         </Alert>
       )}
+
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Global chat visibility</AlertTitle>
+        <AlertDescription>
+          Global chat messages may be visible on the website, Discord, and connected Rising World servers. Do not post
+          private or sensitive information.{' '}
+          <Link to="/community-rules" className="text-primary underline underline-offset-4 hover:text-primary/80">
+            Community Rules
+          </Link>
+        </AlertDescription>
+      </Alert>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-card">
         <div className="border-b border-border px-4 py-2 text-xs uppercase tracking-widest text-muted-foreground">

@@ -193,6 +193,7 @@
   "loginTitle": "Anmelden",
   "loginDesc": "Melde dich an um fortzufahren.",
   "loginWithSteam": "Mit Steam anmelden",
+  "steamLoginUnavailable": "Steam-Anmeldung ist aktuell nicht verfügbar.",
   "loginEmail": "Benutzername / E-Mail",
   "loginPassword": "Passwort",
   "loginSubmit": "Anmelden",

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { LegalFooter } from '@/components/LegalFooter';
 
 export default function SteamCallbackPage() {
   const { t } = useTranslation();
@@ -21,18 +22,24 @@ export default function SteamCallbackPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-destructive mb-4">{error}</p>
-          {link}
-        </div>
+      <div className="min-h-screen flex flex-col bg-background">
+        <main className="flex flex-1 items-center justify-center">
+          <div className="text-center">
+            <p className="text-destructive mb-4">{error}</p>
+            {link}
+          </div>
+        </main>
+        <LegalFooter />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <div className="min-h-screen flex flex-col bg-background">
+      <main className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </main>
+      <LegalFooter />
     </div>
   );
 }

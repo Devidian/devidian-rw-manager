@@ -193,6 +193,7 @@
   "loginTitle": "Sign In",
   "loginDesc": "Sign in to continue.",
   "loginWithSteam": "Sign in with Steam",
+  "steamLoginUnavailable": "Steam sign-in is currently unavailable.",
   "loginEmail": "Username / Email",
   "loginPassword": "Password",
   "loginSubmit": "Sign In",

@@ -34,6 +34,7 @@ import { EditServerDialog } from '@/components/EditServerDialog';
 import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAdminMapping } from '@/hooks/useAdminMapping';
 import { AdminMapTab } from '@/components/AdminMapTab';
 import { PluginsTab } from '@/components/PluginsTab';
@@ -835,6 +836,20 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           </Button>
         </div>
       </div>
+
+      <Alert>
+        <Shield className="h-4 w-4" />
+        <AlertDescription>
+          Server names, descriptions and public server data are provided by the respective server. The server operator
+          is responsible for this content.{' '}
+          <a
+            href={`/report?server=${encodeURIComponent(server.id)}`}
+            className="text-primary underline underline-offset-4 hover:text-primary/80"
+          >
+            Report this server
+          </a>
+        </AlertDescription>
+      </Alert>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[

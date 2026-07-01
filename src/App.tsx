@@ -27,6 +27,8 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SteamCallbackPage from './pages/SteamCallbackPage';
 import { LocalPinSyncDialog } from './components/LocalPinSyncDialog';
+import { LegalFooter } from './components/LegalFooter';
+import LegalPage from './pages/LegalPage';
 
 const queryClient = new QueryClient();
 
@@ -87,6 +89,7 @@ function Layout() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
+            <LegalFooter />
           </div>
         </div>
 
@@ -142,6 +145,11 @@ function AppRoutes() {
         <Route path="/setup" element={<LandingPage />} />
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/steam/callback" element={<SteamCallbackPage />} />
+        <Route path="/imprint" element={<LegalPage pageKey="imprint" />} />
+        <Route path="/privacy" element={<LegalPage pageKey="privacy" />} />
+        <Route path="/terms" element={<LegalPage pageKey="terms" />} />
+        <Route path="/community-rules" element={<LegalPage pageKey="community-rules" />} />
+        <Route path="/report" element={<LegalPage pageKey="report" />} />
         {isConfigured ? (
           <Route
             path="*"
