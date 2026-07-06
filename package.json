@@ -1,11 +1,7 @@
 {
   "name": "rw-manager",
   "private": true,
-<<<<<<< HEAD
-  "version": "1.0.0",
-=======
-  "version": "0.3.0",
->>>>>>> a9495fe (feat: release manager map UI updates)
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
