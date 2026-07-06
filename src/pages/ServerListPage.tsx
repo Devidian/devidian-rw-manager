@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDown, ArrowUp, ArrowUpDown, RefreshCw, Star, Users, MapPin, Server as ServerIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Lock, RefreshCw, Star, Users, MapPin, Server as ServerIcon } from 'lucide-react';
 import { useServerContext } from '@/context/ServerContext';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,6 +17,7 @@ import {
 import { RichText } from '@/components/RichText';
 import { ServerInfoResponse, ServerWithStatus } from '@/types/server';
 import { cn } from '@/lib/utils';
+import { serverConnectUrl } from '@/lib/serverConnect';
 
 function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
   const { t } = useTranslation();
@@ -86,16 +88,23 @@ function compareValues(left: string | number, right: string | number): number {
   return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' });
 }
 
+function statusBottomRank(status: ServerWithStatus['status']): number {
+  return status === 'offline' || status === 'loading' ? 1 : 0;
+}
+
 export default function ServerListPage() {
   const { t } = useTranslation();
+  const { isSuperAdmin } = useAuth();
   const [sortKey, setSortKey] = useState<SortKey>('players');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [blockedPendingIds, setBlockedPendingIds] = useState<Set<string>>(() => new Set());
   const {
     serverList,
     refreshServerList,
     refreshOne,
     pinServer,
     unpinServer,
+    setServerBlocked,
     isPinned,
   } = useServerContext();
 
@@ -106,8 +115,17 @@ export default function ServerListPage() {
       const rightPinned = isPinned(right.id);
       if (leftPinned !== rightPinned) return leftPinned ? -1 : 1;
 
-      const result = compareValues(sortValue(left, sortKey), sortValue(right, sortKey));
-      return sortDirection === 'asc' ? result : -result;
+      const statusRank = statusBottomRank(left.status) - statusBottomRank(right.status);
+      if (statusRank !== 0) return statusRank;
+
+      const primary = compareValues(sortValue(left, sortKey), sortValue(right, sortKey));
+      if (primary !== 0) return sortDirection === 'asc' ? primary : -primary;
+
+      if (sortKey !== 'name') {
+        const name = compareValues(sortValue(left, 'name'), sortValue(right, 'name'));
+        if (name !== 0) return name;
+      }
+      return left.id.localeCompare(right.id, undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [isPinned, serverList, sortDirection, sortKey]);
 
@@ -117,7 +135,20 @@ export default function ServerListPage() {
       return;
     }
     setSortKey(key);
-    setSortDirection('asc');
+    setSortDirection(key === 'players' ? 'desc' : 'asc');
+  };
+
+  const toggleBlocked = async (server: ServerWithStatus) => {
+    setBlockedPendingIds((current) => new Set(current).add(server.id));
+    try {
+      await setServerBlocked(server.id, server.blocked !== true);
+    } finally {
+      setBlockedPendingIds((current) => {
+        const next = new Set(current);
+        next.delete(server.id);
+        return next;
+      });
+    }
   };
 
   const SortHeader = ({ label, column }: { label: string; column: SortKey }) => {
@@ -183,6 +214,7 @@ export default function ServerListPage() {
                 const maxPlayers = data?.maxplayers ?? '?';
                 const version = data?.version ?? server.version ?? '-';
                 const pinned = isPinned(server.id);
+                const connectUrl = serverConnectUrl(server);
 
                 return (
                   <TableRow key={server.id}>
@@ -192,6 +224,12 @@ export default function ServerListPage() {
                       </Link>
                       {secondaryName && secondaryName !== name && (
                         <div className="text-xs text-muted-foreground truncate max-w-[20rem]">{secondaryName}</div>
+                      )}
+                      {server.blocked && (
+                        <Badge variant="destructive" className="mt-1 gap-1">
+                          <Lock className="h-3 w-3" />
+                          {t('serverBlockedBadge')}
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -234,6 +272,28 @@ export default function ServerListPage() {
                         >
                           <Star className={cn('h-3.5 w-3.5', pinned && 'fill-current')} />
                         </Button>
+                        {isSuperAdmin && (
+                          <Button
+                            size="sm"
+                            variant={server.blocked ? 'destructive' : 'ghost'}
+                            className={cn(
+                              'h-8 w-8 p-0',
+                              !server.blocked && 'text-muted-foreground hover:text-destructive',
+                            )}
+                            onClick={() => void toggleBlocked(server)}
+                            disabled={blockedPendingIds.has(server.id)}
+                            title={server.blocked ? t('unblockServer') : t('blockServer')}
+                          >
+                            <Lock className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {connectUrl && (
+                          <Button asChild size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
+                            <a href={connectUrl} title={t('connectServer')}>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          </Button>
+                        )}
                         <Button asChild size="sm" variant="outline" className="h-8">
                           <Link to={`/server/${server.id}`}>{t('details')}</Link>
                         </Button>

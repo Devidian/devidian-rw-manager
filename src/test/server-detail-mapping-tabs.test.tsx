@@ -1,10 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServerWithStatus } from '@/types/server';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 const state = vi.hoisted(() => ({
   mapAvailable: true,
+  fixedBackendUrl: 'https://manager.example' as string | null,
   getServerStatistics: vi.fn(),
+  isAuthenticated: true,
+  dbPlayers: [] as Array<{ uid: string; name?: string; platform?: string }>,
+  fetchPlayers: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -14,16 +19,21 @@ vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
 }));
 vi.mock('@/context/ServerContext', () => ({
-  useServerContext: () => ({ updateServer: vi.fn() }),
+  useServerContext: () => ({ updateServer: vi.fn(), setServerBlocked: vi.fn() }),
 }));
 vi.mock('@/context/StorageModeContext', () => ({
-  useStorageMode: () => ({ mode: 'fixed', adapter: { getServerStatistics: state.getServerStatistics } }),
+  useStorageMode: () => ({
+    mode: 'fixed',
+    fixedBackendUrl: state.fixedBackendUrl,
+    backendUrl: null,
+    adapter: { getServerStatistics: state.getServerStatistics },
+  }),
 }));
 vi.mock('@/context/AuthContext', () => ({
-  useAuth: () => ({ isAdmin: false, isAuthenticated: true }),
+  useAuth: () => ({ isAdmin: false, isAuthenticated: state.isAuthenticated, isSuperAdmin: false }),
 }));
 vi.mock('@/hooks/useDatabasePlayers', () => ({
-  useDatabasePlayers: () => ({ players: [], loading: false, error: null, fetchPlayers: vi.fn() }),
+  useDatabasePlayers: () => ({ players: state.dbPlayers, loading: false, error: null, fetchPlayers: state.fetchPlayers }),
 }));
 vi.mock('@/hooks/useServerConfig', () => ({
   useServerConfig: () => ({ config: null, loading: false, error: null, fetchConfig: vi.fn() }),
@@ -48,6 +58,10 @@ const { ServerDetail } = await import('@/components/ServerDetail');
 describe('server detail mapping tabs', () => {
   beforeEach(() => {
     state.mapAvailable = true;
+    state.fixedBackendUrl = 'https://manager.example';
+    state.isAuthenticated = true;
+    state.dbPlayers = [];
+    state.fetchPlayers.mockClear();
     state.getServerStatistics.mockResolvedValue({
       serverId: 'server-1',
       buckets: [
@@ -90,6 +104,7 @@ describe('server detail mapping tabs', () => {
   });
 
   it('hides map and plugin tabs without a backend', () => {
+    state.fixedBackendUrl = null;
     render(<ServerDetail server={server(null)} onRefresh={vi.fn()} />);
 
     expect(screen.queryByRole('tab', { name: 'map' })).not.toBeInTheDocument();
@@ -103,6 +118,21 @@ describe('server detail mapping tabs', () => {
 
     await waitFor(() => expect(state.getServerStatistics).toHaveBeenCalled());
   });
+
+  it('masks player UIDs and hides Steam profile links for guests', () => {
+    state.isAuthenticated = false;
+    state.dbPlayers = [{ uid: '76561198000000001', name: 'Db Steam', platform: 'Steam' }];
+    render(
+      <TooltipProvider>
+        <ServerDetail server={server()} onRefresh={vi.fn()} />
+      </TooltipProvider>,
+    );
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'players' }), { button: 0, ctrlKey: false });
+
+    expect(screen.getAllByText('7656*********0001')).toHaveLength(2);
+    expect(screen.queryByRole('link', { name: '76561198000000001' })).not.toBeInTheDocument();
+  });
 });
 
 function server(backendUrl: string | null = 'https://backend.example'): ServerWithStatus {
@@ -113,5 +143,6 @@ function server(backendUrl: string | null = 'https://backend.example'): ServerWi
     backendUrl: backendUrl ?? undefined,
     createdAt: '2026-06-12T00:00:00.000Z',
     status: 'online',
+    onlinePlayers: [{ id: 1, uid: '76561198000000001', name: 'Online Steam', platform: 'Steam', ping: 10 }],
   };
 }

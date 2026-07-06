@@ -29,6 +29,7 @@ const adapter: StorageAdapter = {
   getPinnedServers: vi.fn(async () => state.localPins),
   pinServer: vi.fn(),
   unpinServer: vi.fn(),
+  setServerBlocked: vi.fn(),
   getServerLiveStatus: vi.fn(),
 };
 
@@ -47,6 +48,7 @@ vi.mock('@/hooks/useServers', () => ({
     refreshServers: vi.fn(),
     addServer: vi.fn(),
     updateServer: vi.fn(),
+    setServerBlocked: vi.fn(),
     removeServer: vi.fn(),
     getServer: vi.fn(),
   }),

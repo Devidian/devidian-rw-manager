@@ -1,7 +1,11 @@
 {
   "name": "rw-manager",
   "private": true,
+<<<<<<< HEAD
   "version": "1.0.0",
+=======
+  "version": "0.3.0",
+>>>>>>> a9495fe (feat: release manager map UI updates)
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -72,6 +76,7 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
     "@types/leaflet": "^1.9.21",

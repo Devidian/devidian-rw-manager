@@ -9,7 +9,7 @@ interface UseServerConfigResult {
   config: Record<string, string | number | boolean> | null;
   loading: boolean;
   error: string | null;
-  fetchConfig: (backendUrl: string) => Promise<void>;
+  fetchConfig: (backendUrl: string, serverId: string) => Promise<void>;
 }
 
 export function useServerConfig(): UseServerConfigResult {
@@ -17,12 +17,12 @@ export function useServerConfig(): UseServerConfigResult {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchConfig = useCallback(async (backendUrl: string) => {
+  const fetchConfig = useCallback(async (backendUrl: string, serverId: string) => {
     setLoading(true);
     setError(null);
     try {
       const base = backendUrl.replace(/\/$/, '');
-      const res = await fetch(`${base}/api/data/server/config`, {
+      const res = await fetch(`${base}/api/storage/server/${encodeURIComponent(serverId)}/config`, {
         signal: AbortSignal.timeout(10_000),
         headers: authHeaders(),
       });

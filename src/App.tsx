@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import Index from './pages/Index';
 import ServerDetailPage from './pages/ServerDetailPage';
 import ServerListPage from './pages/ServerListPage';
+import StatisticsPage from './pages/StatisticsPage';
 import GlobalIntercomChatPage from './pages/GlobalIntercomChatPage';
 import UserManagementPage from './pages/UserManagementPage';
 import ProfilePage from './pages/ProfilePage';
@@ -82,6 +83,7 @@ function Layout() {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/serverliste" element={<ServerListPage />} />
+                <Route path="/statistiken" element={<StatisticsPage />} />
                 <Route path="/global-intercom" element={<GlobalIntercomChatPage />} />
                 <Route path="/server/:id" element={<ServerDetailPage />} />
                 <Route path="/admin/users" element={<UserManagementPage />} />

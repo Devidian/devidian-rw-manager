@@ -1,6 +1,8 @@
 import {
   Maximize2,
   Minimize2,
+  MonitorUp,
+  Store,
 } from 'lucide-react';
 import {
   CRS,
@@ -10,7 +12,7 @@ import {
   type Coords,
   type LatLngBounds,
 } from 'leaflet';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleMarker,
   MapContainer,
@@ -21,7 +23,13 @@ import {
   useMapEvents,
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { MapClaim, MapGpsMarker, MapMetadata, MapPlayer } from '@/types/adminMapping';
+import type {
+  MapClaim,
+  MapGpsMarker,
+  MapMarketplaceOffer,
+  MapMetadata,
+  MapPlayer,
+} from '@/types/adminMapping';
 import type { ServerPlayerListPlayer } from '@/types/server';
 import {
   areaToMapBounds,
@@ -31,6 +39,21 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { fetchMarketplaceOffers, useMapLayers } from '@/hooks/useMapLayers';
 import { cn } from '@/lib/utils';
 
@@ -43,20 +66,27 @@ interface LayerVisibility {
   gpsGlobalMarkers: boolean;
 }
 
+type MapDisplayMode = 'normal' | 'expanded' | 'fullscreen';
+
 export function AdminMapTab({
-  backendUrl,
+  apiBaseUrl,
+  serverId,
+  tileBaseUrl,
   metadata,
   onlinePlayers = [],
   isAdmin = false,
 }: {
-  backendUrl: string;
+  apiBaseUrl: string;
+  serverId: string;
+  tileBaseUrl?: string;
   metadata: MapMetadata;
   onlinePlayers?: ServerPlayerListPlayer[];
   isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
   const { capabilities, claims, players, gpsGlobalMarkers, error } = useMapLayers(
-    backendUrl,
+    apiBaseUrl,
+    serverId,
     metadata.worldKey,
     onlinePlayers,
   );
@@ -68,15 +98,17 @@ export function AdminMapTab({
     longTerm: false,
     gpsGlobalMarkers: false,
   });
-  const [fullscreen, setFullscreen] = useState(false);
+  const [displayMode, setDisplayMode] = useState<MapDisplayMode>('normal');
+  const [offersClaim, setOffersClaim] = useState<MapClaim | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const bounds = metadata.generatedTileBounds;
   const mapBounds = latLngBounds(
     [bounds.minZ, bounds.minX],
     [bounds.maxZ + 1, bounds.maxX + 1],
   );
-  const tileUrl = `${backendUrl.replace(/\/$/, '')}${metadata.tileUrl}`;
+  const tileUrl = resolveTileUrl(metadata.tileUrl, tileBaseUrl);
   const nativeTileSizeBlocks = metadata.chunkSize * metadata.nativeTileSizeChunks;
-  const mapIdentity = `${backendUrl}|${metadata.worldKey}|${metadata.nativeZoom}|${metadata.tileSize}`;
+  const mapIdentity = `${apiBaseUrl}|${tileUrl}|${metadata.worldKey}|${metadata.nativeZoom}|${metadata.tileSize}`;
 
   useEffect(() => {
     setVisible({
@@ -89,51 +121,53 @@ export function AdminMapTab({
     });
   }, [mapIdentity]);
 
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (document.fullscreenElement !== containerRef.current) {
+        setDisplayMode((value) => value === 'fullscreen' ? 'expanded' : value);
+      }
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  const handleMapModeClick = async () => {
+    if (displayMode === 'normal') {
+      setDisplayMode('expanded');
+      return;
+    }
+    if (displayMode === 'expanded') {
+      if (containerRef.current?.requestFullscreen) {
+        try {
+          await containerRef.current.requestFullscreen();
+          setDisplayMode('fullscreen');
+        } catch {
+          setDisplayMode('expanded');
+        }
+      }
+      return;
+    }
+    if (document.fullscreenElement === containerRef.current) {
+      await document.exitFullscreen();
+    }
+    setDisplayMode('normal');
+  };
+
+  const expanded = displayMode !== 'normal';
+
   return (
-    <div className={cn(
-      'space-y-3',
-      fullscreen && 'fixed inset-0 z-50 flex flex-col space-y-3 bg-background p-4',
-    )}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{t('mapCaptureHint')}</p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => setFullscreen((value) => !value)}
-        >
-          {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          {fullscreen ? t('mapExitFullscreen') : t('mapFullscreen')}
-        </Button>
-      </div>
-      <div className="flex flex-wrap gap-x-5 gap-y-2 rounded-md border border-border bg-muted/20 px-3 py-2 text-sm">
-        <LayerToggle label={t('mapLayerSectors')} checked={visible.sectors}
-          onChange={(checked) => setVisible((value) => ({ ...value, sectors: checked }))} />
-        <LayerToggle label={t('mapLayerClaims')} checked={visible.claims}
-          disabled={!capabilities?.claims}
-          onChange={(checked) => setVisible((value) => ({ ...value, claims: checked }))} />
-        <LayerToggle label={t('mapLayerOnlinePlayers')}
-          checked={visible.online}
-          disabled={!capabilities?.players}
-          onChange={(checked) => setVisible((value) => ({ ...value, online: checked }))} />
-        <LayerToggle label={t('mapLayerRecentPlayers')} checked={visible.recent}
-          disabled={!capabilities?.players}
-          onChange={(checked) => setVisible((value) => ({ ...value, recent: checked }))} />
-        {isAdmin && (
-          <LayerToggle label={t('mapLayerLongTermPlayers')} checked={visible.longTerm}
-            disabled={!capabilities?.players}
-            onChange={(checked) => setVisible((value) => ({ ...value, longTerm: checked }))} />
-        )}
-        <LayerToggle label={t('mapLayerGpsGlobalMarkers')} checked={visible.gpsGlobalMarkers}
-          disabled={!capabilities?.gpsGlobalMarkers}
-          onChange={(checked) => setVisible((value) => ({
-            ...value,
-            gpsGlobalMarkers: checked,
-          }))} />
-        {error && <span className="text-destructive">{t('mapLayerError')}</span>}
-      </div>
-      <div className={cn('overflow-hidden rounded-lg border border-border', fullscreen && 'min-h-0 flex-1')}>
+    <div
+      ref={containerRef}
+      className={cn(
+        'space-y-3',
+        expanded && 'fixed inset-0 z-50 flex h-[100dvh] w-screen flex-col space-y-0 bg-background',
+      )}
+    >
+      {!expanded && <p className="text-sm text-muted-foreground">{t('mapCaptureHint')}</p>}
+      <div className={cn(
+        'relative h-[65vh] min-h-[420px] overflow-hidden rounded-lg border border-border',
+        expanded && 'h-[100dvh] min-h-0 flex-1 rounded-none border-0',
+      )}>
         <MapContainer
           key={mapIdentity}
           crs={CRS.Simple}
@@ -141,9 +175,9 @@ export function AdminMapTab({
           minZoom={metadata.minZoom}
           maxZoom={metadata.nativeZoom}
           zoom={metadata.nativeZoom}
-          className={cn('h-[65vh] min-h-[420px] w-full bg-muted', fullscreen && 'h-full min-h-0')}
+          className="h-full min-h-0 w-full bg-muted"
         >
-          <InvalidateMapSize active={fullscreen} />
+          <InvalidateMapSize active={displayMode} />
           <SignedZTileLayer
             url={tileUrl}
             tileSize={metadata.tileSize}
@@ -158,9 +192,9 @@ export function AdminMapTab({
           )}
           {visible.claims && (
             <ClaimLayer
-              backendUrl={backendUrl}
               claims={claims}
               nativeTileSizeBlocks={nativeTileSizeBlocks}
+              onOpenMarketplaceOffers={setOffersClaim}
             />
           )}
           <PlayerLayer
@@ -175,15 +209,111 @@ export function AdminMapTab({
             />
           )}
         </MapContainer>
+        <div className="pointer-events-none absolute right-3 top-3 z-[1000] flex max-w-[min(24rem,calc(100vw-1.5rem))] flex-col items-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="pointer-events-auto bg-background/90 shadow-lg backdrop-blur"
+            onClick={() => void handleMapModeClick()}
+            aria-label={displayMode === 'normal'
+              ? t('mapExpandWindow')
+              : displayMode === 'expanded'
+                ? t('mapBrowserFullscreen')
+                : t('mapExitFullscreen')}
+            title={displayMode === 'normal'
+              ? t('mapExpandWindow')
+              : displayMode === 'expanded'
+                ? t('mapBrowserFullscreen')
+                : t('mapExitFullscreen')}
+          >
+            {displayMode === 'normal'
+              ? <Maximize2 className="h-4 w-4" />
+              : displayMode === 'expanded'
+                ? <MonitorUp className="h-4 w-4" />
+                : <Minimize2 className="h-4 w-4" />}
+          </Button>
+          <div className="pointer-events-auto w-full rounded-md border border-border bg-background/90 p-3 text-sm shadow-lg backdrop-blur">
+            <div className="mb-2 text-xs font-medium text-muted-foreground">{t('mapLayers')}</div>
+            <div className="flex flex-col gap-2">
+              <LayerToggle label={t('mapLayerSectors')} checked={visible.sectors}
+                onChange={(checked) => setVisible((value) => ({ ...value, sectors: checked }))} />
+              <LayerToggle label={t('mapLayerClaims')} checked={visible.claims}
+                disabled={!capabilities?.claims}
+                onChange={(checked) => setVisible((value) => ({ ...value, claims: checked }))} />
+              <LayerToggle label={t('mapLayerOnlinePlayers')}
+                checked={visible.online}
+                disabled={!capabilities?.players}
+                onChange={(checked) => setVisible((value) => ({ ...value, online: checked }))} />
+              <LayerToggle label={t('mapLayerRecentPlayers')} checked={visible.recent}
+                disabled={!capabilities?.players}
+                onChange={(checked) => setVisible((value) => ({ ...value, recent: checked }))} />
+              {isAdmin && (
+                <LayerToggle label={t('mapLayerLongTermPlayers')} checked={visible.longTerm}
+                  disabled={!capabilities?.players}
+                  onChange={(checked) => setVisible((value) => ({ ...value, longTerm: checked }))} />
+              )}
+              <LayerToggle label={t('mapLayerGpsGlobalMarkers')} checked={visible.gpsGlobalMarkers}
+                disabled={!capabilities?.gpsGlobalMarkers}
+                onChange={(checked) => setVisible((value) => ({
+                  ...value,
+                  gpsGlobalMarkers: checked,
+                }))} />
+              {error && <span className="text-destructive">{t('mapLayerError')}</span>}
+            </div>
+          </div>
+        </div>
       </div>
+      <MarketplaceOffersDialog
+        apiBaseUrl={apiBaseUrl}
+        serverId={serverId}
+        claim={offersClaim}
+        portalContainer={expanded ? containerRef.current : null}
+        onOpenChange={(open) => {
+          if (!open) setOffersClaim(null);
+        }}
+      />
     </div>
   );
 }
 
-function InvalidateMapSize({ active }: { active: boolean }) {
+function resolveTileUrl(tileUrl: string, tileBaseUrl?: string): string {
+  try {
+    const parsed = new URL(tileUrl);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return tileUrl;
+    return parsed.toString();
+  } catch {
+    if (!tileBaseUrl) return tileUrl;
+    return `${tileBaseUrl.replace(/\/+$/, '')}/${tileUrl.replace(/^\/+/, '')}`;
+  }
+}
+
+function InvalidateMapSize({ active }: { active: MapDisplayMode }) {
   const map = useMap();
   useEffect(() => {
-    window.setTimeout(() => map.invalidateSize(), 0);
+    const invalidate = () => map.invalidateSize({ pan: false });
+    invalidate();
+    const animationFrames = [
+      window.requestAnimationFrame(invalidate),
+      window.requestAnimationFrame(() => window.requestAnimationFrame(invalidate)),
+    ];
+    const timers = [0, 80, 240, 500].map((delay) => window.setTimeout(invalidate, delay));
+    const container = map.getContainer();
+    const parent = container.parentElement;
+    const observer = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(invalidate);
+    observer?.observe(container);
+    if (parent) observer?.observe(parent);
+    window.addEventListener('resize', invalidate);
+    document.addEventListener('fullscreenchange', invalidate);
+    return () => {
+      animationFrames.forEach((frame) => window.cancelAnimationFrame(frame));
+      timers.forEach((timer) => window.clearTimeout(timer));
+      observer?.disconnect();
+      window.removeEventListener('resize', invalidate);
+      document.removeEventListener('fullscreenchange', invalidate);
+    };
   }, [active, map]);
   return null;
 }
@@ -317,44 +447,15 @@ function SectorLayer({
 }
 
 function ClaimLayer({
-  backendUrl,
   claims,
   nativeTileSizeBlocks,
+  onOpenMarketplaceOffers,
 }: {
-  backendUrl: string;
   claims: MapClaim[];
   nativeTileSizeBlocks: number;
+  onOpenMarketplaceOffers: (claim: MapClaim) => void;
 }) {
   const { t } = useTranslation();
-  const [selectedAreaId, setSelectedAreaId] = useState<number>();
-  const [offers, setOffers] = useState<Awaited<ReturnType<typeof fetchMarketplaceOffers>>>([]);
-  const [offersLoading, setOffersLoading] = useState(false);
-  const [offersError, setOffersError] = useState(false);
-
-  useEffect(() => {
-    if (!selectedAreaId) {
-      setOffers([]);
-      return;
-    }
-    const claim = claims.find((item) => item.areaId === selectedAreaId);
-    if (!claim?.marketplace) {
-      setOffers([]);
-      return;
-    }
-    const controller = new AbortController();
-    setOffersLoading(true);
-    setOffersError(false);
-    fetchMarketplaceOffers(backendUrl, selectedAreaId, controller.signal)
-      .then(setOffers)
-      .catch((error) => {
-        if (!(error instanceof Error) || error.name !== 'AbortError') {
-          setOffers([]);
-          setOffersError(true);
-        }
-      })
-      .finally(() => setOffersLoading(false));
-    return () => controller.abort();
-  }, [backendUrl, claims, selectedAreaId]);
 
   return claims.map((claim) => (
     <Rectangle
@@ -366,7 +467,6 @@ function ClaimLayer({
         fillOpacity: 1,
         weight: 2,
       }}
-      eventHandlers={{ click: () => setSelectedAreaId(claim.areaId) }}
     >
       <Popup>
         <div className="min-w-48 space-y-1">
@@ -377,29 +477,160 @@ function ClaimLayer({
           )}
           <div>{claim.width} × {claim.depth}</div>
           {claim.forSale && <div>{t('mapClaimForSale')}: {claim.salePrice}</div>}
-          <div className="flex gap-2">
-            {claim.marketplace && <span>🏪 {t('mapMarketplace')}</span>}
-            {claim.shop && <span>🛒 {t('mapShop')}</span>}
-          </div>
-          {claim.marketplace && selectedAreaId === claim.areaId && (
-            <div className="mt-2 border-t pt-2">
-              {offersLoading
-                ? t('mapOffersLoading')
-                : offersError
-                  ? t('mapOffersError')
-                  : offers.length === 0
-                  ? t('mapNoOffers')
-                  : offers.map((offer) => (
-                    <div key={offer.id}>
-                      {offer.amount}× {offer.itemName} — {offer.price} {offer.currency}
-                    </div>
-                  ))}
+          {claim.renewZone && (
+            <div>
+              {t('mapRenewZone')}: {claim.nextRenewalAt
+                ? new Date(claim.nextRenewalAt).toLocaleString()
+                : t('mapRenewZoneDue')}
             </div>
           )}
+          <div className="flex gap-2">
+            {claim.marketplace && (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="h-8 gap-2 border border-primary bg-primary px-2 text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground"
+                onClick={() => onOpenMarketplaceOffers(claim)}
+              >
+                <Store className="h-4 w-4" />
+                {t('mapMarketplace')}
+              </Button>
+            )}
+            {claim.shop && <span>🛒 {t('mapShop')}</span>}
+          </div>
         </div>
       </Popup>
     </Rectangle>
   ));
+}
+
+function MarketplaceOffersDialog({
+  apiBaseUrl,
+  serverId,
+  claim,
+  portalContainer,
+  onOpenChange,
+}: {
+  apiBaseUrl: string;
+  serverId: string;
+  claim: MapClaim | null;
+  portalContainer?: HTMLElement | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const [offers, setOffers] = useState<MapMarketplaceOffer[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!claim) {
+      setOffers([]);
+      setLoading(false);
+      setError(false);
+      return;
+    }
+    const controller = new AbortController();
+    setOffers([]);
+    setLoading(true);
+    setError(false);
+    fetchMarketplaceOffers(apiBaseUrl, serverId, claim.areaId, controller.signal)
+      .then((items) => setOffers(items))
+      .catch((requestError) => {
+        if (!(requestError instanceof Error) || requestError.name !== 'AbortError') {
+          setOffers([]);
+          setError(true);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [apiBaseUrl, claim, serverId]);
+
+  return (
+    <Dialog open={!!claim} onOpenChange={onOpenChange}>
+      <DialogContent
+        portalContainer={portalContainer}
+        className="max-h-[85vh] overflow-y-auto sm:max-w-3xl"
+      >
+        <DialogHeader>
+          <DialogTitle>{t('mapOffersTitle')}</DialogTitle>
+          <DialogDescription>
+            {claim ? `${claim.name} · ${t('mapMarketplace')}` : t('mapMarketplace')}
+          </DialogDescription>
+        </DialogHeader>
+        {loading ? (
+          <div className="rounded-md border border-border px-3 py-8 text-center text-sm text-muted-foreground">
+            {t('mapOffersLoading')}
+          </div>
+        ) : error ? (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-8 text-center text-sm text-destructive">
+            {t('mapOffersError')}
+          </div>
+        ) : offers.length === 0 ? (
+          <div className="rounded-md border border-border px-3 py-8 text-center text-sm text-muted-foreground">
+            {t('mapNoOffers')}
+          </div>
+        ) : (
+          <MarketplaceOffersTable offers={offers} />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MarketplaceOffersTable({ offers }: { offers: MapMarketplaceOffer[] }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <div className="hidden rounded-md border border-border md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('mapOfferItem')}</TableHead>
+              <TableHead className="text-right">{t('mapOfferAmount')}</TableHead>
+              <TableHead className="text-right">{t('mapOfferPrice')}</TableHead>
+              <TableHead>{t('mapOfferSeller')}</TableHead>
+              <TableHead>{t('mapOfferCreated')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {offers.map((offer) => (
+              <TableRow key={offer.id}>
+                <TableCell className="font-medium">{formatOfferName(offer)}</TableCell>
+                <TableCell className="text-right">{offer.amount}</TableCell>
+                <TableCell className="text-right">{offer.price} {offer.currency}</TableCell>
+                <TableCell>{offer.sellerName}</TableCell>
+                <TableCell>{new Date(offer.createdAt).toLocaleString()}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="space-y-2 md:hidden">
+        {offers.map((offer) => (
+          <div key={offer.id} className="rounded-md border border-border p-3 text-sm">
+            <div className="font-medium">{formatOfferName(offer)}</div>
+            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
+              <span>{t('mapOfferAmount')}</span>
+              <span className="text-right text-foreground">{offer.amount}</span>
+              <span>{t('mapOfferPrice')}</span>
+              <span className="text-right text-foreground">{offer.price} {offer.currency}</span>
+              <span>{t('mapOfferSeller')}</span>
+              <span className="text-right text-foreground">{offer.sellerName}</span>
+              <span>{t('mapOfferCreated')}</span>
+              <span className="text-right text-foreground">{new Date(offer.createdAt).toLocaleString()}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function formatOfferName(offer: MapMarketplaceOffer): string {
+  return offer.itemVariant > 0 ? `${offer.itemName} #${offer.itemVariant}` : offer.itemName;
 }
 
 function PlayerLayer({

@@ -19,6 +19,18 @@ describe('admin mapping contract', () => {
     expect(parseMapResponse(mapResponse())).toEqual(mapResponse());
   });
 
+  it('accepts renderer schema-6 metadata with server identity', () => {
+    const response = mapResponse({
+      schemaVersion: 6,
+      serverId: 'server-1',
+      displayName: 'Server Map',
+      worldKey: 'server-1',
+      worldName: 'Server Map',
+    });
+
+    expect(parseMapResponse(response)).toEqual(response);
+  });
+
   it('rejects incompatible map and plugin responses', () => {
     expect(() => parseMapResponse(mapResponse({ schemaVersion: 4 }))).toThrow('Invalid map metadata');
     expect(() => parseMapResponse(mapResponse({ nativeTileSizeChunks: 0 }))).toThrow('Invalid map metadata');
@@ -59,6 +71,7 @@ describe('admin mapping contract', () => {
       recentPlayerDays: 7,
       claims: true,
       claimSales: true,
+      renewZones: true,
       marketplace: true,
       shop: true,
       players: true,
@@ -78,6 +91,8 @@ describe('admin mapping contract', () => {
         borderColor: '#0010E010',
         fillColor: '#0010E050',
         forSale: false,
+        renewZone: true,
+        nextRenewalAt: '2026-06-19T00:00:00.000Z',
         marketplace: false,
         shop: false,
       }],
@@ -168,7 +183,7 @@ function mapResponse(overrides: Record<string, unknown> = {}) {
       generatedChunkBounds: { minX: -44, minZ: -50, maxX: -42, maxZ: -48 },
       generatedTileBounds: { minX: -22, minZ: -25, maxX: -21, maxZ: -24 },
       updatedAt: '2026-06-12T00:00:00.000Z',
-      tileUrl: '/api/data/server/map/tiles/new-world/{z}/{x}/{y}.png',
+      tileUrl: 'https://map.example.com/server-1/{z}/{x}/{y}.png',
       ...overrides,
     },
   };

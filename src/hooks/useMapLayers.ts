@@ -11,6 +11,7 @@ import type { ServerPlayerListPlayer } from '@/types/server';
 
 export function useMapLayers(
   backendUrl: string,
+  serverId: string,
   worldKey: string,
   onlinePlayers: ServerPlayerListPlayer[],
 ) {
@@ -23,18 +24,19 @@ export function useMapLayers(
   useEffect(() => {
     const controller = new AbortController();
     const base = backendUrl.replace(/\/$/, '');
+    const serverBase = `${base}/api/storage/server/${encodeURIComponent(serverId)}`;
     setCapabilities(null);
     setClaims([]);
     setPlayers([]);
     setGpsGlobalMarkers([]);
     setError(false);
 
-    request(`${base}/api/data/server/map/layers`, controller.signal)
+    request(`${serverBase}/map/layers`, controller.signal)
       .then(parseCapabilities)
       .then((value) => {
         setCapabilities(value);
         if (value.claims) {
-          request(`${base}/api/data/server/map/layers/claims`, controller.signal)
+          request(`${serverBase}/map/layers/claims`, controller.signal)
             .then(parseClaims)
             .then(setClaims)
             .catch((requestError) => {
@@ -42,7 +44,7 @@ export function useMapLayers(
             });
         }
         if (value.gpsGlobalMarkers) {
-          request(`${base}/api/data/server/map/layers/gps-global-markers`, controller.signal)
+          request(`${serverBase}/map/layers/gps-global-markers`, controller.signal)
             .then(parseGpsGlobalMarkers)
             .then(setGpsGlobalMarkers)
             .catch((requestError) => {
@@ -54,19 +56,20 @@ export function useMapLayers(
         if (!aborted(requestError)) setError(true);
       });
     return () => controller.abort();
-  }, [backendUrl, worldKey]);
+  }, [backendUrl, serverId, worldKey]);
 
   useEffect(() => {
     if (!capabilities?.players) return;
     const controller = new AbortController();
     const base = backendUrl.replace(/\/$/, '');
+    const serverBase = `${base}/api/storage/server/${encodeURIComponent(serverId)}`;
     const load = () => Promise.all([
       request(
-        `${base}/api/data/server/map/layers/players`,
+        `${serverBase}/map/layers/players`,
         controller.signal,
         true,
       ).then(parsePlayers),
-      request(`${base}/api/data/player`, controller.signal).then(parseDatabasePlayers),
+      request(`${serverBase}/player`, controller.signal).then(parseDatabasePlayers),
     ]).then(([layerPlayers, databasePlayers]) => {
       setPlayers(mergeOnlinePlayers(layerPlayers, databasePlayers, onlinePlayers));
     }).catch((requestError) => {
@@ -78,19 +81,20 @@ export function useMapLayers(
       controller.abort();
       window.clearInterval(interval);
     };
-  }, [backendUrl, capabilities?.players, onlinePlayers, worldKey]);
+  }, [backendUrl, capabilities?.players, onlinePlayers, serverId, worldKey]);
 
   return { capabilities, claims, players, gpsGlobalMarkers, error };
 }
 
 export async function fetchMarketplaceOffers(
   backendUrl: string,
+  serverId: string,
   areaId: number,
   signal?: AbortSignal,
 ): Promise<MapMarketplaceOffer[]> {
   const base = backendUrl.replace(/\/$/, '');
   return parseOffers(await request(
-    `${base}/api/data/server/map/layers/marketplaces/${areaId}/offers`,
+    `${base}/api/storage/server/${encodeURIComponent(serverId)}/map/layers/marketplaces/${areaId}/offers`,
     signal,
   ));
 }
@@ -104,7 +108,7 @@ export function parseCapabilities(value: unknown): MapLayerCapabilities {
     value.sectorSizeBlocks !== 8192 ||
     !positiveInteger(value.recentPlayerDays) ||
     !booleans(value, [
-      'claims', 'claimSales', 'marketplace', 'shop', 'players', 'gpsGlobalMarkers',
+      'claims', 'claimSales', 'renewZones', 'marketplace', 'shop', 'players', 'gpsGlobalMarkers',
     ])
   ) throw new Error('Invalid map layer capabilities');
   return value as unknown as MapLayerCapabilities;
@@ -191,6 +195,8 @@ function isClaim(value: unknown): value is MapClaim {
     color(value.fillColor) &&
     typeof value.forSale === 'boolean' &&
     (value.salePrice === undefined || positiveInteger(value.salePrice)) &&
+    typeof value.renewZone === 'boolean' &&
+    (value.nextRenewalAt === undefined || dateString(value.nextRenewalAt)) &&
     typeof value.marketplace === 'boolean' &&
     typeof value.shop === 'boolean';
 }

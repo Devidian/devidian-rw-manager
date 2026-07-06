@@ -6,6 +6,4 @@ Each task must include objective, ownership, dependencies, risks, validation str
 
 ## Current Tasks
 
-No active frontend implementation tasks. Completed work is stored under
-`docs/archive/`. The cross-repository Marketplace map-offers overlay follow-up
-is tracked in the workspace root.
+- [Marketplace Map Offers Overlay](marketplace-map-offers-overlay.md)

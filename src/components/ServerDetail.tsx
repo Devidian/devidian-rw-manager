@@ -17,7 +17,7 @@ import {
   Search, Loader2, WifiOff, HardDrive, Globe, Shield,
   Clock, Monitor, Sword, Heart, Star, ExternalLink, Settings, Pencil,
   ArrowUp, ArrowDown,
-  Map as MapIcon, Plug, BarChart3,
+  Map as MapIcon, Plug, BarChart3, Drumstick, Droplets,
 } from 'lucide-react';
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
 import { useServerConfig } from '@/hooks/useServerConfig';
@@ -40,6 +40,13 @@ import { AdminMapTab } from '@/components/AdminMapTab';
 import { PluginsTab } from '@/components/PluginsTab';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import {
+  buildServerStatisticsPoints,
+  isoDate,
+  statisticsRange,
+  type StatisticsView,
+} from '@/lib/statistics';
+import { serverConnectUrl } from '@/lib/serverConnect';
+import {
   Bar,
   BarChart,
   CartesianGrid,
@@ -59,8 +66,22 @@ function useDateLocale() {
   return i18n.language?.startsWith('de') ? deFns : enUS;
 }
 
-function SteamLink({ uid, platform }: { uid: string; platform: string }) {
-  if (platform.toLowerCase() === 'steam') {
+function maskUid(uid: string): string {
+  if (uid.length <= 8) return uid;
+  return `${uid.slice(0, 4)}${'*'.repeat(uid.length - 8)}${uid.slice(-4)}`;
+}
+
+function SteamLink({
+  uid,
+  platform,
+  authenticated,
+}: {
+  uid: string;
+  platform?: string | number;
+  authenticated: boolean;
+}) {
+  const platformText = platform === undefined ? '' : String(platform);
+  if (authenticated && platformText.toLowerCase() === 'steam' && /^\d+$/.test(uid)) {
     return (
       <a
         href={`https://steamcommunity.com/profiles/${uid}`}
@@ -74,7 +95,7 @@ function SteamLink({ uid, platform }: { uid: string; platform: string }) {
       </a>
     );
   }
-  return <span className="text-muted-foreground font-mono text-xs">{uid}</span>;
+  return <span className="text-muted-foreground font-mono text-xs">{authenticated ? uid : maskUid(uid)}</span>;
 }
 
 function StatusDisplay({ status }: { status: ServerWithStatus['status'] }) {
@@ -140,7 +161,39 @@ function formatPlaytime(seconds: number): string {
   return `${Math.round(seconds / 60)} min`;
 }
 
-function OnlinePlayersSection({ players }: { players: ServerPlayerListPlayer[] }) {
+function displayNumber(value: number | undefined, suffix = ''): string {
+  return typeof value === 'number' && Number.isFinite(value) ? `${value}${suffix}` : '-';
+}
+
+function HealthMetric({ icon: Icon, label, value }: {
+  icon: React.ElementType;
+  label: string;
+  value: number | undefined;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex min-w-10 items-center gap-1 text-muted-foreground">
+          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>{displayNumber(value)}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function sortString(value: string | number | undefined): string {
+  return value === undefined ? '' : String(value);
+}
+
+function OnlinePlayersSection({
+  players,
+  authenticated,
+}: {
+  players: ServerPlayerListPlayer[];
+  authenticated: boolean;
+}) {
   const { t } = useTranslation();
   if (players.length === 0) {
     return (
@@ -163,11 +216,11 @@ function OnlinePlayersSection({ players }: { players: ServerPlayerListPlayer[] }
         </TableHeader>
         <TableBody>
           {players.map(p => (
-            <TableRow key={p.id} className="hover:bg-muted/20">
-              <TableCell className="font-medium">{p.name}</TableCell>
-              <TableCell><SteamLink uid={BigInt(p.uid)+''} platform={p.platform} /></TableCell>
-              <TableCell className="text-muted-foreground text-sm">{p.platform}</TableCell>
-              <TableCell className="text-muted-foreground text-sm">{p.ping} ms</TableCell>
+            <TableRow key={p.uid ?? p.id} className="hover:bg-muted/20">
+              <TableCell className="font-medium">{p.name || '-'}</TableCell>
+              <TableCell><SteamLink uid={p.uid} platform={p.platform} authenticated={authenticated} /></TableCell>
+              <TableCell className="text-muted-foreground text-sm">{p.platform || '-'}</TableCell>
+              <TableCell className="text-muted-foreground text-sm">{displayNumber(p.ping, ' ms')}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -178,13 +231,13 @@ function OnlinePlayersSection({ players }: { players: ServerPlayerListPlayer[] }
 
 const CONFIG_GROUPS = ['Server', 'World', 'Settings', 'Database', 'RCON', 'Plugins', 'Permissions'] as const;
 
-function ConfigTab({ backendUrl }: { backendUrl: string }) {
+function ConfigTab({ backendUrl, serverId }: { backendUrl: string; serverId: string }) {
   const { t } = useTranslation();
   const { config, loading, error, fetchConfig } = useServerConfig();
 
   useEffect(() => {
-    fetchConfig(backendUrl);
-  }, [backendUrl, fetchConfig]);
+    fetchConfig(backendUrl, serverId);
+  }, [backendUrl, fetchConfig, serverId]);
 
   if (loading) {
     return (
@@ -296,12 +349,13 @@ function SortablePlayerHeader({ field, label, sortField, sortDir, onSort }: {
   );
 }
 
-function PlayersTab({ server }: { server: ServerWithStatus }) {
+function PlayersTab({ server, apiBaseUrl }: { server: ServerWithStatus; apiBaseUrl?: string }) {
   const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
   const dateLocale = useDateLocale();
   const [search, setSearch] = useState('');
   const { players: dbPlayers, loading: dbLoading, error: dbError, fetchPlayers } = useDatabasePlayers();
-  const hasDbAccess = !!server.backendUrl;
+  const hasDbAccess = !!apiBaseUrl;
   const onlinePlayers = server.onlinePlayers ?? [];
 
   // Sort state
@@ -328,13 +382,13 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
   };
 
   useEffect(() => {
-    if (server.backendUrl) {
-      fetchPlayers(server.backendUrl);
+    if (apiBaseUrl) {
+      fetchPlayers(apiBaseUrl, server.id);
     }
-  }, [server.id, server.backendUrl, fetchPlayers]);
+  }, [server.id, apiBaseUrl, fetchPlayers]);
 
   const filteredDb = dbPlayers.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.name ?? '').toLowerCase().includes(search.toLowerCase()) ||
     p.uid.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -342,10 +396,10 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
     return [...filteredDb].sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
-        case 'name': cmp = a.name.localeCompare(b.name); break;
-        case 'platform': cmp = a.platform.localeCompare(b.platform); break;
+        case 'name': cmp = (a.name ?? '').localeCompare(b.name ?? ''); break;
+        case 'platform': cmp = sortString(a.platform).localeCompare(sortString(b.platform)); break;
         case 'permissiongroup': cmp = (a.permissiongroup || '').localeCompare(b.permissiongroup || ''); break;
-        case 'playtime': cmp = a.playtime - b.playtime; break;
+        case 'playtime': cmp = (a.playtime ?? 0) - (b.playtime ?? 0); break;
         case 'lastseen': cmp = (a.lastseen || 0) - (b.lastseen || 0); break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
@@ -369,7 +423,7 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <OnlinePlayersSection players={onlinePlayers} />
+          <OnlinePlayersSection players={onlinePlayers} authenticated={isAuthenticated} />
         </CardContent>
       </Card>
 
@@ -442,17 +496,17 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
                       </TableHeader>
                       <TableBody>
                         {pagedDb.map(player => (
-                          <TableRow key={player.id} className="hover:bg-muted/20">
-                            <TableCell className="font-medium">{player.name}</TableCell>
-                            <TableCell><SteamLink uid={BigInt(player.uid)+''} platform={player.platform} /></TableCell>
-                            <TableCell className="text-muted-foreground text-sm">{player.platform}</TableCell>
+                          <TableRow key={player.uid} className="hover:bg-muted/20">
+                            <TableCell className="font-medium">{player.name || '-'}</TableCell>
+                            <TableCell><SteamLink uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{player.platform || '-'}</TableCell>
                             <TableCell>
                               {player.permissiongroup ? (
                                 <Badge variant="secondary" className="text-xs py-0 h-5">{player.permissiongroup}</Badge>
                               ) : '—'}
                             </TableCell>
                             <TableCell className="text-muted-foreground text-sm">
-                              {formatPlaytime(player.playtime)}
+                              {typeof player.playtime === 'number' ? formatPlaytime(player.playtime) : '-'}
                             </TableCell>
                             <TableCell className="text-muted-foreground text-sm">
                               {player.lastseen
@@ -460,7 +514,11 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
                                 : '—'}
                             </TableCell>
                             <TableCell className="text-muted-foreground text-sm">
-                              ❤ {Math.round(player.health)} | 🍖 {Math.round(player.hunger)} | 💧 {Math.round(player.thirst)}
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <HealthMetric icon={Heart} label={t('health')} value={player.health} />
+                                <HealthMetric icon={Drumstick} label={t('hunger')} value={player.hunger} />
+                                <HealthMetric icon={Droplets} label={t('thirst')} value={player.thirst} />
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -518,105 +576,6 @@ function PlayersTab({ server }: { server: ServerWithStatus }) {
   );
 }
 
-type StatisticsView = 'day' | 'week' | 'month' | 'weekday';
-
-interface StatisticsPoint {
-  label: string;
-  averagePlayers: number;
-  maxPlayers: number;
-  availability: number;
-  samples: number;
-}
-
-function startOfLocalDay(value: string): Date {
-  const [year, month, day] = value.split('-').map(Number);
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
-}
-
-function isoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
-}
-
-function addDays(value: Date, days: number): Date {
-  const next = new Date(value);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function addMonths(value: Date, months: number): Date {
-  const next = new Date(value);
-  next.setMonth(next.getMonth() + months);
-  return next;
-}
-
-function aggregateBucketGroup(label: string, buckets: ServerStatisticsBucket[]): StatisticsPoint {
-  const samples = buckets.reduce((sum, bucket) => sum + bucket.sampleCount, 0);
-  const playerTotal = buckets.reduce((sum, bucket) => sum + bucket.playerSampleTotal, 0);
-  const onlineSamples = buckets.reduce((sum, bucket) => sum + bucket.onlineSampleCount, 0);
-  return {
-    label,
-    averagePlayers: samples > 0 ? Number((playerTotal / samples).toFixed(1)) : 0,
-    maxPlayers: buckets.reduce((max, bucket) => Math.max(max, bucket.maxPlayers), 0),
-    availability: samples > 0 ? Number(((onlineSamples / samples) * 100).toFixed(1)) : 0,
-    samples,
-  };
-}
-
-function buildStatisticsPoints(
-  buckets: ServerStatisticsBucket[],
-  view: StatisticsView,
-  dateValue: string,
-  locale: string,
-): StatisticsPoint[] {
-  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' });
-  if (view === 'weekday') {
-    return Array.from({ length: 7 }, (_, index) => {
-      const dayBuckets = buckets.filter((bucket) => new Date(bucket.hourStart).getDay() === index);
-      const label = formatter.format(addDays(new Date('2026-06-21T00:00:00.000Z'), index));
-      return aggregateBucketGroup(label, dayBuckets);
-    });
-  }
-
-  const start = startOfLocalDay(dateValue);
-  const hours = view === 'day' ? 24 : view === 'week' ? 24 * 7 : 24 * 31;
-  const end = view === 'month' ? addMonths(start, 1) : addDays(start, hours / 24);
-  const grouped = new Map<string, ServerStatisticsBucket[]>();
-
-  for (const bucket of buckets) {
-    const date = new Date(bucket.hourStart);
-    if (date < start || date >= end) continue;
-    const key = view === 'day'
-      ? date.getHours().toString().padStart(2, '0') + ':00'
-      : isoDate(date);
-    grouped.set(key, [...(grouped.get(key) ?? []), bucket]);
-  }
-
-  if (view === 'day') {
-    return Array.from({ length: 24 }, (_, hour) => {
-      const label = hour.toString().padStart(2, '0') + ':00';
-      return aggregateBucketGroup(label, grouped.get(label) ?? []);
-    });
-  }
-
-  const days = view === 'week' ? 7 : Math.ceil((end.getTime() - start.getTime()) / 86400000);
-  return Array.from({ length: days }, (_, index) => {
-    const date = addDays(start, index);
-    const label = isoDate(date);
-    return aggregateBucketGroup(label, grouped.get(label) ?? []);
-  });
-}
-
-function statisticsRange(view: StatisticsView, dateValue: string): { from?: string; to?: string } {
-  if (view === 'weekday') return {};
-  const from = startOfLocalDay(dateValue);
-  const to = view === 'day'
-    ? addDays(from, 1)
-    : view === 'week'
-      ? addDays(from, 7)
-      : addMonths(from, 1);
-  return { from: from.toISOString(), to: to.toISOString() };
-}
-
 function ServerStatisticsTab({ server }: { server: ServerConfig }) {
   const { t, i18n } = useTranslation();
   const { adapter } = useStorageMode();
@@ -646,7 +605,7 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
   }, [adapter, dateValue, server, view]);
 
   const points = useMemo(
-    () => buildStatisticsPoints(buckets, view, dateValue, i18n.language || 'en'),
+    () => buildServerStatisticsPoints(buckets, view, dateValue, i18n.language || 'en'),
     [buckets, dateValue, i18n.language, view],
   );
   const hasData = points.some((point) => point.samples > 0);
@@ -742,14 +701,16 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
 export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { updateServer } = useServerContext();
-  const { mode } = useStorageMode();
-  const { isAdmin, isAuthenticated } = useAuth();
+  const { updateServer, setServerBlocked } = useServerContext();
+  const { mode, fixedBackendUrl, backendUrl } = useStorageMode();
+  const { isAdmin, isAuthenticated, isSuperAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [blockedPending, setBlockedPending] = useState(false);
   const canEdit = false;
   const showPublicFlag = mode === 'fixed' || mode === 'backend';
   const [editOpen, setEditOpen] = useState(false);
-  const adminMapping = useAdminMapping(server?.backendUrl);
+  const managerApiUrl = fixedBackendUrl ?? backendUrl ?? undefined;
+  const adminMapping = useAdminMapping(managerApiUrl, server?.id);
 
   if (!server) {
     return (
@@ -771,7 +732,17 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const maxplayers = data?.maxplayers ?? '?';
   const gamemodeLabel = data?.gamemode === 0 ? t('survival') : data?.gamemode === 1 ? t('creative') : '—';
   const headerImageUrl = null;
-  const hasBackend = !!server.backendUrl;
+  const hasBackend = !!managerApiUrl;
+  const connectUrl = serverConnectUrl(server);
+  const toggleBlocked = async () => {
+    if (!server) return;
+    setBlockedPending(true);
+    try {
+      await setServerBlocked(server.id, server.blocked !== true);
+    } finally {
+      setBlockedPending(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -800,6 +771,12 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           <h1 className="text-2xl font-bold text-foreground">
             <RichText text={serverName} />
           </h1>
+          {server.blocked && (
+            <Badge variant="destructive" className="mt-2 gap-1">
+              <Lock className="h-3 w-3" />
+              {t('serverBlockedBadge')}
+            </Badge>
+          )}
           {info?.shortname && (
             <p className="text-sm text-muted-foreground mt-0.5">{info.shortname}</p>
           )}
@@ -834,6 +811,26 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
             <RefreshCw className={cn('h-4 w-4', server.status === 'loading' && 'animate-spin')} />
             {t('refresh')}
           </Button>
+          {connectUrl && (
+            <Button asChild size="sm" variant="outline" className="gap-2">
+              <a href={connectUrl}>
+                <ExternalLink className="h-4 w-4" />
+                {t('connectServer')}
+              </a>
+            </Button>
+          )}
+          {isSuperAdmin && (
+            <Button
+              size="sm"
+              variant={server.blocked ? 'destructive' : 'outline'}
+              className="gap-2"
+              onClick={() => void toggleBlocked()}
+              disabled={blockedPending}
+            >
+              <Lock className="h-4 w-4" />
+              {server.blocked ? t('unblockServer') : t('blockServer')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -964,7 +961,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
         </TabsContent>
 
         <TabsContent value="players" className="mt-4">
-          <PlayersTab server={server} />
+          <PlayersTab server={server} apiBaseUrl={managerApiUrl} />
         </TabsContent>
 
         <TabsContent value="statistics" className="mt-4">
@@ -974,7 +971,8 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
         {hasBackend && adminMapping.map.available && (
           <TabsContent value="admin-map" className="mt-4">
             <AdminMapTab
-              backendUrl={server.backendUrl!}
+              apiBaseUrl={managerApiUrl!}
+              serverId={server.id}
               metadata={adminMapping.map.metadata}
               onlinePlayers={server.onlinePlayers ?? []}
               isAdmin={isAdmin}
@@ -990,7 +988,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
 
         {hasBackend && isAuthenticated && (
           <TabsContent value="config" className="mt-4">
-            <ConfigTab backendUrl={server.backendUrl!} />
+            <ConfigTab backendUrl={managerApiUrl!} serverId={server.id} />
           </TabsContent>
         )}
       </Tabs>

@@ -27,6 +27,12 @@ export function useServers(adapter: StorageAdapter) {
     return updated;
   }, [adapter]);
 
+  const setServerBlocked = useCallback(async (id: string, blocked: boolean): Promise<ServerConfig> => {
+    const updated = await adapter.setServerBlocked(id, blocked);
+    setServers(prev => prev.map(s => s.id === id ? updated : s));
+    return updated;
+  }, [adapter]);
+
   const removeServer = useCallback(async (id: string): Promise<void> => {
     await adapter.deleteServer(id);
     setServers(prev => prev.filter(s => s.id !== id));
@@ -36,5 +42,5 @@ export function useServers(adapter: StorageAdapter) {
     return servers.find(s => s.id === id);
   }, [servers]);
 
-  return { servers, refreshServers, addServer, updateServer, removeServer, getServer };
+  return { servers, refreshServers, addServer, updateServer, setServerBlocked, removeServer, getServer };
 }

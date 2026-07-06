@@ -36,7 +36,7 @@ describe('admin mapping UI', () => {
       .mockResolvedValueOnce(response(mapResponse()))
       .mockResolvedValueOnce(response({}, 500));
 
-    const { result } = renderHook(() => useAdminMapping('https://backend.example/'));
+    const { result } = renderHook(() => useAdminMapping('https://backend.example/', 'server-1'));
 
     await waitFor(() => expect(result.current.map.available).toBe(true));
     await waitFor(() => expect(result.current.pluginsError).toBe(true));
@@ -49,20 +49,23 @@ describe('admin mapping UI', () => {
       .mockResolvedValueOnce(response(mapResponse({ schemaVersion: 4 })))
       .mockResolvedValueOnce(response({ items: [] }));
 
-    const { result } = renderHook(() => useAdminMapping('https://backend.example'));
+    const { result } = renderHook(() => useAdminMapping('https://backend.example', 'server-1'));
 
     await waitFor(() => expect(result.current.mapError).toBe(true));
     expect(result.current.map).toEqual({ available: false });
     expect(result.current.pluginsError).toBe(false);
   });
 
-  it('does not request map or plugins without a backend', () => {
+  it('does not request map or plugins without a backend or server id', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch');
     const { result } = renderHook(() => useAdminMapping());
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.current.map).toEqual({ available: false });
     expect(result.current.plugins).toEqual([]);
+
+    renderHook(() => useAdminMapping('https://backend.example'));
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
@@ -89,7 +92,7 @@ function mapResponse(overrides: Record<string, unknown> = {}) {
       generatedChunkBounds: { minX: -44, minZ: -50, maxX: -42, maxZ: -48 },
       generatedTileBounds: { minX: -22, minZ: -25, maxX: -21, maxZ: -24 },
       updatedAt: '2026-06-12T00:00:00.000Z',
-      tileUrl: '/api/data/server/map/tiles/new-world/{z}/{x}/{y}.png',
+      tileUrl: 'https://map.example.com/server-1/{z}/{x}/{y}.png',
       ...overrides,
     },
   };

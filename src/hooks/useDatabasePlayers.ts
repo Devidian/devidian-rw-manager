@@ -5,7 +5,7 @@ interface UseDatabasePlayersResult {
   players: DbPlayer[];
   loading: boolean;
   error: string | null;
-  fetchPlayers: (backendUrl: string) => Promise<void>;
+  fetchPlayers: (backendUrl: string, serverId: string) => Promise<void>;
 }
 
 export function useDatabasePlayers(): UseDatabasePlayersResult {
@@ -13,12 +13,12 @@ export function useDatabasePlayers(): UseDatabasePlayersResult {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPlayers = useCallback(async (backendUrl: string) => {
+  const fetchPlayers = useCallback(async (backendUrl: string, serverId: string) => {
     setLoading(true);
     setError(null);
     try {
       const base = backendUrl.replace(/\/$/, '');
-      const response = await fetch(`${base}/api/data/player`, {
+      const response = await fetch(`${base}/api/storage/server/${encodeURIComponent(serverId)}/player`, {
         signal: AbortSignal.timeout(10_000),
       });
       if (!response.ok) {

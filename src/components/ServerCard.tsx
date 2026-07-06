@@ -3,13 +3,14 @@ import { ServerWithStatus } from '@/types/server';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MapPin, Tag, RefreshCw, Trash2, Loader2, Clock, ChevronRight, Star } from 'lucide-react';
+import { Users, MapPin, Tag, RefreshCw, Trash2, Loader2, Clock, ChevronRight, Star, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { de as deFns } from 'date-fns/locale';
 import { enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { RichText } from '@/components/RichText';
+import { serverConnectUrl } from '@/lib/serverConnect';
 
 interface ServerCardProps {
   server: ServerWithStatus;
@@ -65,6 +66,7 @@ export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTo
   const playercount = data?.playercount ?? 0;
   const maxplayers = data?.maxplayers ?? '?';
   const version = data?.version;
+  const connectUrl = serverConnectUrl(server);
 
   return (
     <Card
@@ -158,6 +160,20 @@ export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTo
                 title={isPinned ? t('unpinServer') : t('pinServer')}
               >
                 <Star className={cn('h-3.5 w-3.5', isPinned && 'fill-current')} />
+              </Button>
+            )}
+            {connectUrl && (
+              <Button
+                asChild
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+                title={t('connectServer')}
+                onClick={e => e.stopPropagation()}
+              >
+                <a href={connectUrl}>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
               </Button>
             )}
             {onDelete && (

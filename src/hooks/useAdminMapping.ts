@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { MapBounds, MapMetadata, PluginInfo, ServerMapResponse } from '@/types/adminMapping';
 
-export function useAdminMapping(backendUrl?: string) {
+export function useAdminMapping(backendUrl?: string, serverId?: string) {
   const [map, setMap] = useState<ServerMapResponse>({ available: false });
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [mapLoading, setMapLoading] = useState(!!backendUrl);
@@ -10,7 +10,7 @@ export function useAdminMapping(backendUrl?: string) {
   const [pluginsError, setPluginsError] = useState(false);
 
   useEffect(() => {
-    if (!backendUrl) {
+    if (!backendUrl || !serverId) {
       setMap({ available: false });
       setPlugins([]);
       setMapLoading(false);
@@ -19,11 +19,12 @@ export function useAdminMapping(backendUrl?: string) {
     }
     const controller = new AbortController();
     const base = backendUrl.replace(/\/$/, '');
+    const serverBase = `${base}/api/storage/server/${encodeURIComponent(serverId)}`;
     setMapLoading(true);
     setPluginsLoading(true);
     setMapError(false);
     setPluginsError(false);
-    fetch(`${base}/api/data/server/map`, { signal: controller.signal })
+    fetch(`${serverBase}/map`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Map request failed');
         setMap(parseMapResponse(await response.json()));
@@ -34,7 +35,7 @@ export function useAdminMapping(backendUrl?: string) {
         setMapError(true);
       })
       .finally(() => setMapLoading(false));
-    fetch(`${base}/api/data/server/plugins`, { signal: controller.signal })
+    fetch(`${serverBase}/plugins`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Plugin request failed');
         setPlugins(parsePluginsResponse(await response.json()));
@@ -46,7 +47,7 @@ export function useAdminMapping(backendUrl?: string) {
       })
       .finally(() => setPluginsLoading(false));
     return () => controller.abort();
-  }, [backendUrl]);
+  }, [backendUrl, serverId]);
 
   return { map, plugins, mapLoading, pluginsLoading, mapError, pluginsError };
 }
@@ -67,7 +68,9 @@ export function parsePluginsResponse(value: unknown): PluginInfo[] {
 
 function isMapMetadata(value: unknown): value is MapMetadata {
   if (!isRecord(value)) return false;
-  return value.schemaVersion === 5 &&
+  return (value.schemaVersion === 5 || value.schemaVersion === 6) &&
+    (value.serverId === undefined || typeof value.serverId === 'string') &&
+    (value.displayName === undefined || typeof value.displayName === 'string') &&
     typeof value.worldKey === 'string' &&
     typeof value.worldName === 'string' &&
     positiveInteger(value.tileSize) &&

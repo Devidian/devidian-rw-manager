@@ -28,6 +28,7 @@ const adapter: StorageAdapter = {
   getPinnedServers: vi.fn(async () => ['server-a', 'server-b', 'server-a']),
   pinServer: vi.fn(async () => updatedUser),
   unpinServer: vi.fn(),
+  setServerBlocked: vi.fn(),
   getServerLiveStatus: vi.fn(),
 };
 

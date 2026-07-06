@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServerWithStatus } from '@/types/server';
@@ -6,7 +6,9 @@ import type { ServerWithStatus } from '@/types/server';
 const state = vi.hoisted(() => ({
   pinServer: vi.fn(),
   unpinServer: vi.fn(),
+  setServerBlocked: vi.fn(async () => undefined),
   isPinned: vi.fn((id: string) => id === 'server-a'),
+  isSuperAdmin: false,
 }));
 
 const serverList: ServerWithStatus[] = [
@@ -42,10 +44,39 @@ const serverList: ServerWithStatus[] = [
   },
   {
     id: 'server-b',
-    label: 'Unpinned Server',
+    label: 'Offline Server',
     queryUrl: 'https://server-b.example',
     createdAt: '2026-06-12T00:00:00.000Z',
     status: 'offline',
+  },
+  {
+    id: 'server-c',
+    label: 'Busy Server',
+    queryUrl: 'https://server-c.example',
+    createdAt: '2026-06-12T00:00:00.000Z',
+    status: 'online',
+    queryData: {
+      version: '0.9.9',
+      legacy: false,
+      ip: '127.0.0.3',
+      port: 4255,
+      steamid: 3,
+      contact: '',
+      name: 'Busy Server',
+      map: 'World C',
+      os: 'linux',
+      uptime: 1,
+      visible: true,
+      locked: false,
+      whitelist: false,
+      pvp: false,
+      pve: true,
+      gamemode: 0,
+      peaceful: false,
+      maxplayers: 12,
+      playercount: 8,
+      mods: false,
+    },
   },
 ];
 
@@ -60,7 +91,13 @@ vi.mock('@/context/ServerContext', () => ({
     refreshOne: vi.fn(),
     pinServer: state.pinServer,
     unpinServer: state.unpinServer,
+    setServerBlocked: state.setServerBlocked,
     isPinned: state.isPinned,
+  }),
+}));
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({
+    isSuperAdmin: state.isSuperAdmin,
   }),
 }));
 
@@ -70,7 +107,9 @@ describe('server list page', () => {
   beforeEach(() => {
     state.pinServer.mockClear();
     state.unpinServer.mockClear();
+    state.setServerBlocked.mockClear();
     state.isPinned.mockClear();
+    state.isSuperAdmin = false;
   });
 
   it('renders all servers and toggles pin state through the server context', () => {
@@ -81,13 +120,38 @@ describe('server list page', () => {
     );
 
     expect(screen.getByText('Pinned Server')).toBeInTheDocument();
-    expect(screen.getByText('Unpinned Server')).toBeInTheDocument();
+    expect(screen.getByText('Offline Server')).toBeInTheDocument();
     expect(screen.getByText('127.0.0.1:4255')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle('unpinServer'));
     expect(state.unpinServer).toHaveBeenCalledWith('server-a');
 
-    fireEvent.click(screen.getByTitle('pinServer'));
-    expect(state.pinServer).toHaveBeenCalledWith('server-b');
+    fireEvent.click(screen.getAllByTitle('pinServer')[0]);
+    expect(state.pinServer).toHaveBeenCalledWith('server-c');
+  });
+
+  it('keeps pinned servers first, offline servers last, then sorts by players and name', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <ServerListPage />
+      </MemoryRouter>,
+    );
+
+    const rows = [...container.querySelectorAll('tbody tr')].map((row) => row.textContent ?? '');
+    expect(rows[0]).toContain('Pinned Server');
+    expect(rows[1]).toContain('Busy Server');
+    expect(rows[2]).toContain('Offline Server');
+  });
+
+  it('allows super admins to toggle server blocking', () => {
+    state.isSuperAdmin = true;
+    render(
+      <MemoryRouter>
+        <ServerListPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getAllByTitle('blockServer')[0]);
+    return waitFor(() => expect(state.setServerBlocked).toHaveBeenCalledWith('server-a', true));
   });
 });

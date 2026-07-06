@@ -12,6 +12,7 @@ interface ServerContextValue {
   dashboardServerList: ServerWithStatus[];
   addServer: (data: Omit<ServerConfig, 'id' | 'createdAt'>) => Promise<ServerConfig>;
   updateServer: (id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>) => Promise<ServerConfig>;
+  setServerBlocked: (id: string, blocked: boolean) => Promise<ServerConfig>;
   removeServer: (id: string) => Promise<void>;
   pinServer: (id: string) => Promise<void>;
   unpinServer: (id: string) => Promise<void>;
@@ -28,7 +29,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const { adapter } = useStorageMode();
   const { user, applyUserUpdate } = useAuth();
   const [localPinnedServers, setLocalPinnedServers] = useState<string[]>([]);
-  const { servers=[], refreshServers, addServer, updateServer, removeServer, getServer } = useServers(adapter);
+  const { servers=[], refreshServers, addServer, updateServer, setServerBlocked, removeServer, getServer } = useServers(adapter);
   const pinnedIds = useMemo(() => new Set(user?.pinnedServers ?? localPinnedServers), [localPinnedServers, user?.pinnedServers]);
   const dashboardServers = useMemo(
     () => servers.filter(server =>
@@ -81,6 +82,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       dashboardServerList,
       addServer,
       updateServer,
+      setServerBlocked,
       removeServer,
       pinServer,
       unpinServer,

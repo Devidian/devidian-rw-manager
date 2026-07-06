@@ -6,7 +6,9 @@ export interface MapBounds {
 }
 
 export interface MapMetadata {
-  schemaVersion: 5;
+  schemaVersion: 5 | 6;
+  serverId?: string;
+  displayName?: string;
   worldKey: string;
   worldName: string;
   tileSize: number;
@@ -45,6 +47,7 @@ export interface MapLayerCapabilities {
   recentPlayerDays: number;
   claims: boolean;
   claimSales: boolean;
+  renewZones: boolean;
   marketplace: boolean;
   shop: boolean;
   players: boolean;
@@ -65,6 +68,8 @@ export interface MapClaim {
   fillColor: string;
   forSale: boolean;
   salePrice?: number;
+  renewZone: boolean;
+  nextRenewalAt?: string;
   marketplace: boolean;
   shop: boolean;
 }

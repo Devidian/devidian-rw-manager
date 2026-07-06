@@ -6,8 +6,8 @@ export const LEGAL_OPERATOR = {
   address: ['Hebeckenkamp 49', '45731 Waltrop', 'Germany'],
   phone: '+49 2309 5409842',
   imprintEmail: 'imprint@omega-zirkel.de',
-  privacyEmail: 'imprint@omega-zirkel.de',
-  abuseEmail: 'imprint@omega-zirkel.de',
+  privacyEmail: 'privacy@omega-zirkel.de',
+  abuseEmail: 'abuse@omega-zirkel.de',
 } as const;
 
 export const LEGAL_UPDATED = {

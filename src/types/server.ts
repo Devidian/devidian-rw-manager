@@ -22,6 +22,8 @@ export interface ServerConfig {
   queryData?: RisingWorldQueryData;
   infoData?: ServerInfoResponse;
   onlinePlayers?: ServerPlayerListPlayer[];
+  blocked?: boolean;
+  blockedAt?: string;
   lastChecked?: string;
   errorMessage?: string;
   firstSeen?: string;
@@ -110,7 +112,7 @@ export interface BackendInfo {
   version: number;
 }
 
-// GET {backendUrl}/api/data/player
+// GET {backendUrl}/api/storage/server/{serverId}/player
 export interface SpawnPoint {
   x: number;
   y: number;
@@ -118,35 +120,35 @@ export interface SpawnPoint {
 }
 
 export interface DbPlayer {
-  id: number;
+  id?: number;
   uid: string;
-  name: string;
-  posx: number;
-  posy: number;
-  posz: number;
-  rotx: number;
-  roty: number;
-  rotz: number;
-  rotw: number;
-  platform: string;
-  permissiongroup: string;
-  health: number;
-  hunger: number;
-  thirst: number;
-  brokenbones: number;
-  temperature: number;
-  dead: number;
-  flying: number;
-  clothes: unknown;
-  primaryspawn: SpawnPoint | null;
-  secondaryspawn: SpawnPoint | null;
-  tertiaryspawn: SpawnPoint | null;
-  lastspawn: number;
-  lastusedmount: number;
-  lastusedvehicle: number;
-  playtime: number;
-  firstseen: number;
-  lastseen: number;
+  name?: string;
+  posx?: number;
+  posy?: number;
+  posz?: number;
+  rotx?: number;
+  roty?: number;
+  rotz?: number;
+  rotw?: number;
+  platform?: string | number;
+  permissiongroup?: string;
+  health?: number;
+  hunger?: number;
+  thirst?: number;
+  brokenbones?: number;
+  temperature?: number;
+  dead?: number;
+  flying?: number;
+  clothes?: unknown;
+  primaryspawn?: SpawnPoint | null;
+  secondaryspawn?: SpawnPoint | null;
+  tertiaryspawn?: SpawnPoint | null;
+  lastspawn?: number;
+  lastusedmount?: number;
+  lastusedvehicle?: number;
+  playtime?: number;
+  firstseen?: number;
+  lastseen?: number;
 }
 
 export interface DataPlayerListResponse {
@@ -181,6 +183,7 @@ export interface ServerStatisticsBucket {
   maxPlayers: number;
   averagePlayers: number;
   availability: number;
+  onlinePlayerUids: string[];
   updatedAt: string;
 }
 
@@ -189,4 +192,14 @@ export interface ServerStatisticsPayload {
   from?: string;
   to?: string;
   buckets: ServerStatisticsBucket[];
+}
+
+export interface GlobalStatisticsPayload {
+  from?: string;
+  to?: string;
+  buckets: ServerStatisticsBucket[];
+  players: Array<{
+    uid: string;
+    name?: string;
+  }>;
 }

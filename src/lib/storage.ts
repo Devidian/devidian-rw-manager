@@ -1,4 +1,4 @@
-import { AuthUser, ServerConfig, ServerLiveStatusPayload, ServerStatisticsPayload } from '@/types/server';
+import { AuthUser, GlobalStatisticsPayload, ServerConfig, ServerLiveStatusPayload, ServerStatisticsPayload } from '@/types/server';
 import { authHeaders, TOKEN_KEY } from './authApi';
 
 const LOCAL_STORAGE_KEY = 'risingworld_servers';
@@ -35,8 +35,10 @@ export interface StorageAdapter {
   getPinnedServers(): Promise<string[]>;
   pinServer(id: string): Promise<AuthUser | null>;
   unpinServer(id: string): Promise<AuthUser | null>;
+  setServerBlocked(id: string, blocked: boolean): Promise<ServerConfig>;
   getServerLiveStatus(server: ServerConfig): Promise<ServerLiveStatusPayload>;
   getServerStatistics(server: ServerConfig, range?: { from?: string; to?: string }): Promise<ServerStatisticsPayload>;
+  getGlobalStatistics(range?: { from?: string; to?: string }): Promise<GlobalStatisticsPayload>;
 }
 
 // ─── Local Storage Adapter ───────────────────────────────────────────────────
@@ -100,6 +102,20 @@ export class LocalStorageAdapter implements StorageAdapter {
     return null;
   }
 
+  async setServerBlocked(id: string, blocked: boolean): Promise<ServerConfig> {
+    const servers = await this.getServers();
+    const idx = servers.findIndex(s => s.id === id);
+    if (idx === -1) throw new Error('Server not found');
+    const updated = {
+      ...servers[idx],
+      blocked,
+      blockedAt: blocked ? new Date().toISOString() : undefined,
+    };
+    servers[idx] = updated;
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(servers));
+    return updated;
+  }
+
   async getServerLiveStatus(server: ServerConfig): Promise<ServerLiveStatusPayload> {
     const base = server.queryUrl.endsWith('/') ? server.queryUrl : server.queryUrl + '/';
     const [query, info, playerlist] = await Promise.allSettled([
@@ -125,6 +141,13 @@ export class LocalStorageAdapter implements StorageAdapter {
     return {
       serverId: server.id,
       buckets: [],
+    };
+  }
+
+  async getGlobalStatistics(): Promise<GlobalStatisticsPayload> {
+    return {
+      buckets: [],
+      players: [],
     };
   }
 }
@@ -226,6 +249,17 @@ export class BackendStorageAdapter implements StorageAdapter {
     return res.json().then(json => json.user as AuthUser);
   }
 
+  async setServerBlocked(id: string, blocked: boolean): Promise<ServerConfig> {
+    const res = await fetch(`${this.base}/api/storage/server/${id}/blocked`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ blocked }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
+    return res.json().then(json => json.server as ServerConfig);
+  }
+
   async getServerLiveStatus(server: ServerConfig): Promise<ServerLiveStatusPayload> {
     const res = await fetch(`${this.base}/api/storage/server/${server.id}/live`, {
       headers: authHeaders(),
@@ -247,6 +281,19 @@ export class BackendStorageAdapter implements StorageAdapter {
     if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
     return res.json() as Promise<ServerStatisticsPayload>;
   }
+
+  async getGlobalStatistics(range: { from?: string; to?: string } = {}): Promise<GlobalStatisticsPayload> {
+    const params = new URLSearchParams();
+    if (range.from) params.set('from', range.from);
+    if (range.to) params.set('to', range.to);
+    const query = params.toString();
+    const res = await fetch(`${this.base}/api/storage/statistics${query ? `?${query}` : ''}`, {
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
+    return res.json() as Promise<GlobalStatisticsPayload>;
+  }
 }
 
 // ─── Backend Health Check ────────────────────────────────────────────────────
@@ -258,7 +305,7 @@ export type BackendCheckResult =
 export async function checkBackend(url: string, requiredService: string): Promise<BackendCheckResult> {
   const base = url.replace(/\/$/, '');
   try {
-    const res = await fetch(`${base}/`, { signal: AbortSignal.timeout(8_000) });
+    const res = await fetch(`${base}/api/`, { signal: AbortSignal.timeout(8_000) });
     let json: unknown;
     try {
       json = await res.json();
