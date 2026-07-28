@@ -46,6 +46,7 @@ import {
   type StatisticsView,
 } from '@/lib/statistics';
 import { serverConnectUrl } from '@/lib/serverConnect';
+import { PlayerUid } from '@/components/PlayerUid';
 import {
   Bar,
   BarChart,
@@ -64,38 +65,6 @@ interface ServerDetailProps {
 function useDateLocale() {
   const { i18n } = useTranslation();
   return i18n.language?.startsWith('de') ? deFns : enUS;
-}
-
-function maskUid(uid: string): string {
-  if (uid.length <= 8) return uid;
-  return `${uid.slice(0, 4)}${'*'.repeat(uid.length - 8)}${uid.slice(-4)}`;
-}
-
-function SteamLink({
-  uid,
-  platform,
-  authenticated,
-}: {
-  uid: string;
-  platform?: string | number;
-  authenticated: boolean;
-}) {
-  const platformText = platform === undefined ? '' : String(platform);
-  if (authenticated && platformText.toLowerCase() === 'steam' && /^\d+$/.test(uid)) {
-    return (
-      <a
-        href={`https://steamcommunity.com/profiles/${uid}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 text-primary underline underline-offset-2 hover:text-primary/80 font-mono text-xs"
-        onClick={e => e.stopPropagation()}
-      >
-        {uid}
-        <ExternalLink className="h-3 w-3" />
-      </a>
-    );
-  }
-  return <span className="text-muted-foreground font-mono text-xs">{authenticated ? uid : maskUid(uid)}</span>;
 }
 
 function StatusDisplay({ status }: { status: ServerWithStatus['status'] }) {
@@ -218,7 +187,7 @@ function OnlinePlayersSection({
           {players.map(p => (
             <TableRow key={p.uid ?? p.id} className="hover:bg-muted/20">
               <TableCell className="font-medium">{p.name || '-'}</TableCell>
-              <TableCell><SteamLink uid={p.uid} platform={p.platform} authenticated={authenticated} /></TableCell>
+              <TableCell><PlayerUid uid={p.uid} platform={p.platform} authenticated={authenticated} /></TableCell>
               <TableCell className="text-muted-foreground text-sm">{p.platform || '-'}</TableCell>
               <TableCell className="text-muted-foreground text-sm">{displayNumber(p.ping, ' ms')}</TableCell>
             </TableRow>
@@ -498,7 +467,7 @@ function PlayersTab({ server, apiBaseUrl }: { server: ServerWithStatus; apiBaseU
                         {pagedDb.map(player => (
                           <TableRow key={player.uid} className="hover:bg-muted/20">
                             <TableCell className="font-medium">{player.name || '-'}</TableCell>
-                            <TableCell><SteamLink uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>
+                            <TableCell><PlayerUid uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>
                             <TableCell className="text-muted-foreground text-sm">{player.platform || '-'}</TableCell>
                             <TableCell>
                               {player.permissiongroup ? (

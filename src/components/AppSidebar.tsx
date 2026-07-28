@@ -104,6 +104,18 @@ export function AppSidebar({ servers }: AppSidebarProps) {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <NavLink
+                    to="/spielerliste"
+                    className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                    activeClassName="bg-sidebar-accent text-primary font-medium"
+                  >
+                    <Users className="h-4 w-4 shrink-0" />
+                    <span>{t('playerList')}</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
                     to="/statistiken"
                     className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
                     activeClassName="bg-sidebar-accent text-primary font-medium"
