@@ -87,7 +87,7 @@ export function useMapLayers(
       if (!aborted(requestError)) setError(true);
     });
     void load();
-    const interval = window.setInterval(load, 60_000);
+    const interval = window.setInterval(load, 30_000);
     return () => {
       controller.abort();
       window.clearInterval(interval);
