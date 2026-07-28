@@ -17,6 +17,7 @@ const mapLayerState = vi.hoisted(() => ({
   claims: [] as MapClaim[],
 }));
 const fetchMarketplaceOffersMock = vi.hoisted(() => vi.fn());
+const refreshClaimsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('leaflet', async (importOriginal) => {
   const actual = await importOriginal<typeof import('leaflet')>();
@@ -86,6 +87,7 @@ vi.mock('@/hooks/useMapLayers', () => ({
     players: [],
     gpsGlobalMarkers: [],
     error: false,
+    refreshClaims: refreshClaimsMock,
   }),
   fetchMarketplaceOffers: fetchMarketplaceOffersMock,
 }));
@@ -98,6 +100,7 @@ describe('AdminMapTab', () => {
     tileLayerUrls.length = 0;
     mapLayerState.claims = [];
     fetchMarketplaceOffersMock.mockReset();
+    refreshClaimsMock.mockReset();
   });
 
   it('initially fits generated tiles without locking map panning to them', () => {
@@ -231,6 +234,23 @@ describe('AdminMapTab', () => {
     expect(await screen.findAllByText('Iron Ingot')).toHaveLength(2);
     expect(screen.getAllByText('12')).toHaveLength(2);
     expect(screen.getAllByText('80 coins')).toHaveLength(2);
+  });
+
+  it('refreshes claims when the claims layer is enabled again', () => {
+    render(
+      <AdminMapTab
+        apiBaseUrl="https://manager.example.com"
+        serverId="server-1"
+        tileBaseUrl="https://map.example.com"
+        metadata={metadata('world-a', 'World A')}
+      />,
+    );
+
+    showClaimsLayer();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'mapLayerClaims' }));
+    showClaimsLayer();
+
+    expect(refreshClaimsMock).toHaveBeenCalledTimes(2);
   });
 
   it('renders marketplace offer loading, empty, and error states', async () => {

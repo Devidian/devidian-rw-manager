@@ -84,7 +84,7 @@ export function AdminMapTab({
   isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
-  const { capabilities, claims, players, gpsGlobalMarkers, error } = useMapLayers(
+  const { capabilities, claims, players, gpsGlobalMarkers, error, refreshClaims } = useMapLayers(
     apiBaseUrl,
     serverId,
     metadata.worldKey,
@@ -240,7 +240,10 @@ export function AdminMapTab({
                 onChange={(checked) => setVisible((value) => ({ ...value, sectors: checked }))} />
               <LayerToggle label={t('mapLayerClaims')} checked={visible.claims}
                 disabled={!capabilities?.claims}
-                onChange={(checked) => setVisible((value) => ({ ...value, claims: checked }))} />
+                onChange={(checked) => {
+                  setVisible((value) => ({ ...value, claims: checked }));
+                  if (checked) void refreshClaims();
+                }} />
               <LayerToggle label={t('mapLayerOnlinePlayers')}
                 checked={visible.online}
                 disabled={!capabilities?.players}

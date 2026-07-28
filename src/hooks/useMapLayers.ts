@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { TOKEN_KEY } from '@/lib/authApi';
 import type {
   MapClaim,
@@ -20,6 +20,17 @@ export function useMapLayers(
   const [players, setPlayers] = useState<MapPlayer[]>([]);
   const [gpsGlobalMarkers, setGpsGlobalMarkers] = useState<MapGpsMarker[]>([]);
   const [error, setError] = useState(false);
+
+  const refreshClaims = useCallback(async () => {
+    const controller = new AbortController();
+    const base = backendUrl.replace(/\/$/, '');
+    const serverBase = `${base}/api/storage/server/${encodeURIComponent(serverId)}`;
+    try {
+      setClaims(await request(`${serverBase}/map/layers/claims`, controller.signal).then(parseClaims));
+    } catch (requestError) {
+      if (!aborted(requestError)) setError(true);
+    }
+  }, [backendUrl, serverId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -83,7 +94,7 @@ export function useMapLayers(
     };
   }, [backendUrl, capabilities?.players, onlinePlayers, serverId, worldKey]);
 
-  return { capabilities, claims, players, gpsGlobalMarkers, error };
+  return { capabilities, claims, players, gpsGlobalMarkers, error, refreshClaims };
 }
 
 export async function fetchMarketplaceOffers(
