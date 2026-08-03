@@ -84,7 +84,15 @@ export function AdminMapTab({
   isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
-  const { capabilities, claims, players, gpsGlobalMarkers, error, refreshClaims } = useMapLayers(
+  const {
+    capabilities,
+    claims,
+    players,
+    gpsGlobalMarkers,
+    error,
+    refreshClaims,
+    marketplaceOffersRevision,
+  } = useMapLayers(
     apiBaseUrl,
     serverId,
     metadata.worldKey,
@@ -271,6 +279,7 @@ export function AdminMapTab({
         apiBaseUrl={apiBaseUrl}
         serverId={serverId}
         claim={offersClaim}
+        liveRevision={marketplaceOffersRevision}
         portalContainer={expanded ? containerRef.current : null}
         onOpenChange={(open) => {
           if (!open) setOffersClaim(null);
@@ -512,12 +521,14 @@ function MarketplaceOffersDialog({
   apiBaseUrl,
   serverId,
   claim,
+  liveRevision,
   portalContainer,
   onOpenChange,
 }: {
   apiBaseUrl: string;
   serverId: string;
   claim: MapClaim | null;
+  liveRevision: number;
   portalContainer?: HTMLElement | null;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -549,7 +560,7 @@ function MarketplaceOffersDialog({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [apiBaseUrl, claim, serverId]);
+  }, [apiBaseUrl, claim, liveRevision, serverId]);
 
   return (
     <Dialog open={!!claim} onOpenChange={onOpenChange}>

@@ -8,6 +8,8 @@ import type {
   MapPlayer,
 } from '@/types/adminMapping';
 import type { ServerPlayerListPlayer } from '@/types/server';
+import { useMapLiveSubscription } from '@/hooks/useMapLiveSubscription';
+import type { MapLiveLayer } from '@/lib/mapLive';
 
 export function useMapLayers(
   backendUrl: string,
@@ -20,6 +22,9 @@ export function useMapLayers(
   const [players, setPlayers] = useState<MapPlayer[]>([]);
   const [gpsGlobalMarkers, setGpsGlobalMarkers] = useState<MapGpsMarker[]>([]);
   const [error, setError] = useState(false);
+  const [generalRevision, setGeneralRevision] = useState(0);
+  const [playerRevision, setPlayerRevision] = useState(0);
+  const [marketplaceOffersRevision, setMarketplaceOffersRevision] = useState(0);
 
   const refreshClaims = useCallback(async () => {
     const controller = new AbortController();
@@ -31,6 +36,19 @@ export function useMapLayers(
       if (!aborted(requestError)) setError(true);
     }
   }, [backendUrl, serverId]);
+
+  const handleLiveLayers = useCallback((layers: MapLiveLayer[]) => {
+    if (layers.some((layer) =>
+      layer === 'claims' || layer === 'capabilities' || layer === 'gpsGlobalMarkers')) {
+      setGeneralRevision((value) => value + 1);
+    }
+    if (layers.includes('players')) setPlayerRevision((value) => value + 1);
+    if (layers.includes('marketplaceOffers')) {
+      setMarketplaceOffersRevision((value) => value + 1);
+    }
+  }, []);
+
+  useMapLiveSubscription(backendUrl, serverId, handleLiveLayers);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,7 +85,7 @@ export function useMapLayers(
         if (!aborted(requestError)) setError(true);
       });
     return () => controller.abort();
-  }, [backendUrl, serverId, worldKey]);
+  }, [backendUrl, generalRevision, serverId, worldKey]);
 
   useEffect(() => {
     if (!capabilities?.players) return;
@@ -92,9 +110,17 @@ export function useMapLayers(
       controller.abort();
       window.clearInterval(interval);
     };
-  }, [backendUrl, capabilities?.players, onlinePlayers, serverId, worldKey]);
+  }, [backendUrl, capabilities?.players, onlinePlayers, playerRevision, serverId, worldKey]);
 
-  return { capabilities, claims, players, gpsGlobalMarkers, error, refreshClaims };
+  return {
+    capabilities,
+    claims,
+    players,
+    gpsGlobalMarkers,
+    error,
+    refreshClaims,
+    marketplaceOffersRevision,
+  };
 }
 
 export async function fetchMarketplaceOffers(

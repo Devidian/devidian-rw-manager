@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+* subscribe the open map to live invalidations for only its selected server
+* refresh claims, players, GPS markers, and marketplace offers on live changes
+
 ## [1.3.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.2.0...rw-manager-v1.3.0) (2026-07-28)
 
 
