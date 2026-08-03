@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   setServerBlocked: vi.fn(async () => undefined),
   isPinned: vi.fn((id: string) => id === 'server-a'),
   isSuperAdmin: false,
+  pinLimitReached: false,
 }));
 
 const serverList: ServerWithStatus[] = [
@@ -93,6 +94,9 @@ vi.mock('@/context/ServerContext', () => ({
     unpinServer: state.unpinServer,
     setServerBlocked: state.setServerBlocked,
     isPinned: state.isPinned,
+    canPinServer: (id: string) => state.isPinned(id) || !state.pinLimitReached,
+    pinLimitReached: state.pinLimitReached,
+    maxPinnedServers: 50,
   }),
 }));
 vi.mock('@/context/AuthContext', () => ({
@@ -110,6 +114,16 @@ describe('server list page', () => {
     state.setServerBlocked.mockClear();
     state.isPinned.mockClear();
     state.isSuperAdmin = false;
+    state.pinLimitReached = false;
+  });
+
+  it('warns at the configured limit and disables only new favorites', () => {
+    state.pinLimitReached = true;
+    render(<MemoryRouter><ServerListPage /></MemoryRouter>);
+
+    expect(screen.getByText('pinnedServerLimitTitle')).toBeInTheDocument();
+    expect(screen.getAllByTitle('pinnedServerLimitAction:{"max":50}')[0]).toBeDisabled();
+    expect(screen.getByTitle('unpinServer')).toBeEnabled();
   });
 
   it('renders all servers and toggles pin state through the server context', () => {

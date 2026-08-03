@@ -3,6 +3,7 @@ import { useServers } from '@/hooks/useServers';
 import { useServerStatus } from '@/hooks/useServerStatus';
 import { useStorageMode } from '@/context/StorageModeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useBackendInfo } from '@/context/BackendInfoContext';
 import { ServerConfig, ServerWithStatus } from '@/types/server';
 
 interface ServerContextValue {
@@ -17,6 +18,9 @@ interface ServerContextValue {
   pinServer: (id: string) => Promise<void>;
   unpinServer: (id: string) => Promise<void>;
   isPinned: (id: string) => boolean;
+  canPinServer: (id: string) => boolean;
+  pinLimitReached: boolean;
+  maxPinnedServers: number;
   getServer: (id: string) => ServerConfig | undefined;
   refreshAll: () => void;
   refreshServerList: () => void;
@@ -26,7 +30,8 @@ interface ServerContextValue {
 const ServerContext = createContext<ServerContextValue | undefined>(undefined);
 
 export function ServerProvider({ children }: { children: ReactNode }) {
-  const { adapter } = useStorageMode();
+  const { adapter, fixedBackendUrl } = useStorageMode();
+  const { maxPinnedServers } = useBackendInfo();
   const { user, applyUserUpdate } = useAuth();
   const [localPinnedServers, setLocalPinnedServers] = useState<string[]>([]);
   const { servers=[], refreshServers, addServer, updateServer, setServerBlocked, removeServer, getServer } = useServers(adapter);
@@ -37,7 +42,13 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     ),
     [pinnedIds, servers, user?.steamId],
   );
-  const { statusMap, refreshAll, refreshOne } = useServerStatus(servers, adapter, dashboardServers);
+  const { statusMap, refreshAll, refreshOne } = useServerStatus(
+    servers,
+    adapter,
+    dashboardServers,
+    fixedBackendUrl,
+  );
+  const pinLimitReached = pinnedIds.size >= maxPinnedServers;
 
   useEffect(() => {
     if (user) {
@@ -57,6 +68,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   );
 
   const pinServer = async (id: string) => {
+    if (!pinnedIds.has(id) && pinLimitReached) return;
     const nextUser = await adapter.pinServer(id);
     if (nextUser) {
       applyUserUpdate(nextUser);
@@ -87,6 +99,9 @@ export function ServerProvider({ children }: { children: ReactNode }) {
       pinServer,
       unpinServer,
       isPinned: (id: string) => pinnedIds.has(id),
+      canPinServer: (id: string) => pinnedIds.has(id) || !pinLimitReached,
+      pinLimitReached,
+      maxPinnedServers,
       getServer,
       refreshAll,
       refreshServerList: () => { void refreshServers(); },

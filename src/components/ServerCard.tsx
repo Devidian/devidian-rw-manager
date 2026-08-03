@@ -18,6 +18,8 @@ interface ServerCardProps {
   onDelete?: () => void;
   isPinned?: boolean;
   onTogglePin?: () => void;
+  pinDisabled?: boolean;
+  pinDisabledReason?: string;
 }
 
 function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
@@ -54,7 +56,7 @@ function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
   );
 }
 
-export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTogglePin }: ServerCardProps) {
+export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTogglePin, pinDisabled = false, pinDisabledReason }: ServerCardProps) {
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language?.startsWith('de') ? deFns : enUS;
   const navigate = useNavigate();
@@ -157,7 +159,8 @@ export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTo
                   isPinned && 'text-primary'
                 )}
                 onClick={e => { e.stopPropagation(); onTogglePin(); }}
-                title={isPinned ? t('unpinServer') : t('pinServer')}
+                disabled={!isPinned && pinDisabled}
+                title={isPinned ? t('unpinServer') : pinDisabledReason ?? t('pinServer')}
               >
                 <Star className={cn('h-3.5 w-3.5', isPinned && 'fill-current')} />
               </Button>

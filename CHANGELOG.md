@@ -6,11 +6,14 @@
 
 * subscribe the open map to live invalidations for only its selected server
 * apply claim, player, GPS marker, and marketplace offer deltas without REST reloads
+* subscribe to all dashboard server statuses over one mutable WebSocket
+* show and enforce the backend-provided favorite-server limit
 
 ### Fixed
 
 * back off reconnects until the map subscription is confirmed
 * use periodic REST player refresh only while live updates are unavailable
+* resume `/live` polling only while the server-status WebSocket is unavailable
 
 ## [1.3.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.2.0...rw-manager-v1.3.0) (2026-07-28)
 

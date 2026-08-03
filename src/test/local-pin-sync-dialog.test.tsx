@@ -46,6 +46,9 @@ vi.mock('@/context/AuthContext', () => ({
 vi.mock('@/context/StorageModeContext', () => ({
   useStorageMode: () => ({ adapter }),
 }));
+vi.mock('@/context/BackendInfoContext', () => ({
+  useBackendInfo: () => ({ services: ['storage'], maxPinnedServers: 50 }),
+}));
 vi.mock('@/lib/storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/storage')>();
   return {

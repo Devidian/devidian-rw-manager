@@ -108,6 +108,9 @@ export interface ServerPlayerListResponse {
 // GET {backendUrl}/ health check
 export interface BackendInfo {
   ok: boolean;
+  limits?: {
+    maxPinnedServers: number;
+  };
   services: string[];
   version: number;
 }
