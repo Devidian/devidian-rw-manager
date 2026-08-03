@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TOKEN_KEY } from '@/lib/authApi';
 import {
   getMapLiveWebSocketUrl,
+  isMapLiveSubscribedMessage,
   parseMapLayersChangedMessage,
-  type MapLiveLayer,
+  type MapLayersChangedMessage,
 } from '@/lib/mapLive';
 
 const INITIAL_RECONNECT_MS = 1000;
@@ -12,9 +13,10 @@ const MAX_RECONNECT_MS = 30000;
 export function useMapLiveSubscription(
   backendUrl: string,
   serverId: string,
-  onLayersChanged: (layers: MapLiveLayer[]) => void,
-): void {
+  onLayersChanged: (message: MapLayersChangedMessage) => void,
+): boolean {
   const callbackRef = useRef(onLayersChanged);
+  const [subscribed, setSubscribed] = useState(false);
   callbackRef.current = onLayersChanged;
 
   useEffect(() => {
@@ -26,9 +28,9 @@ export function useMapLiveSubscription(
 
     const connect = () => {
       if (!active) return;
+      setSubscribed(false);
       socket = new WebSocket(getMapLiveWebSocketUrl(backendUrl));
       socket.addEventListener('open', () => {
-        reconnectDelay = INITIAL_RECONNECT_MS;
         socket?.send(JSON.stringify({
           type: 'subscribe',
           schemaVersion: 1,
@@ -43,12 +45,19 @@ export function useMapLiveSubscription(
         } catch {
           return;
         }
+        if (isMapLiveSubscribedMessage(value, serverId)) {
+          reconnectDelay = INITIAL_RECONNECT_MS;
+          setSubscribed(true);
+          return;
+        }
         const message = parseMapLayersChangedMessage(value, serverId);
-        if (message) callbackRef.current(message.layers);
+        if (message) callbackRef.current(message);
       });
-      socket.addEventListener('close', () => {
+      socket.addEventListener('close', (event) => {
         socket = undefined;
+        setSubscribed(false);
         if (!active) return;
+        if (event.code === 1008 || event.code === 1003) return;
         reconnectTimer = window.setTimeout(connect, reconnectDelay);
         reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_MS);
       });
@@ -61,4 +70,5 @@ export function useMapLiveSubscription(
       socket?.close(1000, 'map_unmounted');
     };
   }, [backendUrl, serverId]);
+  return subscribed;
 }

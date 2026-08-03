@@ -5,7 +5,12 @@
 ### Added
 
 * subscribe the open map to live invalidations for only its selected server
-* refresh claims, players, GPS markers, and marketplace offers on live changes
+* apply claim, player, GPS marker, and marketplace offer deltas without REST reloads
+
+### Fixed
+
+* back off reconnects until the map subscription is confirmed
+* use periodic REST player refresh only while live updates are unavailable
 
 ## [1.3.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.2.0...rw-manager-v1.3.0) (2026-07-28)
 

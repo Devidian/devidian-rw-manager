@@ -54,7 +54,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { fetchMarketplaceOffers, useMapLayers } from '@/hooks/useMapLayers';
+import { applyEntityDelta, fetchMarketplaceOffers, useMapLayers } from '@/hooks/useMapLayers';
+import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
 
 interface LayerVisibility {
@@ -91,7 +92,7 @@ export function AdminMapTab({
     gpsGlobalMarkers,
     error,
     refreshClaims,
-    marketplaceOffersRevision,
+    marketplaceOffersDelta,
   } = useMapLayers(
     apiBaseUrl,
     serverId,
@@ -279,7 +280,7 @@ export function AdminMapTab({
         apiBaseUrl={apiBaseUrl}
         serverId={serverId}
         claim={offersClaim}
-        liveRevision={marketplaceOffersRevision}
+        liveDelta={marketplaceOffersDelta}
         portalContainer={expanded ? containerRef.current : null}
         onOpenChange={(open) => {
           if (!open) setOffersClaim(null);
@@ -521,14 +522,14 @@ function MarketplaceOffersDialog({
   apiBaseUrl,
   serverId,
   claim,
-  liveRevision,
+  liveDelta,
   portalContainer,
   onOpenChange,
 }: {
   apiBaseUrl: string;
   serverId: string;
   claim: MapClaim | null;
-  liveRevision: number;
+  liveDelta: { sequence: number; areas: MapMarketplaceAreaDelta[] } | null;
   portalContainer?: HTMLElement | null;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -560,7 +561,13 @@ function MarketplaceOffersDialog({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [apiBaseUrl, claim, liveRevision, serverId]);
+  }, [apiBaseUrl, claim, serverId]);
+
+  useEffect(() => {
+    if (!claim || !liveDelta) return;
+    const delta = liveDelta.areas.find((area) => area.areaId === claim.areaId);
+    if (delta) setOffers((items) => applyEntityDelta(items, delta, (item) => item.id));
+  }, [claim, liveDelta]);
 
   return (
     <Dialog open={!!claim} onOpenChange={onOpenChange}>

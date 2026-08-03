@@ -9,7 +9,20 @@ import type {
 } from '@/types/adminMapping';
 import type { ServerPlayerListPlayer } from '@/types/server';
 import { useMapLiveSubscription } from '@/hooks/useMapLiveSubscription';
-import type { MapLiveLayer } from '@/lib/mapLive';
+import type {
+  MapEntityDelta,
+  MapLayersChangedMessage,
+  MapMarketplaceAreaDelta,
+} from '@/lib/mapLive';
+import {
+  booleans,
+  isMapClaim,
+  isMapGpsMarker,
+  isMapMarketplaceOffer,
+  isMapPlayer,
+  positiveInteger,
+  record,
+} from '@/lib/mapLayerValidation';
 
 export function useMapLayers(
   backendUrl: string,
@@ -24,7 +37,10 @@ export function useMapLayers(
   const [error, setError] = useState(false);
   const [generalRevision, setGeneralRevision] = useState(0);
   const [playerRevision, setPlayerRevision] = useState(0);
-  const [marketplaceOffersRevision, setMarketplaceOffersRevision] = useState(0);
+  const [marketplaceOffersDelta, setMarketplaceOffersDelta] = useState<{
+    sequence: number;
+    areas: MapMarketplaceAreaDelta[];
+  } | null>(null);
 
   const refreshClaims = useCallback(async () => {
     const controller = new AbortController();
@@ -37,18 +53,30 @@ export function useMapLayers(
     }
   }, [backendUrl, serverId]);
 
-  const handleLiveLayers = useCallback((layers: MapLiveLayer[]) => {
+  const handleLiveLayers = useCallback((message: MapLayersChangedMessage) => {
+    const { changes, layers } = message;
+    if (changes?.capabilities) setCapabilities(changes.capabilities.value);
+    if (changes?.claims) setClaims((items) => applyEntityDelta(items, changes.claims!, (item) => item.areaId));
+    if (changes?.players) setPlayers((items) => applyEntityDelta(items, changes.players!, (item) => item.id));
+    if (changes?.gpsGlobalMarkers) {
+      setGpsGlobalMarkers((items) => applyEntityDelta(
+        items,
+        changes.gpsGlobalMarkers!,
+        (item) => item.id,
+      ));
+    }
+    if (changes?.marketplaceOffers) {
+      setMarketplaceOffersDelta({ sequence: message.sequence, areas: changes.marketplaceOffers.areas });
+    }
     if (layers.some((layer) =>
-      layer === 'claims' || layer === 'capabilities' || layer === 'gpsGlobalMarkers')) {
+      (layer === 'claims' || layer === 'capabilities' || layer === 'gpsGlobalMarkers') &&
+      !changes?.[layer])) {
       setGeneralRevision((value) => value + 1);
     }
-    if (layers.includes('players')) setPlayerRevision((value) => value + 1);
-    if (layers.includes('marketplaceOffers')) {
-      setMarketplaceOffersRevision((value) => value + 1);
-    }
+    if (layers.includes('players') && !changes?.players) setPlayerRevision((value) => value + 1);
   }, []);
 
-  useMapLiveSubscription(backendUrl, serverId, handleLiveLayers);
+  const liveSubscribed = useMapLiveSubscription(backendUrl, serverId, handleLiveLayers);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -105,12 +133,12 @@ export function useMapLayers(
       if (!aborted(requestError)) setError(true);
     });
     void load();
-    const interval = window.setInterval(load, 30_000);
+    const interval = liveSubscribed ? undefined : window.setInterval(load, 30_000);
     return () => {
       controller.abort();
-      window.clearInterval(interval);
+      if (interval !== undefined) window.clearInterval(interval);
     };
-  }, [backendUrl, capabilities?.players, onlinePlayers, playerRevision, serverId, worldKey]);
+  }, [backendUrl, capabilities?.players, liveSubscribed, onlinePlayers, playerRevision, serverId, worldKey]);
 
   return {
     capabilities,
@@ -119,8 +147,25 @@ export function useMapLayers(
     gpsGlobalMarkers,
     error,
     refreshClaims,
-    marketplaceOffersRevision,
+    marketplaceOffersDelta,
   };
+}
+
+export function applyEntityDelta<T, TId extends string | number>(
+  current: T[],
+  delta: MapEntityDelta<T, TId>,
+  id: (item: T) => TId,
+): T[] {
+  const removed = new Set(delta.removedIds);
+  const upserted = new Map(delta.upserted.map((item) => [id(item), item]));
+  const result = current
+    .filter((item) => !removed.has(id(item)))
+    .map((item) => upserted.get(id(item)) ?? item);
+  const existing = new Set(result.map(id));
+  for (const item of delta.upserted) {
+    if (!existing.has(id(item))) result.push(item);
+  }
+  return result;
 }
 
 export async function fetchMarketplaceOffers(
@@ -153,7 +198,7 @@ export function parseCapabilities(value: unknown): MapLayerCapabilities {
 
 export function parseClaims(value: unknown): MapClaim[] {
   if (!record(value) || value.schemaVersion !== 1 || typeof value.available !== 'boolean' ||
-    !Array.isArray(value.items) || !value.items.every(isClaim)) {
+    !Array.isArray(value.items) || !value.items.every(isMapClaim)) {
     throw new Error('Invalid map claims response');
   }
   return value.available ? value.items : [];
@@ -162,7 +207,7 @@ export function parseClaims(value: unknown): MapClaim[] {
 export function parsePlayers(value: unknown): MapPlayer[] {
   if (!record(value) || value.schemaVersion !== 1 || typeof value.available !== 'boolean' ||
     !positiveInteger(value.recentPlayerDays) ||
-    !Array.isArray(value.items) || !value.items.every(isPlayer)) {
+    !Array.isArray(value.items) || !value.items.every(isMapPlayer)) {
     throw new Error('Invalid map players response');
   }
   return value.available ? value.items : [];
@@ -170,7 +215,7 @@ export function parsePlayers(value: unknown): MapPlayer[] {
 
 export function parseGpsGlobalMarkers(value: unknown): MapGpsMarker[] {
   if (!record(value) || value.schemaVersion !== 1 || typeof value.available !== 'boolean' ||
-    !Array.isArray(value.items) || !value.items.every(isGpsMarker)) {
+    !Array.isArray(value.items) || !value.items.every(isMapGpsMarker)) {
     throw new Error('Invalid GPS marker response');
   }
   return value.available ? value.items : [];
@@ -201,7 +246,7 @@ export function mergeOnlinePlayers(
 export function parseOffers(value: unknown): MapMarketplaceOffer[] {
   if (!record(value) || value.schemaVersion !== 1 || typeof value.available !== 'boolean' ||
     !positiveInteger(value.areaId) ||
-    !Array.isArray(value.items) || !value.items.every(isOffer)) {
+    !Array.isArray(value.items) || !value.items.every(isMapMarketplaceOffer)) {
     throw new Error('Invalid marketplace offers response');
   }
   return value.available ? value.items : [];
@@ -216,60 +261,6 @@ async function request(url: string, signal?: AbortSignal, authenticated = false)
   const response = await fetch(url, { signal, headers });
   if (!response.ok) throw new Error(`Map layer request failed: ${response.status}`);
   return response.json();
-}
-
-function isClaim(value: unknown): value is MapClaim {
-  return record(value) &&
-    positiveInteger(value.areaId) &&
-    typeof value.name === 'string' &&
-    typeof value.permission === 'string' &&
-    integers(value, ['minX', 'minZ', 'width', 'depth']) &&
-    (value.width as number) > 0 &&
-    (value.depth as number) > 0 &&
-    (value.ownerName === undefined || typeof value.ownerName === 'string') &&
-    (value.createdAt === undefined || dateString(value.createdAt)) &&
-    color(value.borderColor) &&
-    color(value.fillColor) &&
-    typeof value.forSale === 'boolean' &&
-    (value.salePrice === undefined || positiveInteger(value.salePrice)) &&
-    typeof value.renewZone === 'boolean' &&
-    (value.nextRenewalAt === undefined || dateString(value.nextRenewalAt)) &&
-    typeof value.marketplace === 'boolean' &&
-    typeof value.shop === 'boolean';
-}
-
-function isPlayer(value: unknown): value is MapPlayer {
-  return record(value) &&
-    typeof value.id === 'string' &&
-    typeof value.name === 'string' &&
-    typeof value.x === 'number' && Number.isFinite(value.x) &&
-    typeof value.z === 'number' && Number.isFinite(value.z) &&
-    ['online', 'recent-offline', 'long-term-offline'].includes(String(value.state)) &&
-    dateString(value.lastSeen);
-}
-
-function isGpsMarker(value: unknown): value is MapGpsMarker {
-  return record(value) &&
-    positiveInteger(value.id) &&
-    typeof value.name === 'string' &&
-    typeof value.x === 'number' && Number.isFinite(value.x) &&
-    typeof value.y === 'number' && Number.isFinite(value.y) &&
-    typeof value.z === 'number' && Number.isFinite(value.z) &&
-    typeof value.icon === 'string' &&
-    color(value.color) &&
-    dateString(value.createdAt);
-}
-
-function isOffer(value: unknown): value is MapMarketplaceOffer {
-  return record(value) &&
-    positiveInteger(value.id) &&
-    typeof value.itemName === 'string' &&
-    Number.isInteger(value.itemVariant) &&
-    positiveInteger(value.amount) &&
-    positiveInteger(value.price) &&
-    typeof value.currency === 'string' &&
-    typeof value.sellerName === 'string' &&
-    dateString(value.createdAt);
 }
 
 interface DatabaseMapPlayer {
@@ -300,30 +291,6 @@ function parseDatabasePlayers(value: unknown): DatabaseMapPlayer[] {
       lastseen: item.lastseen,
     }];
   });
-}
-
-function record(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object';
-}
-
-function positiveInteger(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) > 0;
-}
-
-function integers(value: Record<string, unknown>, keys: string[]): boolean {
-  return keys.every((key) => Number.isSafeInteger(value[key]));
-}
-
-function booleans(value: Record<string, unknown>, keys: string[]): boolean {
-  return keys.every((key) => typeof value[key] === 'boolean');
-}
-
-function color(value: unknown): value is string {
-  return typeof value === 'string' && /^#[0-9A-F]{8}$/i.test(value);
-}
-
-function dateString(value: unknown): value is string {
-  return typeof value === 'string' && !Number.isNaN(Date.parse(value));
 }
 
 function aborted(error: unknown): boolean {

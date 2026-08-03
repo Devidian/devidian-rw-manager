@@ -4,6 +4,7 @@ import {
 } from '@/lib/mapLive';
 import { act, renderHook } from '@testing-library/react';
 import { useMapLiveSubscription } from '@/hooks/useMapLiveSubscription';
+import { applyEntityDelta } from '@/hooks/useMapLayers';
 
 describe('map live contract', () => {
   it('derives ws and wss URLs without putting credentials in the URL', () => {
@@ -21,6 +22,20 @@ describe('map live contract', () => {
       sequence: 4,
       generatedAt: '2026-08-03T12:00:00.000Z',
       layers: ['players', 'claims'],
+      changes: {
+        players: {
+          upserted: [{
+            id: 'player-1',
+            name: 'Player',
+            x: 12,
+            z: 24,
+            state: 'online',
+            lastSeen: '2026-08-03T12:00:00.000Z',
+          }],
+          removedIds: ['player-2'],
+        },
+        claims: { upserted: [], removedIds: [7] },
+      },
     };
     expect(parseMapLayersChangedMessage(message, 'server-a')).toEqual(message);
     expect(parseMapLayersChangedMessage(message, 'server-b')).toBeNull();
@@ -37,6 +52,20 @@ describe('map live contract', () => {
     };
     expect(parseMapLayersChangedMessage({ ...base, layers: ['unknown'] }, 'server-a')).toBeNull();
     expect(parseMapLayersChangedMessage({ ...base, sequence: 0 }, 'server-a')).toBeNull();
+    expect(parseMapLayersChangedMessage({
+      ...base,
+      changes: { players: { upserted: [{ id: 'incomplete' }], removedIds: [] } },
+    }, 'server-a')).toBeNull();
+  });
+});
+
+describe('map live state deltas', () => {
+  it('updates, removes, and appends entities without replacing the whole collection', () => {
+    expect(applyEntityDelta(
+      [{ id: 1, value: 'old' }, { id: 2, value: 'removed' }],
+      { upserted: [{ id: 1, value: 'new' }, { id: 3, value: 'added' }], removedIds: [2] },
+      (item) => item.id,
+    )).toEqual([{ id: 1, value: 'new' }, { id: 3, value: 'added' }]);
   });
 });
 
@@ -49,12 +78,13 @@ describe('map live subscription lifecycle', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     Object.defineProperty(globalThis, 'WebSocket', { configurable: true, value: originalWebSocket });
   });
 
   it('closes the old subscription and subscribes only to the newly selected server', () => {
     const onLayersChanged = vi.fn();
-    const { rerender, unmount } = renderHook(
+    const { result, rerender, unmount } = renderHook(
       ({ serverId }) => useMapLiveSubscription('https://manager.example', serverId, onLayersChanged),
       { initialProps: { serverId: 'server-a' } },
     );
@@ -67,6 +97,10 @@ describe('map live subscription lifecycle', () => {
     expect(FakeWebSocket.instances).toHaveLength(2);
     act(() => FakeWebSocket.instances[1].emit('open', new Event('open')));
     expect(JSON.parse(FakeWebSocket.instances[1].sent[0])).toMatchObject({ serverId: 'server-b' });
+    act(() => FakeWebSocket.instances[1].emit('message', new MessageEvent('message', {
+      data: JSON.stringify({ type: 'subscribed', schemaVersion: 1, serverId: 'server-b' }),
+    })));
+    expect(result.current).toBe(true);
 
     act(() => FakeWebSocket.instances[1].emit('message', new MessageEvent('message', {
       data: JSON.stringify({
@@ -81,6 +115,29 @@ describe('map live subscription lifecycle', () => {
     expect(onLayersChanged).not.toHaveBeenCalled();
     unmount();
     expect(FakeWebSocket.instances[1].closeReason).toBe('map_unmounted');
+  });
+
+  it('backs off unsuccessful reconnects and stops retrying protocol failures', () => {
+    vi.useFakeTimers();
+    const { unmount } = renderHook(() =>
+      useMapLiveSubscription('https://manager.example', 'server-a', vi.fn()));
+
+    act(() => FakeWebSocket.instances[0].disconnect(1006));
+    act(() => vi.advanceTimersByTime(999));
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    act(() => vi.advanceTimersByTime(1));
+    expect(FakeWebSocket.instances).toHaveLength(2);
+
+    act(() => FakeWebSocket.instances[1].disconnect(1006));
+    act(() => vi.advanceTimersByTime(1999));
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    act(() => vi.advanceTimersByTime(1));
+    expect(FakeWebSocket.instances).toHaveLength(3);
+
+    act(() => FakeWebSocket.instances[2].disconnect(1008));
+    act(() => vi.advanceTimersByTime(30_000));
+    expect(FakeWebSocket.instances).toHaveLength(3);
+    unmount();
   });
 });
 
@@ -104,6 +161,12 @@ class FakeWebSocket {
 
   close(_code?: number, reason?: string): void {
     this.closeReason = reason;
+  }
+
+  disconnect(code: number): void {
+    const event = new Event('close');
+    Object.defineProperty(event, 'code', { value: code });
+    this.emit('close', event);
   }
 
   emit(type: string, event: Event): void {
