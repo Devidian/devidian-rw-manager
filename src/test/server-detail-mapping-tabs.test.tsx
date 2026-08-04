@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   isAuthenticated: true,
   dbPlayers: [] as Array<{ uid: string; name?: string; platform?: string }>,
   fetchPlayers: vi.fn(),
+  useMapLayers: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -35,12 +36,15 @@ vi.mock('@/context/AuthContext', () => ({
 vi.mock('@/hooks/useDatabasePlayers', () => ({
   useDatabasePlayers: () => ({ players: state.dbPlayers, loading: false, error: null, fetchPlayers: state.fetchPlayers }),
 }));
+vi.mock('@/hooks/useMapLayers', () => ({
+  useMapLayers: (...args: unknown[]) => state.useMapLayers(...args),
+}));
 vi.mock('@/hooks/useServerConfig', () => ({
   useServerConfig: () => ({ config: null, loading: false, error: null, fetchConfig: vi.fn() }),
 }));
 vi.mock('@/hooks/useAdminMapping', () => ({
   useAdminMapping: () => ({
-    map: state.mapAvailable ? { available: true, metadata: {} } : { available: false },
+    map: state.mapAvailable ? { available: true, metadata: { worldKey: 'world-1' } } : { available: false },
     plugins: [],
     pluginsLoading: false,
     pluginsError: false,
@@ -62,6 +66,17 @@ describe('server detail mapping tabs', () => {
     state.isAuthenticated = true;
     state.dbPlayers = [];
     state.fetchPlayers.mockClear();
+    state.fetchPlayers.mockResolvedValue(undefined);
+    state.useMapLayers.mockReset();
+    state.useMapLayers.mockReturnValue({
+      capabilities: null,
+      claims: [],
+      players: [],
+      gpsGlobalMarkers: [],
+      error: false,
+      refreshClaims: vi.fn(),
+      marketplaceOffersDelta: null,
+    });
     state.getServerStatistics.mockResolvedValue({
       serverId: 'server-1',
       buckets: [
@@ -117,6 +132,26 @@ describe('server detail mapping tabs', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'statistics' }), { button: 0, ctrlKey: false });
 
     await waitFor(() => expect(state.getServerStatistics).toHaveBeenCalled());
+  });
+
+  it('starts player baselines for the detail and keeps them across tab changes', async () => {
+    render(<ServerDetail server={server()} onRefresh={vi.fn()} />);
+
+    await waitFor(() => expect(state.fetchPlayers).toHaveBeenCalledTimes(1));
+    expect(state.fetchPlayers).toHaveBeenCalledWith('https://manager.example', 'server-1');
+    expect(state.useMapLayers).toHaveBeenLastCalledWith(
+      'https://manager.example',
+      'server-1',
+      'world-1',
+      expect.any(Array),
+      state.dbPlayers,
+    );
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'players' }), { button: 0, ctrlKey: false });
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'map' }), { button: 0, ctrlKey: false });
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'overview' }), { button: 0, ctrlKey: false });
+
+    expect(state.fetchPlayers).toHaveBeenCalledTimes(1);
   });
 
   it('masks player UIDs and hides Steam profile links for guests', () => {

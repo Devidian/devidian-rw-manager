@@ -76,21 +76,31 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock('@/hooks/useMapLayers', () => ({
-  useMapLayers: () => ({
-    capabilities: {
-      claims: true,
-      players: true,
-      gpsGlobalMarkers: true,
-    },
-    claims: mapLayerState.claims,
-    players: [],
-    gpsGlobalMarkers: [],
-    error: false,
-    refreshClaims: refreshClaimsMock,
-  }),
+vi.mock('@/hooks/useMapLayers', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/hooks/useMapLayers')>(),
   fetchMarketplaceOffers: fetchMarketplaceOffersMock,
 }));
+
+function TestAdminMapTab(props: Omit<ComponentProps<typeof AdminMapTab>, 'mapLayers'>) {
+  return (
+    <AdminMapTab
+      {...props}
+      mapLayers={{
+        capabilities: {
+          claims: true,
+          players: true,
+          gpsGlobalMarkers: true,
+        } as never,
+        claims: mapLayerState.claims,
+        players: [],
+        gpsGlobalMarkers: [],
+        error: false,
+        refreshClaims: refreshClaimsMock,
+        marketplaceOffersDelta: null,
+      }}
+    />
+  );
+}
 
 describe('AdminMapTab', () => {
   beforeEach(() => {
@@ -105,7 +115,7 @@ describe('AdminMapTab', () => {
 
   it('initially fits generated tiles without locking map panning to them', () => {
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com/"
         serverId="server-1"
         tileBaseUrl="https://map.example.com/"
@@ -134,7 +144,7 @@ describe('AdminMapTab', () => {
 
   it('recreates the Leaflet map when the selected world changes', () => {
     const { rerender } = render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -142,7 +152,7 @@ describe('AdminMapTab', () => {
       />,
     );
     rerender(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -156,7 +166,7 @@ describe('AdminMapTab', () => {
 
   it('keeps map controls on the map and resizes when entering expanded mode', async () => {
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -181,7 +191,7 @@ describe('AdminMapTab', () => {
     });
 
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -213,7 +223,7 @@ describe('AdminMapTab', () => {
     }]);
 
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -238,7 +248,7 @@ describe('AdminMapTab', () => {
 
   it('refreshes claims when the claims layer is enabled again', () => {
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -258,7 +268,7 @@ describe('AdminMapTab', () => {
     fetchMarketplaceOffersMock.mockResolvedValueOnce([]);
 
     const { unmount } = render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -274,7 +284,7 @@ describe('AdminMapTab', () => {
 
     fetchMarketplaceOffersMock.mockRejectedValueOnce(new Error('Failed'));
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -304,7 +314,7 @@ describe('AdminMapTab', () => {
     });
 
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"

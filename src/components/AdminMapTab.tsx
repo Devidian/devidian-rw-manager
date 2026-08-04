@@ -30,7 +30,6 @@ import type {
   MapMetadata,
   MapPlayer,
 } from '@/types/adminMapping';
-import type { ServerPlayerListPlayer } from '@/types/server';
 import {
   areaToMapBounds,
   leafletYToBackendZ,
@@ -54,7 +53,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { applyEntityDelta, fetchMarketplaceOffers, useMapLayers } from '@/hooks/useMapLayers';
+import { applyEntityDelta, fetchMarketplaceOffers } from '@/hooks/useMapLayers';
+import type { MapLayersState } from '@/hooks/useMapLayers';
 import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
 
@@ -74,14 +74,14 @@ export function AdminMapTab({
   serverId,
   tileBaseUrl,
   metadata,
-  onlinePlayers = [],
+  mapLayers,
   isAdmin = false,
 }: {
   apiBaseUrl: string;
   serverId: string;
   tileBaseUrl?: string;
   metadata: MapMetadata;
-  onlinePlayers?: ServerPlayerListPlayer[];
+  mapLayers: MapLayersState;
   isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
@@ -93,12 +93,7 @@ export function AdminMapTab({
     error,
     refreshClaims,
     marketplaceOffersDelta,
-  } = useMapLayers(
-    apiBaseUrl,
-    serverId,
-    metadata.worldKey,
-    onlinePlayers,
-  );
+  } = mapLayers;
   const [visible, setVisible] = useState<LayerVisibility>({
     sectors: false,
     claims: false,

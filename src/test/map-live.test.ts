@@ -2,9 +2,9 @@ import {
   getMapLiveWebSocketUrl,
   parseMapLayersChangedMessage,
 } from '@/lib/mapLive';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useMapLiveSubscription } from '@/hooks/useMapLiveSubscription';
-import { applyEntityDelta } from '@/hooks/useMapLayers';
+import { applyEntityDelta, useMapLayers } from '@/hooks/useMapLayers';
 
 describe('map live contract', () => {
   it('derives ws and wss URLs without putting credentials in the URL', () => {
@@ -71,6 +71,7 @@ describe('map live state deltas', () => {
 
 describe('map live subscription lifecycle', () => {
   const originalWebSocket = globalThis.WebSocket;
+  const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
     FakeWebSocket.instances = [];
@@ -80,6 +81,7 @@ describe('map live subscription lifecycle', () => {
   afterEach(() => {
     vi.useRealTimers();
     Object.defineProperty(globalThis, 'WebSocket', { configurable: true, value: originalWebSocket });
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, value: originalFetch });
   });
 
   it('closes the old subscription and subscribes only to the newly selected server', () => {
@@ -139,7 +141,101 @@ describe('map live subscription lifecycle', () => {
     expect(FakeWebSocket.instances).toHaveLength(3);
     unmount();
   });
+
+  it('does not let a late player snapshot overwrite a received live delta', async () => {
+    let resolvePlayers!: (response: Response) => void;
+    const playerResponse = new Promise<Response>((resolve) => {
+      resolvePlayers = resolve;
+    });
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/map/layers')) {
+        return Promise.resolve(jsonResponse({
+          schemaVersion: 1,
+          worldName: 'World',
+          sectorSizeChunks: 256,
+          chunkSizeBlocks: 32,
+          sectorSizeBlocks: 8192,
+          recentPlayerDays: 7,
+          claims: false,
+          claimSales: false,
+          renewZones: false,
+          marketplace: false,
+          shop: false,
+          players: true,
+          gpsGlobalMarkers: false,
+        }));
+      }
+      if (url.endsWith('/map/layers/players')) return playerResponse;
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, value: fetchMock });
+
+    const { result, unmount } = renderHook(() => useMapLayers(
+      'https://manager.example',
+      'server-a',
+      'world-a',
+      [],
+      [],
+    ));
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) =>
+      String(url).endsWith('/map/layers/players'))).toBe(true));
+    act(() => FakeWebSocket.instances[0].emit('message', new MessageEvent('message', {
+      data: JSON.stringify({ type: 'subscribed', schemaVersion: 1, serverId: 'server-a' }),
+    })));
+    act(() => FakeWebSocket.instances[0].emit('message', new MessageEvent('message', {
+      data: JSON.stringify({
+        type: 'map.layers.changed',
+        schemaVersion: 1,
+        serverId: 'server-a',
+        sequence: 1,
+        generatedAt: '2026-08-04T08:00:00.000Z',
+        layers: ['players'],
+        changes: {
+          players: {
+            upserted: [{
+              id: 'player-1',
+              name: 'Live',
+              x: 40,
+              z: 50,
+              state: 'online',
+              lastSeen: '2026-08-04T08:00:00.000Z',
+            }],
+            removedIds: [],
+          },
+        },
+      }),
+    })));
+    resolvePlayers(jsonResponse({
+      schemaVersion: 1,
+      available: true,
+      recentPlayerDays: 7,
+      items: [{
+        id: 'player-1',
+        name: 'Persisted',
+        x: 1,
+        z: 2,
+        state: 'recent-offline',
+        lastSeen: '2026-08-04T07:00:00.000Z',
+      }],
+    }));
+
+    await waitFor(() => expect(result.current.players).toEqual([
+      expect.objectContaining({ id: 'player-1', name: 'Live', x: 40, z: 50, state: 'online' }),
+    ]));
+    expect(fetchMock.mock.calls.filter(([url]) =>
+      String(url).endsWith('/map/layers/players'))).toHaveLength(1);
+    unmount();
+  });
 });
+
+function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
 class FakeWebSocket {
   static instances: FakeWebSocket[] = [];

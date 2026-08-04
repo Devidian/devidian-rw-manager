@@ -20,6 +20,7 @@ import {
   Map as MapIcon, Plug, BarChart3, Drumstick, Droplets,
 } from 'lucide-react';
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
+import type { UseDatabasePlayersResult } from '@/hooks/useDatabasePlayers';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useServerContext } from '@/context/ServerContext';
 import { useStorageMode } from '@/context/StorageModeContext';
@@ -36,6 +37,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAdminMapping } from '@/hooks/useAdminMapping';
+import { useMapLayers } from '@/hooks/useMapLayers';
 import { AdminMapTab } from '@/components/AdminMapTab';
 import { PluginsTab } from '@/components/PluginsTab';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -318,12 +320,20 @@ function SortablePlayerHeader({ field, label, sortField, sortDir, onSort }: {
   );
 }
 
-function PlayersTab({ server, apiBaseUrl }: { server: ServerWithStatus; apiBaseUrl?: string }) {
+function PlayersTab({
+  server,
+  apiBaseUrl,
+  databasePlayers,
+}: {
+  server: ServerWithStatus;
+  apiBaseUrl?: string;
+  databasePlayers: UseDatabasePlayersResult;
+}) {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const dateLocale = useDateLocale();
   const [search, setSearch] = useState('');
-  const { players: dbPlayers, loading: dbLoading, error: dbError, fetchPlayers } = useDatabasePlayers();
+  const { players: dbPlayers, loading: dbLoading, error: dbError } = databasePlayers;
   const hasDbAccess = !!apiBaseUrl;
   const onlinePlayers = server.onlinePlayers ?? [];
 
@@ -349,12 +359,6 @@ function PlayersTab({ server, apiBaseUrl }: { server: ServerWithStatus; apiBaseU
     setCurrentPage(0);
     localStorage.setItem(PAGE_SIZE_KEY, val);
   };
-
-  useEffect(() => {
-    if (apiBaseUrl) {
-      fetchPlayers(apiBaseUrl, server.id);
-    }
-  }, [server.id, apiBaseUrl, fetchPlayers]);
 
   const filteredDb = dbPlayers.filter(p =>
     (p.name ?? '').toLowerCase().includes(search.toLowerCase()) ||
@@ -680,6 +684,20 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const [editOpen, setEditOpen] = useState(false);
   const managerApiUrl = fixedBackendUrl ?? backendUrl ?? undefined;
   const adminMapping = useAdminMapping(managerApiUrl, server?.id);
+  const databasePlayers = useDatabasePlayers();
+  const fetchDatabasePlayers = databasePlayers.fetchPlayers;
+  const mapMetadata = adminMapping.map.available ? adminMapping.map.metadata : undefined;
+  const mapLayers = useMapLayers(
+    mapMetadata && managerApiUrl ? managerApiUrl : '',
+    mapMetadata && server ? server.id : '',
+    mapMetadata?.worldKey ?? '',
+    server?.onlinePlayers ?? [],
+    databasePlayers.players,
+  );
+
+  useEffect(() => {
+    if (managerApiUrl && server?.id) void fetchDatabasePlayers(managerApiUrl, server.id);
+  }, [fetchDatabasePlayers, managerApiUrl, server?.id]);
 
   if (!server) {
     return (
@@ -930,7 +948,11 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
         </TabsContent>
 
         <TabsContent value="players" className="mt-4">
-          <PlayersTab server={server} apiBaseUrl={managerApiUrl} />
+          <PlayersTab
+            server={server}
+            apiBaseUrl={managerApiUrl}
+            databasePlayers={databasePlayers}
+          />
         </TabsContent>
 
         <TabsContent value="statistics" className="mt-4">
@@ -943,7 +965,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
               apiBaseUrl={managerApiUrl!}
               serverId={server.id}
               metadata={adminMapping.map.metadata}
-              onlinePlayers={server.onlinePlayers ?? []}
+              mapLayers={mapLayers}
               isAdmin={isAdmin}
             />
           </TabsContent>

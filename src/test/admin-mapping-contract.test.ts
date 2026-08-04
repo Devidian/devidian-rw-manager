@@ -165,6 +165,33 @@ describe('admin mapping contract', () => {
       expect.objectContaining({ id: 'ONLINE', state: 'online', x: 3.5, z: -4.5 }),
     ]);
   });
+
+  it('keeps live map player state authoritative over database fallback data', () => {
+    expect(mergeOnlinePlayers(
+      [{
+        id: 'online',
+        name: 'Live',
+        x: 40,
+        z: 50,
+        state: 'online',
+        lastSeen: '2026-08-04T08:00:00.000Z',
+      }],
+      [{
+        uid: 'ONLINE',
+        name: 'Persisted',
+        posx: 3.5,
+        posz: -4.5,
+        lastseen: 1781740800,
+      }],
+      [{ id: 1, uid: 'online', name: 'Query', platform: 'Steam', ping: 10 }],
+    )).toEqual([expect.objectContaining({
+      id: 'online',
+      name: 'Live',
+      state: 'online',
+      x: 40,
+      z: 50,
+    })]);
+  });
 });
 
 function mapResponse(overrides: Record<string, unknown> = {}) {
