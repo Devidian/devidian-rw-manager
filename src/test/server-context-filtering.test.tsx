@@ -34,7 +34,10 @@ const adapter: StorageAdapter = {
 };
 
 vi.mock('@/context/StorageModeContext', () => ({
-  useStorageMode: () => ({ adapter }),
+  useStorageMode: () => ({ adapter, fixedBackendUrl: 'https://manager.example' }),
+}));
+vi.mock('@/context/BackendInfoContext', () => ({
+  useBackendInfo: () => ({ services: ['storage'], maxPinnedServers: 1 }),
 }));
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
@@ -65,13 +68,15 @@ vi.mock('@/hooks/useServerStatus', () => ({
 const { ServerProvider, useServerContext } = await import('@/context/ServerContext');
 
 function Probe() {
-  const { serverList, pinnedServerList, dashboardServerList, isPinned } = useServerContext();
+  const { serverList, pinnedServerList, dashboardServerList, isPinned, canPinServer, pinLimitReached } = useServerContext();
   return (
     <div>
       <div data-testid="all">{serverList.map((item) => item.id).join(',')}</div>
       <div data-testid="pinned">{pinnedServerList.map((item) => item.id).join(',')}</div>
       <div data-testid="dashboard">{dashboardServerList.map((item) => item.id).join(',')}</div>
       <div data-testid="is-pinned">{String(isPinned('pinned-server'))}</div>
+      <div data-testid="can-pin-other">{String(canPinServer('other-server'))}</div>
+      <div data-testid="limit-reached">{String(pinLimitReached)}</div>
     </div>
   );
 }
@@ -102,6 +107,8 @@ describe('server context filtering', () => {
     expect(screen.getByTestId('pinned')).toHaveTextContent('pinned-server');
     expect(screen.getByTestId('dashboard')).toHaveTextContent('pinned-server,admin-server');
     expect(screen.getByTestId('is-pinned')).toHaveTextContent('true');
+    expect(screen.getByTestId('can-pin-other')).toHaveTextContent('false');
+    expect(screen.getByTestId('limit-reached')).toHaveTextContent('true');
   });
 
   it('uses anonymous local pins when no user is signed in', async () => {

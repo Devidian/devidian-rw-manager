@@ -19,6 +19,7 @@ import { ServerWithStatus } from '@/types/server';
 import { cn } from '@/lib/utils';
 import { serverConnectUrl } from '@/lib/serverConnect';
 import { getServerDisplayName, getServerSecondaryName } from '@/lib/serverDisplay';
+import { PinnedServerLimitAlert } from '@/components/PinnedServerLimitAlert';
 
 function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
   const { t } = useTranslation();
@@ -90,6 +91,9 @@ export default function ServerListPage() {
     refreshOne,
     pinServer,
     unpinServer,
+    canPinServer,
+    pinLimitReached,
+    maxPinnedServers,
     setServerBlocked,
     isPinned,
   } = useServerContext();
@@ -155,6 +159,7 @@ export default function ServerListPage() {
 
   return (
     <div className="space-y-6">
+      {pinLimitReached && <PinnedServerLimitAlert max={maxPinnedServers} />}
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t('serverList')}</h1>
@@ -254,7 +259,10 @@ export default function ServerListPage() {
                           variant="ghost"
                           className={cn('h-8 w-8 p-0 text-muted-foreground hover:text-primary', pinned && 'text-primary')}
                           onClick={() => void (pinned ? unpinServer(server.id) : pinServer(server.id))}
-                          title={pinned ? t('unpinServer') : t('pinServer')}
+                          disabled={!canPinServer(server.id)}
+                          title={pinned ? t('unpinServer') : !canPinServer(server.id)
+                            ? t('pinnedServerLimitAction', { max: maxPinnedServers })
+                            : t('pinServer')}
                         >
                           <Star className={cn('h-3.5 w-3.5', pinned && 'fill-current')} />
                         </Button>

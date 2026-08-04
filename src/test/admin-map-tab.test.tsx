@@ -17,6 +17,7 @@ const mapLayerState = vi.hoisted(() => ({
   claims: [] as MapClaim[],
 }));
 const fetchMarketplaceOffersMock = vi.hoisted(() => vi.fn());
+const refreshClaimsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('leaflet', async (importOriginal) => {
   const actual = await importOriginal<typeof import('leaflet')>();
@@ -75,20 +76,31 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock('@/hooks/useMapLayers', () => ({
-  useMapLayers: () => ({
-    capabilities: {
-      claims: true,
-      players: true,
-      gpsGlobalMarkers: true,
-    },
-    claims: mapLayerState.claims,
-    players: [],
-    gpsGlobalMarkers: [],
-    error: false,
-  }),
+vi.mock('@/hooks/useMapLayers', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/hooks/useMapLayers')>(),
   fetchMarketplaceOffers: fetchMarketplaceOffersMock,
 }));
+
+function TestAdminMapTab(props: Omit<ComponentProps<typeof AdminMapTab>, 'mapLayers'>) {
+  return (
+    <AdminMapTab
+      {...props}
+      mapLayers={{
+        capabilities: {
+          claims: true,
+          players: true,
+          gpsGlobalMarkers: true,
+        } as never,
+        claims: mapLayerState.claims,
+        players: [],
+        gpsGlobalMarkers: [],
+        error: false,
+        refreshClaims: refreshClaimsMock,
+        marketplaceOffersDelta: null,
+      }}
+    />
+  );
+}
 
 describe('AdminMapTab', () => {
   beforeEach(() => {
@@ -98,11 +110,12 @@ describe('AdminMapTab', () => {
     tileLayerUrls.length = 0;
     mapLayerState.claims = [];
     fetchMarketplaceOffersMock.mockReset();
+    refreshClaimsMock.mockReset();
   });
 
   it('initially fits generated tiles without locking map panning to them', () => {
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com/"
         serverId="server-1"
         tileBaseUrl="https://map.example.com/"
@@ -131,7 +144,7 @@ describe('AdminMapTab', () => {
 
   it('recreates the Leaflet map when the selected world changes', () => {
     const { rerender } = render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -139,7 +152,7 @@ describe('AdminMapTab', () => {
       />,
     );
     rerender(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -153,7 +166,7 @@ describe('AdminMapTab', () => {
 
   it('keeps map controls on the map and resizes when entering expanded mode', async () => {
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -178,7 +191,7 @@ describe('AdminMapTab', () => {
     });
 
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -210,7 +223,7 @@ describe('AdminMapTab', () => {
     }]);
 
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -233,12 +246,29 @@ describe('AdminMapTab', () => {
     expect(screen.getAllByText('80 coins')).toHaveLength(2);
   });
 
+  it('refreshes claims when the claims layer is enabled again', () => {
+    render(
+      <TestAdminMapTab
+        apiBaseUrl="https://manager.example.com"
+        serverId="server-1"
+        tileBaseUrl="https://map.example.com"
+        metadata={metadata('world-a', 'World A')}
+      />,
+    );
+
+    showClaimsLayer();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'mapLayerClaims' }));
+    showClaimsLayer();
+
+    expect(refreshClaimsMock).toHaveBeenCalledTimes(2);
+  });
+
   it('renders marketplace offer loading, empty, and error states', async () => {
     mapLayerState.claims = [claim({ areaId: 1, marketplace: true })];
     fetchMarketplaceOffersMock.mockResolvedValueOnce([]);
 
     const { unmount } = render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -254,7 +284,7 @@ describe('AdminMapTab', () => {
 
     fetchMarketplaceOffersMock.mockRejectedValueOnce(new Error('Failed'));
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"
@@ -284,7 +314,7 @@ describe('AdminMapTab', () => {
     });
 
     render(
-      <AdminMapTab
+      <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
         serverId="server-1"
         tileBaseUrl="https://map.example.com"

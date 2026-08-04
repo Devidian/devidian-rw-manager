@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { DbPlayer, DataPlayerListResponse } from '@/types/server';
 
-interface UseDatabasePlayersResult {
+export interface UseDatabasePlayersResult {
   players: DbPlayer[];
   loading: boolean;
   error: string | null;

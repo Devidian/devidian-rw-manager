@@ -10,7 +10,7 @@ import { ServerProvider, useServerContext } from '@/context/ServerContext';
 import { StorageModeProvider, useStorageMode } from '@/context/StorageModeContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { GlobalIntercomProvider } from '@/context/GlobalIntercomContext';
-import { checkBackend } from '@/lib/storage';
+import { BackendInfoProvider, useBackendInfo } from '@/context/BackendInfoContext';
 import {
   AlertDialog, AlertDialogAction, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -122,16 +122,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 /** Resolves backend services for auth context */
 function AppWithAuth({ children }: { children: React.ReactNode }) {
-  const { fixedBackendUrl } = useStorageMode();
-  const [services, setServices] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!fixedBackendUrl) { setServices([]); return; }
-    checkBackend(fixedBackendUrl, 'storage').then(r => {
-      if (r.ok) setServices(r.services);
-      else setServices([]);
-    });
-  }, [fixedBackendUrl]);
+  const { services } = useBackendInfo();
 
   return (
     <AuthProvider backendServices={services}>
@@ -179,7 +170,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <StorageModeProvider>
-        <AppRoutes />
+        <BackendInfoProvider>
+          <AppRoutes />
+        </BackendInfoProvider>
       </StorageModeProvider>
     </TooltipProvider>
   </QueryClientProvider>

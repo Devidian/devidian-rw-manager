@@ -30,7 +30,6 @@ import type {
   MapMetadata,
   MapPlayer,
 } from '@/types/adminMapping';
-import type { ServerPlayerListPlayer } from '@/types/server';
 import {
   areaToMapBounds,
   leafletYToBackendZ,
@@ -54,7 +53,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { fetchMarketplaceOffers, useMapLayers } from '@/hooks/useMapLayers';
+import { applyEntityDelta, fetchMarketplaceOffers } from '@/hooks/useMapLayers';
+import type { MapLayersState } from '@/hooks/useMapLayers';
+import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
 
 interface LayerVisibility {
@@ -73,23 +74,26 @@ export function AdminMapTab({
   serverId,
   tileBaseUrl,
   metadata,
-  onlinePlayers = [],
+  mapLayers,
   isAdmin = false,
 }: {
   apiBaseUrl: string;
   serverId: string;
   tileBaseUrl?: string;
   metadata: MapMetadata;
-  onlinePlayers?: ServerPlayerListPlayer[];
+  mapLayers: MapLayersState;
   isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
-  const { capabilities, claims, players, gpsGlobalMarkers, error } = useMapLayers(
-    apiBaseUrl,
-    serverId,
-    metadata.worldKey,
-    onlinePlayers,
-  );
+  const {
+    capabilities,
+    claims,
+    players,
+    gpsGlobalMarkers,
+    error,
+    refreshClaims,
+    marketplaceOffersDelta,
+  } = mapLayers;
   const [visible, setVisible] = useState<LayerVisibility>({
     sectors: false,
     claims: false,
@@ -240,7 +244,10 @@ export function AdminMapTab({
                 onChange={(checked) => setVisible((value) => ({ ...value, sectors: checked }))} />
               <LayerToggle label={t('mapLayerClaims')} checked={visible.claims}
                 disabled={!capabilities?.claims}
-                onChange={(checked) => setVisible((value) => ({ ...value, claims: checked }))} />
+                onChange={(checked) => {
+                  setVisible((value) => ({ ...value, claims: checked }));
+                  if (checked) void refreshClaims();
+                }} />
               <LayerToggle label={t('mapLayerOnlinePlayers')}
                 checked={visible.online}
                 disabled={!capabilities?.players}
@@ -268,6 +275,7 @@ export function AdminMapTab({
         apiBaseUrl={apiBaseUrl}
         serverId={serverId}
         claim={offersClaim}
+        liveDelta={marketplaceOffersDelta}
         portalContainer={expanded ? containerRef.current : null}
         onOpenChange={(open) => {
           if (!open) setOffersClaim(null);
@@ -509,12 +517,14 @@ function MarketplaceOffersDialog({
   apiBaseUrl,
   serverId,
   claim,
+  liveDelta,
   portalContainer,
   onOpenChange,
 }: {
   apiBaseUrl: string;
   serverId: string;
   claim: MapClaim | null;
+  liveDelta: { sequence: number; areas: MapMarketplaceAreaDelta[] } | null;
   portalContainer?: HTMLElement | null;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -547,6 +557,12 @@ function MarketplaceOffersDialog({
       });
     return () => controller.abort();
   }, [apiBaseUrl, claim, serverId]);
+
+  useEffect(() => {
+    if (!claim || !liveDelta) return;
+    const delta = liveDelta.areas.find((area) => area.areaId === claim.areaId);
+    if (delta) setOffers((items) => applyEntityDelta(items, delta, (item) => item.id));
+  }, [claim, liveDelta]);
 
   return (
     <Dialog open={!!claim} onOpenChange={onOpenChange}>

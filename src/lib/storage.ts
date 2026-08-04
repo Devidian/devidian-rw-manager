@@ -299,7 +299,12 @@ export class BackendStorageAdapter implements StorageAdapter {
 // ─── Backend Health Check ────────────────────────────────────────────────────
 
 export type BackendCheckResult =
-  | { ok: true; version?: number; services: string[] }
+  | {
+      ok: true;
+      version?: number;
+      services: string[];
+      limits?: { maxPinnedServers: number };
+    }
   | { ok: false; reason: 'unreachable' | 'invalid-response' | 'missing-service' };
 
 export async function checkBackend(url: string, requiredService: string): Promise<BackendCheckResult> {
@@ -324,7 +329,19 @@ export async function checkBackend(url: string, requiredService: string): Promis
       return { ok: false, reason: 'missing-service' };
     }
     const version = (json as Record<string, unknown>).version;
-    return { ok: true, version: typeof version === 'number' ? version : undefined, services };
+    const rawLimits = (json as Record<string, unknown>).limits;
+    const maxPinnedServers = rawLimits && typeof rawLimits === 'object'
+      ? (rawLimits as Record<string, unknown>).maxPinnedServers
+      : undefined;
+    const limits = Number.isSafeInteger(maxPinnedServers) && (maxPinnedServers as number) > 0
+      ? { maxPinnedServers: maxPinnedServers as number }
+      : undefined;
+    return {
+      ok: true,
+      version: typeof version === 'number' ? version : undefined,
+      services,
+      ...(limits ? { limits } : {}),
+    };
   } catch {
     return { ok: false, reason: 'unreachable' };
   }

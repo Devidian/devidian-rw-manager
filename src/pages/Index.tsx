@@ -3,6 +3,7 @@ import { useServerContext } from '@/context/ServerContext';
 import { ServerCard } from '@/components/ServerCard';
 import { Button } from '@/components/ui/button';
 import { Server, RefreshCw } from 'lucide-react';
+import { PinnedServerLimitAlert } from '@/components/PinnedServerLimitAlert';
 
 export default function Index() {
   const { t } = useTranslation();
@@ -13,6 +14,9 @@ export default function Index() {
     pinServer,
     unpinServer,
     isPinned,
+    canPinServer,
+    pinLimitReached,
+    maxPinnedServers,
   } = useServerContext();
 
   const onlineCount = dashboardServerList.filter(s => s.status === 'online').length;
@@ -39,6 +43,8 @@ export default function Index() {
         </div>
       </div>
 
+      {pinLimitReached && <PinnedServerLimitAlert max={maxPinnedServers} />}
+
       {dashboardServerList.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted/30 border border-border mb-6">
@@ -58,6 +64,8 @@ export default function Index() {
               onRefresh={() => refreshOne(server.id)}
               isPinned={isPinned(server.id)}
               onTogglePin={() => void (isPinned(server.id) ? unpinServer(server.id) : pinServer(server.id))}
+              pinDisabled={!canPinServer(server.id)}
+              pinDisabledReason={t('pinnedServerLimitAction', { max: maxPinnedServers })}
             />
           ))}
         </div>

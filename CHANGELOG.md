@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+* subscribe the open map to live invalidations for only its selected server
+* apply claim, player, GPS marker, and marketplace offer deltas without REST reloads
+* subscribe to all dashboard server statuses over one mutable WebSocket
+* show and enforce the backend-provided favorite-server limit
+
+### Fixed
+
+* back off reconnects until the map subscription is confirmed
+* use periodic REST player refresh only while live updates are unavailable
+* resume `/live` polling only while the server-status WebSocket is unavailable
+
+## [1.3.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.2.0...rw-manager-v1.3.0) (2026-07-28)
+
+
+### Added
+
+* player list page ([52ef5be](https://github.com/Devidian/devidian-rw-manager/commit/52ef5be87d38e35176ed9c9d7576a92c50954f20))
+
+
+### Build
+
+* **deps-dev:** bump the npm_and_yarn group across 1 directory with 3 updates ([96a5dcc](https://github.com/Devidian/devidian-rw-manager/commit/96a5dcc57138b6fc7c4875df1abff41e8ebe9988))
+* **deps-dev:** bump the npm_and_yarn group across 1 directory with 3 updates ([181a0a0](https://github.com/Devidian/devidian-rw-manager/commit/181a0a0c4049e7dc4a14c5d440ab9ca1511b27bb))
+* **deps:** bump body-parser ([ea26b66](https://github.com/Devidian/devidian-rw-manager/commit/ea26b666e514e9bbdb497301bea2de7e64bd5519))
+* **deps:** bump body-parser from 2.2.2 to 2.3.0 in the npm_and_yarn group across 1 directory ([dd0cfe1](https://github.com/Devidian/devidian-rw-manager/commit/dd0cfe1d445b918df8206286f8b276c5b0fad3b2))
+
+
+### Maintenance
+
+* add codex custom agents ([63c6b07](https://github.com/Devidian/devidian-rw-manager/commit/63c6b07baa9318178ada538fa6d2400630750ebd))
+
 ## [1.2.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.1.0...rw-manager-v1.2.0) (2026-07-06)
 
 
