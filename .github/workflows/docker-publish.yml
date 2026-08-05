@@ -120,6 +120,9 @@ jobs:
           MAJOR: ${{ needs.prepare.outputs.major }}
           MINOR: ${{ needs.prepare.outputs.minor }}
         run: |
-          TAGS="-t $IMAGE_NAME:$VERSION -t $IMAGE_NAME:$MINOR -t $IMAGE_NAME:$MAJOR -t $IMAGE_NAME:latest"
+          TAGS="-t $IMAGE_NAME:$VERSION"
+          if [[ "$VERSION" != *-* ]]; then
+            TAGS="$TAGS -t $IMAGE_NAME:$MINOR -t $IMAGE_NAME:$MAJOR -t $IMAGE_NAME:latest"
+          fi
           DIGESTS="$(printf "$IMAGE_NAME@sha256:%s " $(basename -a "${{ runner.temp }}/digests"/*))"
           docker buildx imagetools create $TAGS $DIGESTS
