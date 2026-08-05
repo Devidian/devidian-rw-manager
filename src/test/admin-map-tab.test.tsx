@@ -13,6 +13,7 @@ const mapContainerProps = vi.hoisted(() => ({
 }));
 
 const tileLayerUrls = vi.hoisted(() => [] as string[]);
+const rectanglePathOptions = vi.hoisted(() => [] as Array<Record<string, unknown>>);
 const mapLayerState = vi.hoisted(() => ({
   claims: [] as MapClaim[],
 }));
@@ -55,9 +56,10 @@ vi.mock('react-leaflet', () => ({
   CircleMarker: () => null,
   Marker: () => null,
   Popup: (props: ComponentProps<'div'>) => <div>{props.children}</div>,
-  Rectangle: (props: ComponentProps<'div'> & Record<string, unknown>) => (
-    <div data-testid="map-rectangle">{props.children}</div>
-  ),
+  Rectangle: (props: ComponentProps<'div'> & Record<string, unknown>) => {
+    rectanglePathOptions.push(props.pathOptions as Record<string, unknown>);
+    return <div data-testid="map-rectangle">{props.children}</div>;
+  },
   Tooltip: () => null,
   useMap: () => ({
     addLayer: vi.fn(),
@@ -108,6 +110,7 @@ describe('AdminMapTab', () => {
     mapContainerProps.unmounts = 0;
     mapContainerProps.invalidations = 0;
     tileLayerUrls.length = 0;
+    rectanglePathOptions.length = 0;
     mapLayerState.claims = [];
     fetchMarketplaceOffersMock.mockReset();
     refreshClaimsMock.mockReset();
@@ -140,6 +143,27 @@ describe('AdminMapTab', () => {
     expect(mapContainerProps.current?.bounds).toBeDefined();
     expect(mapContainerProps.current?.maxBounds).toBeUndefined();
     expect(tileLayerUrls).toContain('https://map.example.com/server-1/{z}/{x}/{y}.png');
+  });
+
+  it('passes city and leasehold colors from map-layer claims to Leaflet', () => {
+    mapLayerState.claims = [
+      claim({ areaId: 1, borderColor: '#7B61FF10', fillColor: '#7B61FF50' }),
+      claim({ areaId: 2, borderColor: '#00BFA510', fillColor: '#00BFA550' }),
+      claim({ areaId: 3, borderColor: '#FF980010', fillColor: '#FF980050' }),
+    ];
+    render(<TestAdminMapTab
+      apiBaseUrl="https://manager.example.com/"
+      serverId="server-1"
+      metadata={metadata('world-a', 'World A')}
+    />);
+
+    showClaimsLayer();
+
+    expect(rectanglePathOptions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ color: '#7B61FF10', fillColor: '#7B61FF50' }),
+      expect.objectContaining({ color: '#00BFA510', fillColor: '#00BFA550' }),
+      expect.objectContaining({ color: '#FF980010', fillColor: '#FF980050' }),
+    ]));
   });
 
   it('recreates the Leaflet map when the selected world changes', () => {
