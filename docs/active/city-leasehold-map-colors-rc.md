@@ -19,7 +19,7 @@ as a release-candidate image on Dev.
 
 ## Validation
 
-- [ ] Verify color mapping for city cores and available/occupied leaseholds.
-- [ ] Run frontend and backend test/build checks.
-- [ ] Publish RC images and recreate only the Dev Manager services.
+- [x] Verify color mapping for city cores and available/occupied leaseholds.
+- [x] Run frontend and backend test/build checks.
+- [x] Publish RC images and recreate only the Dev Manager services; both are healthy.
 - [x] Keep RC publication isolated from stable Docker tags.
