@@ -112,6 +112,13 @@ export function AdminMapTab({
   );
   const tileUrl = resolveTileUrl(metadata.tileUrl, tileBaseUrl);
   const nativeTileSizeBlocks = metadata.chunkSize * metadata.nativeTileSizeChunks;
+  const onlinePlayerTiles = useMemo(() => players
+    .filter((player) => player.state === 'online')
+    .map((player) => ({
+      x: Math.floor(player.x / nativeTileSizeBlocks),
+      z: Math.floor(player.z / nativeTileSizeBlocks),
+    })), [nativeTileSizeBlocks, players]);
+  const [tileRefreshRevision, setTileRefreshRevision] = useState(() => Date.now());
   const mapIdentity = `${apiBaseUrl}|${tileUrl}|${metadata.worldKey}|${metadata.nativeZoom}|${metadata.tileSize}`;
 
   useEffect(() => {
@@ -124,6 +131,12 @@ export function AdminMapTab({
       gpsGlobalMarkers: false,
     });
   }, [mapIdentity]);
+
+  useEffect(() => {
+    if (onlinePlayerTiles.length === 0) return undefined;
+    const timer = window.setInterval(() => setTileRefreshRevision(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [onlinePlayerTiles]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -187,6 +200,8 @@ export function AdminMapTab({
             tileSize={metadata.tileSize}
             minZoom={metadata.minZoom}
             maxZoom={metadata.nativeZoom}
+            onlinePlayerTiles={onlinePlayerTiles}
+            refreshRevision={tileRefreshRevision}
           />
           {visible.sectors && capabilities && (
             <SectorLayer
@@ -387,20 +402,28 @@ function LayerToggle({
   );
 }
 
-function SignedZTileLayer({ url, tileSize, minZoom, maxZoom }: {
+function SignedZTileLayer({ url, tileSize, minZoom, maxZoom, onlinePlayerTiles, refreshRevision }: {
   url: string;
   tileSize: number;
   minZoom: number;
   maxZoom: number;
+  onlinePlayerTiles: NativeTileCoordinate[];
+  refreshRevision: number;
 }) {
   const map = useMap();
+  const layerRef = useRef<BackendTileLayer | null>(null);
   useEffect(() => {
     const layer = new BackendTileLayer(url, { tileSize, minZoom, maxZoom, noWrap: true });
+    layerRef.current = layer;
     layer.addTo(map);
     return () => {
+      layerRef.current = null;
       layer.remove();
     };
   }, [map, maxZoom, minZoom, tileSize, url]);
+  useEffect(() => {
+    layerRef.current?.refreshOnlinePlayerTiles(onlinePlayerTiles, refreshRevision);
+  }, [onlinePlayerTiles, refreshRevision]);
   return null;
 }
 
@@ -684,8 +707,37 @@ function PlayerLayer({
   ));
 }
 
+interface NativeTileCoordinate {
+  x: number;
+  z: number;
+}
+
+export function isOnlinePlayerTile(coords: Coords, nativeZoom: number, onlinePlayerTiles: NativeTileCoordinate[]): boolean {
+  const scale = 2 ** Math.max(0, nativeZoom - coords.z);
+  const backendZ = leafletYToBackendZ(coords.y);
+  return onlinePlayerTiles.some((playerTile) =>
+    Math.abs(coords.x - Math.floor(playerTile.x / scale)) <= 1
+      && Math.abs(backendZ - Math.floor(playerTile.z / scale)) <= 1,
+  );
+}
+
 class BackendTileLayer extends TileLayer {
+  private onlinePlayerTiles: NativeTileCoordinate[] = [];
+  private refreshRevision = 0;
+  private playerTileSignature = '';
+
+  refreshOnlinePlayerTiles(onlinePlayerTiles: NativeTileCoordinate[], refreshRevision: number) {
+    const signature = onlinePlayerTiles.map((tile) => `${tile.x}:${tile.z}`).sort().join(',');
+    if (signature === this.playerTileSignature && refreshRevision === this.refreshRevision) return;
+    this.onlinePlayerTiles = onlinePlayerTiles;
+    this.playerTileSignature = signature;
+    this.refreshRevision = refreshRevision;
+    this.redraw?.();
+  }
+
   override getTileUrl(coords: Coords): string {
-    return super.getTileUrl({ ...coords, y: leafletYToBackendZ(coords.y) });
+    const url = super.getTileUrl({ ...coords, y: leafletYToBackendZ(coords.y) });
+    if (!isOnlinePlayerTile(coords, this.options.maxZoom ?? coords.z, this.onlinePlayerTiles)) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}live-player-tiles=${this.refreshRevision}`;
   }
 }
