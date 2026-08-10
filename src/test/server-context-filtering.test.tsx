@@ -93,7 +93,7 @@ describe('server context filtering', () => {
     vi.clearAllMocks();
   });
 
-  it('keeps the full server list while filtering navigation and dashboard by user pins and admin UID', () => {
+  it('keeps the full server list while filtering navigation and dashboard by user pins only', () => {
     state.user = {
       id: 'user-1',
       role: 'user',
@@ -105,7 +105,7 @@ describe('server context filtering', () => {
 
     expect(screen.getByTestId('all')).toHaveTextContent('pinned-server,admin-server,other-server');
     expect(screen.getByTestId('pinned')).toHaveTextContent('pinned-server');
-    expect(screen.getByTestId('dashboard')).toHaveTextContent('pinned-server,admin-server');
+    expect(screen.getByTestId('dashboard')).toHaveTextContent('pinned-server');
     expect(screen.getByTestId('is-pinned')).toHaveTextContent('true');
     expect(screen.getByTestId('can-pin-other')).toHaveTextContent('false');
     expect(screen.getByTestId('limit-reached')).toHaveTextContent('true');

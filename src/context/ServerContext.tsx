@@ -37,10 +37,8 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   const { servers=[], refreshServers, addServer, updateServer, setServerBlocked, removeServer, getServer } = useServers(adapter);
   const pinnedIds = useMemo(() => new Set(user?.pinnedServers ?? localPinnedServers), [localPinnedServers, user?.pinnedServers]);
   const dashboardServers = useMemo(
-    () => servers.filter(server =>
-      pinnedIds.has(server.id) || (!!user?.steamId && server.adminUid === user.steamId)
-    ),
-    [pinnedIds, servers, user?.steamId],
+    () => servers.filter(server => pinnedIds.has(server.id)),
+    [pinnedIds, servers],
   );
   const { statusMap, refreshAll, refreshOne } = useServerStatus(
     servers,
@@ -63,9 +61,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     return status ? { ...s, ...status, status: status.status } : { ...s, status: s.status ?? 'unknown' as const };
   });
   const pinnedServerList = serverList.filter(server => pinnedIds.has(server.id));
-  const dashboardServerList = serverList.filter(server =>
-    pinnedIds.has(server.id) || (!!user?.steamId && server.adminUid === user.steamId)
-  );
+  const dashboardServerList = serverList.filter(server => pinnedIds.has(server.id));
 
   const pinServer = async (id: string) => {
     if (!pinnedIds.has(id) && pinLimitReached) return;

@@ -143,6 +143,7 @@ describe('AdminMapTab', () => {
     expect(mapContainerProps.current?.bounds).toBeDefined();
     expect(mapContainerProps.current?.maxBounds).toBeUndefined();
     expect(tileLayerUrls).toContain('https://map.example.com/server-1/{z}/{x}/{y}.png');
+    expect(screen.getByText('mapLayerAutoRefresh')).toBeInTheDocument();
   });
 
   it('passes city and leasehold colors from map-layer claims to Leaflet', () => {

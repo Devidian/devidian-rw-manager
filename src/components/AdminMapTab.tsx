@@ -59,6 +59,7 @@ import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
 
 interface LayerVisibility {
+  autoRefresh: boolean;
   sectors: boolean;
   claims: boolean;
   online: boolean;
@@ -95,6 +96,7 @@ export function AdminMapTab({
     marketplaceOffersDelta,
   } = mapLayers;
   const [visible, setVisible] = useState<LayerVisibility>({
+    autoRefresh: true,
     sectors: false,
     claims: false,
     online: true,
@@ -123,6 +125,7 @@ export function AdminMapTab({
 
   useEffect(() => {
     setVisible({
+      autoRefresh: true,
       sectors: false,
       claims: false,
       online: true,
@@ -133,10 +136,10 @@ export function AdminMapTab({
   }, [mapIdentity]);
 
   useEffect(() => {
-    if (onlinePlayerTiles.length === 0) return undefined;
+    if (!visible.autoRefresh || onlinePlayerTiles.length === 0) return undefined;
     const timer = window.setInterval(() => setTileRefreshRevision(Date.now()), 30_000);
     return () => window.clearInterval(timer);
-  }, [onlinePlayerTiles]);
+  }, [onlinePlayerTiles, visible.autoRefresh]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -216,17 +219,17 @@ export function AdminMapTab({
               onOpenMarketplaceOffers={setOffersClaim}
             />
           )}
-          <PlayerLayer
-            players={players}
-            visible={visible}
-            nativeTileSizeBlocks={nativeTileSizeBlocks}
-          />
           {visible.gpsGlobalMarkers && (
             <GpsGlobalMarkerLayer
               markers={gpsGlobalMarkers}
               nativeTileSizeBlocks={nativeTileSizeBlocks}
             />
           )}
+          <PlayerLayer
+            players={players}
+            visible={visible}
+            nativeTileSizeBlocks={nativeTileSizeBlocks}
+          />
         </MapContainer>
         <div className="pointer-events-none absolute right-3 top-3 z-[1000] flex max-w-[min(24rem,calc(100vw-1.5rem))] flex-col items-end gap-3">
           <Button
@@ -255,6 +258,8 @@ export function AdminMapTab({
           <div className="pointer-events-auto w-full rounded-md border border-border bg-background/90 p-3 text-sm shadow-lg backdrop-blur">
             <div className="mb-2 text-xs font-medium text-muted-foreground">{t('mapLayers')}</div>
             <div className="flex flex-col gap-2">
+              <LayerToggle label={t('mapLayerAutoRefresh')} checked={visible.autoRefresh}
+                onChange={(checked) => setVisible((value) => ({ ...value, autoRefresh: checked }))} />
               <LayerToggle label={t('mapLayerSectors')} checked={visible.sectors}
                 onChange={(checked) => setVisible((value) => ({ ...value, sectors: checked }))} />
               <LayerToggle label={t('mapLayerClaims')} checked={visible.claims}

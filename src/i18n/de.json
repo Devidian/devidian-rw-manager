@@ -41,6 +41,7 @@
   "noPlugins": "Keine Plugins gefunden.",
   "invalidPlugin": "Ungültig",
   "mapCaptureHint": "Die Karte wird beim Verlassen von Chunks erfasst und zeitversetzt durch das Backend aktualisiert.",
+  "mapLayerAutoRefresh": "Kacheln bei Online-Spielern aktualisieren",
   "mapLayerSectors": "Sektoren",
   "mapLayerClaims": "Grundstücke",
   "mapLayerOnlinePlayers": "Online-Spieler",

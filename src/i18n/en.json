@@ -41,6 +41,7 @@
   "noPlugins": "No plugins found.",
   "invalidPlugin": "Invalid",
   "mapCaptureHint": "The map is captured when chunks are left and updated asynchronously by the backend.",
+  "mapLayerAutoRefresh": "Refresh tiles around online players",
   "mapLayerSectors": "Sectors",
   "mapLayerClaims": "Claims",
   "mapLayerOnlinePlayers": "Online players",
