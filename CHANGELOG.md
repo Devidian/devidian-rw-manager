@@ -15,6 +15,29 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.4.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.3.0...rw-manager-v1.4.0) (2026-08-10)
+
+
+### Added
+
+* refresh map tiles around online players ([3a7d7f9](https://github.com/Devidian/devidian-rw-manager/commit/3a7d7f96c2982cdb35e6ac4cbe6de020ca4c3e88))
+
+
+### Fixed
+
+* keep rc images off stable tags ([b23be10](https://github.com/Devidian/devidian-rw-manager/commit/b23be100faacc211521498c5f00ab6846f54db7d))
+* refine map refresh and dashboard pins ([a227caf](https://github.com/Devidian/devidian-rw-manager/commit/a227cafca6dcc335707432b79ec3718ef5d596f1))
+
+
+### Documentation
+
+* record city color rc deployment ([f7c7f86](https://github.com/Devidian/devidian-rw-manager/commit/f7c7f86f13945ec6601a9fd1ade84079c5997790))
+
+
+### Tests
+
+* cover city and leasehold map colors ([0ade53f](https://github.com/Devidian/devidian-rw-manager/commit/0ade53f4a189bb1b34fc730a10e84180b29fd8dc))
+
 ## [1.3.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.2.0...rw-manager-v1.3.0) (2026-07-28)
 
 
