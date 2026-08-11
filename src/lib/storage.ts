@@ -133,7 +133,7 @@ export class LocalStorageAdapter implements StorageAdapter {
       infoData: infoResult.ok ? infoResult.data as ServerLiveStatusPayload['infoData'] : undefined,
       onlinePlayers: playerlistResult.ok ? playersFromPayload(playerlistResult.data) : undefined,
       lastChecked: new Date().toISOString(),
-      errorMessage: queryResult.ok ? undefined : queryResult.error,
+      errorMessage: queryResult.ok ? undefined : (queryResult as { error: string }).error,
     };
   }
 

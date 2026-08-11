@@ -27,7 +27,7 @@ export default function LandingPage() {
       .finally(() => setChecking(false));
   }, [fixedBackendUrl, navigate]);
 
-  const reason = check && !check.ok ? check.reason : null;
+  const reason = check && !check.ok ? (check as { reason: string }).reason : null;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
