@@ -25,6 +25,7 @@
   "globalIntercomLoginPlaceholder": "Zum Schreiben anmelden",
   "globalIntercomWebUser": "Web-Nutzer",
   "globalIntercomServers": "Server",
+  "globalIntercomPlayers": "Spieler",
   "globalIntercomServersEmpty": "Keine Spielserver verbunden.",
   "globalIntercomServerPlayers_one": "{{count}} Spieler",
   "globalIntercomServerPlayers_other": "{{count}} Spieler",

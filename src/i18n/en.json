@@ -25,6 +25,7 @@
   "globalIntercomLoginPlaceholder": "Sign in to send messages",
   "globalIntercomWebUser": "Web user",
   "globalIntercomServers": "Servers",
+  "globalIntercomPlayers": "Players",
   "globalIntercomServersEmpty": "No game servers connected.",
   "globalIntercomServerPlayers_one": "{{count}} player",
   "globalIntercomServerPlayers_other": "{{count}} players",
