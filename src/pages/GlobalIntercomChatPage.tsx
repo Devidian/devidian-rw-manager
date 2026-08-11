@@ -162,6 +162,7 @@ export default function GlobalIntercomChatPage() {
               className={cn('flex items-center justify-center rounded px-2 py-1.5 text-sm', presenceView === 'players' && 'bg-muted text-foreground')}
             ><Users className="h-4 w-4" /></button>
           </div>
+          <div key={presenceView}>
           {presenceView === 'servers' && servers.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('globalIntercomServersEmpty')}</p>
           ) : presenceView === 'servers' ? (
@@ -178,6 +179,7 @@ export default function GlobalIntercomChatPage() {
           ) : (
             <ul className="space-y-3">{players.map((player) => <li key={`${player.server}:${player.name}`} className="text-sm"><div className="text-foreground">{player.name}</div><RichText className="text-xs text-muted-foreground" text={player.server} /></li>)}</ul>
           )}
+          </div>
         </aside>
       </div>
     </div>
