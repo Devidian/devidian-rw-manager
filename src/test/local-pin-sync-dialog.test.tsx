@@ -19,7 +19,7 @@ const updatedUser: AuthUser = {
   pinnedServers: ['server-a', 'server-b'],
 };
 
-const adapter: StorageAdapter = {
+const adapter = {
   getServers: vi.fn(),
   refreshServers: vi.fn(),
   addServer: vi.fn(),

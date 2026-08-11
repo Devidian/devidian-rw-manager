@@ -20,7 +20,7 @@ const statusMap = Object.fromEntries(
   servers.map((item) => [item.id, { ...item, status: 'online' as const } satisfies ServerWithStatus]),
 );
 
-const adapter: StorageAdapter = {
+const adapter = {
   getServers: vi.fn(async () => servers),
   refreshServers: vi.fn(async () => servers),
   addServer: vi.fn(),
