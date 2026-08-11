@@ -104,6 +104,8 @@ function adapterFor(server: ServerConfig): StorageAdapter {
     addServer: vi.fn(), updateServer: vi.fn(), deleteServer: vi.fn(), getPinnedServers: vi.fn(async () => []),
     pinServer: vi.fn(), unpinServer: vi.fn(), setServerBlocked: vi.fn(),
     getServerLiveStatus: vi.fn(async () => ({ status: 'online' as const, lastChecked: '2026-08-03T12:00:00.000Z' })),
+    getServerStatistics: vi.fn(async () => ({ serverId: server.id, buckets: [] })),
+    getGlobalStatistics: vi.fn(async () => ({ buckets: [], players: [] })),
   };
 }
 
