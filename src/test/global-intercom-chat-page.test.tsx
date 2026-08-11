@@ -209,8 +209,8 @@ describe('global intercom chat page', () => {
       payload: {
         channel: 'global',
         servers: [
-          { name: '<color=orange>GS1</color>', playerCount: 3 },
-          { name: 'Dev', playerCount: 0 },
+          { name: '<color=orange>GS1</color>', playerCount: 3, players: ['Alice', 'Bob', 'Carol'] },
+          { name: 'Dev', playerCount: 0, players: [] },
         ],
       },
     }));

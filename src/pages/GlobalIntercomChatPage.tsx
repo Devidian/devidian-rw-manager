@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Info, LogIn, MessageSquare, Send, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -20,6 +20,8 @@ export default function GlobalIntercomChatPage() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [draft, setDraft] = useState('');
   const { canSend: canSendMessage, connectionState, markRead, messages, sendMessage, servers } = useGlobalIntercom();
+  const [presenceView, setPresenceView] = useState<'servers' | 'players'>('servers');
+  const players = useMemo(() => servers.flatMap((server) => server.players.map((name) => ({ name, server: server.name }))), [servers]);
 
   useEffect(() => {
     markRead();
@@ -148,9 +150,10 @@ export default function GlobalIntercomChatPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
             {t('globalIntercomServers')}
           </div>
-          {servers.length === 0 ? (
+          <div className="mb-3 flex gap-2 text-xs"><button onClick={() => setPresenceView('servers')}>Server</button><button onClick={() => setPresenceView('players')}>Spieler</button></div>
+          {presenceView === 'servers' && servers.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('globalIntercomServersEmpty')}</p>
-          ) : (
+          ) : presenceView === 'servers' ? (
             <ul className="space-y-2">
               {servers.map((server) => (
                 <li key={server.name} className="flex items-center justify-between gap-3 text-sm">
@@ -161,6 +164,8 @@ export default function GlobalIntercomChatPage() {
                 </li>
               ))}
             </ul>
+          ) : (
+            <ul className="space-y-2">{players.map((player) => <li key={`${player.server}:${player.name}`} className="text-sm"><span>{player.name}</span><span className="ml-2 text-muted-foreground">{plainServerName(player.server)}</span></li>)}</ul>
           )}
         </aside>
       </div>

@@ -21,6 +21,7 @@ export interface GlobalIntercomEnvelope<T = unknown> {
 export interface GlobalIntercomServerPresence {
   name: string;
   playerCount: number;
+  players: string[];
 }
 
 export interface GlobalIntercomServerPresenceUpdate {
@@ -52,7 +53,9 @@ export function isGlobalIntercomServerPresenceUpdate(value: unknown): value is G
       && typeof server.name === 'string'
       && typeof server.playerCount === 'number'
       && Number.isInteger(server.playerCount)
-      && server.playerCount >= 0);
+      && server.playerCount >= 0
+      && Array.isArray(server.players)
+      && server.players.every((player) => typeof player === 'string'));
 }
 
 export function createGlobalIntercomMessage(params: {
