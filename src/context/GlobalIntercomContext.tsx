@@ -231,6 +231,7 @@ function messageEchoKey(message: Pick<GlobalIntercomChatMessage, 'createdOn' | '
 
 function sendPlayerState(socket: WebSocket, playerName: string, playerUID: string): void {
   const payload = { playerName, playerUID };
+  socket.send(JSON.stringify({ event: 'clientRegister', payload: { type: 'web' } }));
   socket.send(JSON.stringify({ event: 'playerOnline', payload }));
   socket.send(JSON.stringify({ event: 'playerJoinChannel', payload: { ...payload, channel: GLOBAL_INTERCOM_CHANNEL } }));
   socket.send(JSON.stringify({ event: 'serverPresenceSubscribe', payload: { channel: GLOBAL_INTERCOM_CHANNEL } }));

@@ -92,20 +92,20 @@ describe('global intercom chat page', () => {
     fireEvent.change(screen.getByLabelText('globalIntercomMessage'), { target: { value: 'Hello global' } });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
-    await waitFor(() => expect(MockWebSocket.instances[0].sent).toHaveLength(4));
-    expect(JSON.parse(MockWebSocket.instances[0].sent[0])).toMatchObject({
+    await waitFor(() => expect(MockWebSocket.instances[0].sent).toHaveLength(5));
+    expect(JSON.parse(MockWebSocket.instances[0].sent[1])).toMatchObject({
       event: 'playerOnline',
       payload: { playerName: 'Maik', playerUID: '7656' },
     });
-    expect(JSON.parse(MockWebSocket.instances[0].sent[1])).toMatchObject({
+    expect(JSON.parse(MockWebSocket.instances[0].sent[2])).toMatchObject({
       event: 'playerJoinChannel',
       payload: { playerName: 'Maik', playerUID: '7656', channel: 'global' },
     });
-    expect(JSON.parse(MockWebSocket.instances[0].sent[2])).toMatchObject({
+    expect(JSON.parse(MockWebSocket.instances[0].sent[3])).toMatchObject({
       event: 'serverPresenceSubscribe',
       payload: { channel: 'global' },
     });
-    const payload = JSON.parse(MockWebSocket.instances[0].sent[3]);
+    const payload = JSON.parse(MockWebSocket.instances[0].sent[4]);
     expect(payload).toMatchObject({
       event: 'broadcastMessage',
       payload: {
@@ -132,8 +132,8 @@ describe('global intercom chat page', () => {
     fireEvent.change(screen.getByLabelText('globalIntercomMessage'), { target: { value: 'Hello global' } });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
-    await waitFor(() => expect(MockWebSocket.instances[0].sent).toHaveLength(4));
-    const sent = JSON.parse(MockWebSocket.instances[0].sent[3]);
+    await waitFor(() => expect(MockWebSocket.instances[0].sent).toHaveLength(5));
+    const sent = JSON.parse(MockWebSocket.instances[0].sent[4]);
     act(() => MockWebSocket.instances[0].receive(sent));
 
     expect(screen.getAllByText('Hello global')).toHaveLength(1);
@@ -153,7 +153,7 @@ describe('global intercom chat page', () => {
       renderPage();
       act(() => MockWebSocket.instances[0].open());
 
-      expect(MockWebSocket.instances[0].sent).toHaveLength(3);
+      expect(MockWebSocket.instances[0].sent).toHaveLength(4);
 
       act(() => MockWebSocket.instances[0].disconnect());
       expect(screen.getByText('globalIntercomStatus.disconnected')).toBeInTheDocument();
@@ -163,12 +163,12 @@ describe('global intercom chat page', () => {
       expect(MockWebSocket.instances).toHaveLength(2);
       act(() => MockWebSocket.instances[1].open());
 
-      expect(MockWebSocket.instances[1].sent).toHaveLength(3);
-      expect(JSON.parse(MockWebSocket.instances[1].sent[0])).toMatchObject({
+      expect(MockWebSocket.instances[1].sent).toHaveLength(4);
+      expect(JSON.parse(MockWebSocket.instances[1].sent[1])).toMatchObject({
         event: 'playerOnline',
         payload: { playerName: 'Maik', playerUID: '7656' },
       });
-      expect(JSON.parse(MockWebSocket.instances[1].sent[1])).toMatchObject({
+      expect(JSON.parse(MockWebSocket.instances[1].sent[2])).toMatchObject({
         event: 'playerJoinChannel',
         payload: { playerName: 'Maik', playerUID: '7656', channel: 'global' },
       });
@@ -216,6 +216,7 @@ describe('global intercom chat page', () => {
     }));
 
     expect(await screen.findByText('GS1')).toHaveStyle({ color: 'rgb(255, 165, 0)' });
+    expect(screen.getByText('GS1').closest('[title]')).toHaveAttribute('title', 'GS1');
     expect(screen.getAllByText('globalIntercomServerPlayers')).toHaveLength(2);
     expect(screen.getByText('Dev')).toBeInTheDocument();
   });

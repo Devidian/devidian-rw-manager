@@ -154,7 +154,9 @@ export default function GlobalIntercomChatPage() {
             <ul className="space-y-2">
               {servers.map((server) => (
                 <li key={server.name} className="flex items-center justify-between gap-3 text-sm">
-                  <RichText className="min-w-0 truncate text-foreground" text={server.name} />
+                  <span className="min-w-0 truncate" title={plainServerName(server.name)}>
+                    <RichText className="text-foreground" text={server.name} />
+                  </span>
                   <span className="shrink-0 text-muted-foreground">{t('globalIntercomServerPlayers', { count: server.playerCount })}</span>
                 </li>
               ))}
@@ -170,4 +172,8 @@ function formatTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(date);
+}
+
+function plainServerName(value: string): string {
+  return value.replace(/<[^>]*>/g, '');
 }
