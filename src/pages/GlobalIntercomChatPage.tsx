@@ -154,7 +154,7 @@ export default function GlobalIntercomChatPage() {
             <ul className="space-y-2">
               {servers.map((server) => (
                 <li key={server.name} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="min-w-0 truncate text-foreground" title={server.name}>{server.name}</span>
+                  <RichText className="min-w-0 truncate text-foreground" text={server.name} />
                   <span className="shrink-0 text-muted-foreground">{t('globalIntercomServerPlayers', { count: server.playerCount })}</span>
                 </li>
               ))}

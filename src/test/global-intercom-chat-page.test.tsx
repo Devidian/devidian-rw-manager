@@ -209,13 +209,13 @@ describe('global intercom chat page', () => {
       payload: {
         channel: 'global',
         servers: [
-          { name: 'GS1', playerCount: 3 },
+          { name: '<color=orange>GS1</color>', playerCount: 3 },
           { name: 'Dev', playerCount: 0 },
         ],
       },
     }));
 
-    expect(await screen.findByText('GS1')).toBeInTheDocument();
+    expect(await screen.findByText('GS1')).toHaveStyle({ color: 'rgb(255, 165, 0)' });
     expect(screen.getAllByText('globalIntercomServerPlayers')).toHaveLength(2);
     expect(screen.getByText('Dev')).toBeInTheDocument();
   });
