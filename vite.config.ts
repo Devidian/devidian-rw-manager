@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 import { env } from "process";
 
 // https://vitejs.dev/config/
@@ -23,7 +24,7 @@ export default defineConfig(({ mode }) => {
         rewrites: [{ from: new RegExp("^" + base + ".*$"), to: "/index.html" }],
       },
     },
-    plugins: [react(), mode === "development" && componentTagger()].filter(
+    plugins: [react(), mcpPlugin(), mode === "development" && componentTagger()].filter(
       Boolean,
     ),
     resolve: {

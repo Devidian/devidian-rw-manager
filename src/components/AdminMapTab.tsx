@@ -717,7 +717,7 @@ interface NativeTileCoordinate {
   z: number;
 }
 
-export function isOnlinePlayerTile(coords: Coords, nativeZoom: number, onlinePlayerTiles: NativeTileCoordinate[]): boolean {
+export function isOnlinePlayerTile(coords: { x: number; y: number; z: number }, nativeZoom: number, onlinePlayerTiles: NativeTileCoordinate[]): boolean {
   const scale = 2 ** Math.max(0, nativeZoom - coords.z);
   const backendZ = leafletYToBackendZ(coords.y);
   return onlinePlayerTiles.some((playerTile) =>
@@ -741,7 +741,7 @@ class BackendTileLayer extends TileLayer {
   }
 
   override getTileUrl(coords: Coords): string {
-    const url = super.getTileUrl({ ...coords, y: leafletYToBackendZ(coords.y) });
+    const url = super.getTileUrl({ ...coords, y: leafletYToBackendZ(coords.y) } as Coords);
     if (!isOnlinePlayerTile(coords, this.options.maxZoom ?? coords.z, this.onlinePlayerTiles)) return url;
     return `${url}${url.includes('?') ? '&' : '?'}live-player-tiles=${this.refreshRevision}`;
   }

@@ -24,7 +24,7 @@ export interface ServerConfig {
   onlinePlayers?: ServerPlayerListPlayer[];
   blocked?: boolean;
   blockedAt?: string;
-  lastChecked?: string;
+  lastChecked?: string | Date;
   errorMessage?: string;
   firstSeen?: string;
   lastSeen?: string;

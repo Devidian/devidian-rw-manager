@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.2",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "rising-world-manager",
+      "version": "0.1.0",
+      "title": "Rising World Manager"
+    },
+    "tools": [
+      {
+        "name": "list_servers",
+        "title": "List Rising World servers",
+        "description": "List the publicly listed Rising World servers tracked by the manager, with name, version, region and last known player counts.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "search": {
+              "type": "string",
+              "description": "Optional case-insensitive filter matched against server name or label."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of servers to return (default 25)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_server",
+        "title": "Get server details",
+        "description": "Get the stored details of one publicly listed Rising World server by its manager id, or by a name/label match.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "server": {
+              "type": "string",
+              "description": "Server id, or part of the server name/label."
+            }
+          },
+          "required": [
+            "server"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_server_status",
+        "title": "Get live server status",
+        "description": "Get the live status of a publicly listed Rising World server: online/offline, player count and the current online player list.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "serverId": {
+              "type": "string",
+              "description": "Manager id of the server (from list_servers)."
+            }
+          },
+          "required": [
+            "serverId"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_server_statistics",
+        "title": "Get server statistics",
+        "description": "Get hourly player-count and availability statistics for one publicly listed Rising World server.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "serverId": {
+              "type": "string",
+              "description": "Manager id of the server (from list_servers)."
+            },
+            "from": {
+              "type": "string",
+              "description": "ISO 8601 start timestamp of the range."
+            },
+            "to": {
+              "type": "string",
+              "description": "ISO 8601 end timestamp of the range."
+            }
+          },
+          "required": [
+            "serverId"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_global_statistics",
+        "title": "Get network statistics",
+        "description": "Get aggregated hourly statistics across all publicly listed Rising World servers tracked by the manager.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "ISO 8601 start timestamp of the range."
+            },
+            "to": {
+              "type": "string",
+              "description": "ISO 8601 end timestamp of the range."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
