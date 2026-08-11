@@ -17,8 +17,11 @@ import {
   getGlobalIntercomWebSocketUrl,
   GlobalIntercomChatMessage,
   GlobalIntercomEnvelope,
+  GlobalIntercomServerPresence,
+  GlobalIntercomServerPresenceUpdate,
   GLOBAL_INTERCOM_CHANNEL,
   isGlobalIntercomChatMessage,
+  isGlobalIntercomServerPresenceUpdate,
 } from '@/lib/globalIntercom';
 
 export type GlobalIntercomConnectionState = 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -32,6 +35,7 @@ interface GlobalIntercomContextValue {
   canSend: boolean;
   connectionState: GlobalIntercomConnectionState;
   messages: GlobalIntercomChatEntry[];
+  servers: GlobalIntercomServerPresence[];
   unreadCount: number;
   sendMessage: (content: string) => void;
   markRead: () => void;
@@ -51,6 +55,7 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
   const pendingEchoKeysRef = useRef(new Set<string>());
   const [connectionState, setConnectionState] = useState<GlobalIntercomConnectionState>('connecting');
   const [messages, setMessages] = useState<GlobalIntercomChatEntry[]>([]);
+  const [servers, setServers] = useState<GlobalIntercomServerPresence[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const wsUrl = useMemo(() => getGlobalIntercomWebSocketUrl(), []);
   const displayName = user?.username || user?.email || user?.steamId || t('globalIntercomWebUser');
@@ -99,6 +104,7 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
       socket.addEventListener('close', () => {
         if (!active || socketRef.current !== socket) return;
         socketRef.current = null;
+        setServers([]);
         setConnectionState('disconnected');
         scheduleReconnect();
       });
@@ -109,6 +115,11 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
       });
       socket.addEventListener('message', (event) => {
         if (!active || socketRef.current !== socket) return;
+        const presence = parseServerPresence(event.data);
+        if (presence?.channel === GLOBAL_INTERCOM_CHANNEL) {
+          setServers(presence.servers);
+          return;
+        }
         const entry = parseChatEntry(event.data, 'incoming');
         if (!entry || entry.chatChannel !== GLOBAL_INTERCOM_CHANNEL) return;
         const echoKey = messageEchoKey(entry);
@@ -161,6 +172,7 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
     canSend: isAuthenticated && connectionState === 'connected',
     connectionState,
     messages,
+    servers,
     unreadCount,
     sendMessage,
     markRead,
@@ -221,4 +233,17 @@ function sendPlayerState(socket: WebSocket, playerName: string, playerUID: strin
   const payload = { playerName, playerUID };
   socket.send(JSON.stringify({ event: 'playerOnline', payload }));
   socket.send(JSON.stringify({ event: 'playerJoinChannel', payload: { ...payload, channel: GLOBAL_INTERCOM_CHANNEL } }));
+  socket.send(JSON.stringify({ event: 'serverPresenceSubscribe', payload: { channel: GLOBAL_INTERCOM_CHANNEL } }));
+}
+
+function parseServerPresence(data: unknown): GlobalIntercomServerPresenceUpdate | null {
+  if (typeof data !== 'string') return null;
+  try {
+    const envelope = JSON.parse(data) as GlobalIntercomEnvelope;
+    return envelope.event === 'serverPresence' && isGlobalIntercomServerPresenceUpdate(envelope.payload)
+      ? envelope.payload
+      : null;
+  } catch {
+    return null;
+  }
 }

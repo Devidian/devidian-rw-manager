@@ -24,6 +24,10 @@
   "globalIntercomMessagePlaceholder": "Write a message to #global…",
   "globalIntercomLoginPlaceholder": "Sign in to send messages",
   "globalIntercomWebUser": "Web user",
+  "globalIntercomServers": "Servers",
+  "globalIntercomServersEmpty": "No game servers connected.",
+  "globalIntercomServerPlayers_one": "{{count}} player",
+  "globalIntercomServerPlayers_other": "{{count}} players",
   "globalIntercomStatus": {
     "unconfigured": "Not configured",
     "connecting": "Connecting",

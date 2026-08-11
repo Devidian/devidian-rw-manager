@@ -18,6 +18,16 @@ export interface GlobalIntercomEnvelope<T = unknown> {
   payload?: T;
 }
 
+export interface GlobalIntercomServerPresence {
+  name: string;
+  playerCount: number;
+}
+
+export interface GlobalIntercomServerPresenceUpdate {
+  channel: string;
+  servers: GlobalIntercomServerPresence[];
+}
+
 export function getGlobalIntercomWebSocketUrl(): string {
   return (import.meta.env.VITE_GLOBAL_INTERCOM_WS_URL as string | undefined)?.trim() ?? '';
 }
@@ -31,6 +41,18 @@ export function isGlobalIntercomChatMessage(value: unknown): value is GlobalInte
     typeof item.playerName === 'string' &&
     typeof item.playerUID === 'string'
   );
+}
+
+export function isGlobalIntercomServerPresenceUpdate(value: unknown): value is GlobalIntercomServerPresenceUpdate {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Partial<GlobalIntercomServerPresenceUpdate>;
+  return typeof item.channel === 'string'
+    && Array.isArray(item.servers)
+    && item.servers.every((server) => Boolean(server)
+      && typeof server.name === 'string'
+      && typeof server.playerCount === 'number'
+      && Number.isInteger(server.playerCount)
+      && server.playerCount >= 0);
 }
 
 export function createGlobalIntercomMessage(params: {

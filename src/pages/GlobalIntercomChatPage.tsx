@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Info, LogIn, MessageSquare, Send } from 'lucide-react';
+import { Info, LogIn, MessageSquare, Send, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ export default function GlobalIntercomChatPage() {
   const { isAuthenticated } = useAuth();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [draft, setDraft] = useState('');
-  const { canSend: canSendMessage, connectionState, markRead, messages, sendMessage } = useGlobalIntercom();
+  const { canSend: canSendMessage, connectionState, markRead, messages, sendMessage, servers } = useGlobalIntercom();
 
   useEffect(() => {
     markRead();
@@ -80,11 +80,12 @@ export default function GlobalIntercomChatPage() {
         </AlertDescription>
       </Alert>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-card">
-        <div className="border-b border-border px-4 py-2 text-xs uppercase tracking-widest text-muted-foreground">
-          #{GLOBAL_INTERCOM_CHANNEL}
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-card md:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="border-b border-border px-4 py-2 text-xs uppercase tracking-widest text-muted-foreground">
+            #{GLOBAL_INTERCOM_CHANNEL}
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
               {t('globalIntercomEmpty')}
@@ -118,9 +119,9 @@ export default function GlobalIntercomChatPage() {
               <div ref={scrollRef} />
             </div>
           )}
-        </div>
+          </div>
 
-        <form
+          <form
           onSubmit={(event) => submitGlobalIntercomDraft(event, {
             canSend,
             draft,
@@ -140,7 +141,26 @@ export default function GlobalIntercomChatPage() {
             <Send className="h-4 w-4" />
             {t('send')}
           </Button>
-        </form>
+          </form>
+        </div>
+        <aside className="border-t border-border p-4 md:w-56 md:border-l md:border-t-0">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            {t('globalIntercomServers')}
+          </div>
+          {servers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('globalIntercomServersEmpty')}</p>
+          ) : (
+            <ul className="space-y-2">
+              {servers.map((server) => (
+                <li key={server.name} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="min-w-0 truncate text-foreground" title={server.name}>{server.name}</span>
+                  <span className="shrink-0 text-muted-foreground">{t('globalIntercomServerPlayers', { count: server.playerCount })}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
       </div>
     </div>
   );

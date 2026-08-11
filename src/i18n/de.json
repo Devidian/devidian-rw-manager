@@ -24,6 +24,10 @@
   "globalIntercomMessagePlaceholder": "Nachricht in #global schreiben…",
   "globalIntercomLoginPlaceholder": "Zum Schreiben anmelden",
   "globalIntercomWebUser": "Web-Nutzer",
+  "globalIntercomServers": "Server",
+  "globalIntercomServersEmpty": "Keine Spielserver verbunden.",
+  "globalIntercomServerPlayers_one": "{{count}} Spieler",
+  "globalIntercomServerPlayers_other": "{{count}} Spieler",
   "globalIntercomStatus": {
     "unconfigured": "Nicht konfiguriert",
     "connecting": "Verbinde",
