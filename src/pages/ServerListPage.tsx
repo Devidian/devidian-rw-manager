@@ -84,6 +84,34 @@ function statusBottomRank(status: ServerWithStatus['status']): number {
   return status === 'offline' || status === 'loading' ? 1 : 0;
 }
 
+function SortHeader({
+  label,
+  column,
+  sortKey,
+  sortDirection,
+  onSort,
+}: {
+  label: string;
+  column: SortKey;
+  sortKey: SortKey;
+  sortDirection: SortDirection;
+  onSort: (column: SortKey) => void;
+}) {
+  const active = sortKey === column;
+  const Icon = !active ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-8 px-0 gap-1.5 text-muted-foreground hover:text-foreground"
+      onClick={() => onSort(column)}
+    >
+      {label}
+      <Icon className="h-3.5 w-3.5" />
+    </Button>
+  );
+}
+
 export default function ServerListPage() {
   const { t } = useTranslation();
   const { isAdmin, isSuperAdmin } = useAuth();
@@ -151,22 +179,6 @@ export default function ServerListPage() {
     }
   };
 
-  const SortHeader = ({ label, column }: { label: string; column: SortKey }) => {
-    const active = sortKey === column;
-    const Icon = !active ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 px-0 gap-1.5 text-muted-foreground hover:text-foreground"
-        onClick={() => toggleSort(column)}
-      >
-        {label}
-        <Icon className="h-3.5 w-3.5" />
-      </Button>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {pinLimitReached && <PinnedServerLimitAlert max={maxPinnedServers} />}
@@ -204,12 +216,12 @@ export default function ServerListPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead><SortHeader label={t('server')} column="name" /></TableHead>
-                <TableHead><SortHeader label={t('status')} column="status" /></TableHead>
-                <TableHead><SortHeader label={t('players')} column="players" /></TableHead>
-                <TableHead><SortHeader label={t('map')} column="map" /></TableHead>
-                <TableHead><SortHeader label={t('version')} column="version" /></TableHead>
-                <TableHead><SortHeader label={t('ipPort')} column="address" /></TableHead>
+                <TableHead><SortHeader label={t('server')} column="name" sortKey={sortKey} sortDirection={sortDirection} onSort={toggleSort} /></TableHead>
+                <TableHead><SortHeader label={t('status')} column="status" sortKey={sortKey} sortDirection={sortDirection} onSort={toggleSort} /></TableHead>
+                <TableHead><SortHeader label={t('players')} column="players" sortKey={sortKey} sortDirection={sortDirection} onSort={toggleSort} /></TableHead>
+                <TableHead><SortHeader label={t('map')} column="map" sortKey={sortKey} sortDirection={sortDirection} onSort={toggleSort} /></TableHead>
+                <TableHead><SortHeader label={t('version')} column="version" sortKey={sortKey} sortDirection={sortDirection} onSort={toggleSort} /></TableHead>
+                <TableHead><SortHeader label={t('ipPort')} column="address" sortKey={sortKey} sortDirection={sortDirection} onSort={toggleSort} /></TableHead>
                 <TableHead className="text-right">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
