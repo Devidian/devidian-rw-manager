@@ -24,16 +24,12 @@ import { Switch } from '@/components/ui/switch';
 
 function StatusBadge({ server }: { server: ServerWithStatus }) {
   const { t } = useTranslation();
-  const { status, queryData } = server;
+  const { status } = server;
 
   if (status === 'online') {
     return (
       <Badge className="gap-1.5 bg-[hsl(120_55%_42%/0.15)] text-[hsl(120_55%_62%)] border-[hsl(120_55%_42%/0.4)]">
         <span className="h-1.5 w-1.5 rounded-full status-dot-online" aria-label={t('online')} title={t('online')} />
-        {(queryData?.locked || server.password) && <Lock className="h-3.5 w-3.5" aria-label={t('locked')} title={t('locked')} />}
-        {queryData?.os && (queryData.os.toLowerCase().includes('win')
-          ? <AppWindow className="h-3.5 w-3.5" aria-label="Windows" title="Windows" />
-          : <Terminal className="h-3.5 w-3.5" aria-label="Linux" title="Linux" />)}
       </Badge>
     );
   }
@@ -52,6 +48,28 @@ function StatusBadge({ server }: { server: ServerWithStatus }) {
       <span className="h-1.5 w-1.5 rounded-full status-dot-unknown" />
       {status === 'loading' ? t('checking') : t('unknown')}
     </Badge>
+  );
+}
+
+function ServerTraitsBadges({ server }: { server: ServerWithStatus }) {
+  const { t } = useTranslation();
+  const os = server.queryData?.os?.toLowerCase();
+  const requiresPassword = server.queryData?.locked || server.password;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {os && (
+        <Badge variant="outline" className="gap-1.5 text-muted-foreground border-border">
+          {os.includes('win')
+            ? <AppWindow className="h-3.5 w-3.5" aria-label="Windows" title="Windows" />
+            : <Terminal className="h-3.5 w-3.5" aria-label="Linux" title="Linux" />}
+        </Badge>
+      )}
+      {requiresPassword && (
+        <Badge variant="outline" className="gap-1.5 text-muted-foreground border-border">
+          <Lock className="h-3.5 w-3.5" aria-label={t('locked')} title={t('locked')} />
+        </Badge>
+      )}
+    </div>
   );
 }
 
@@ -137,6 +155,13 @@ export default function ServerListPage() {
     [isAdmin, serverList, showOfflineServers],
   );
   const onlineCount = visibleServerList.filter(server => server.status === 'online').length;
+  const serverTraits = useMemo(() => visibleServerList.reduce((counts, server) => {
+    const os = server.queryData?.os?.toLowerCase();
+    if (os?.includes('win')) counts.windows += 1;
+    else if (os) counts.linux += 1;
+    if (server.queryData?.locked || server.password) counts.password += 1;
+    return counts;
+  }, { windows: 0, linux: 0, password: 0 }), [visibleServerList]);
   const sortedServers = useMemo(() => {
     return [...visibleServerList].sort((left, right) => {
       const leftPinned = isPinned(left.id);
@@ -187,6 +212,8 @@ export default function ServerListPage() {
           <h1 className="text-2xl font-bold text-foreground">{t('serverList')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {t('serverListSummary', { online: onlineCount, total: visibleServerList.length })}
+            {', '}
+            {t('serverListDetails', serverTraits)}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -254,7 +281,10 @@ export default function ServerListPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge server={server} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <StatusBadge server={server} />
+                        <ServerTraitsBadges server={server} />
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-muted-foreground">

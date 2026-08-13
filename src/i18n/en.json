@@ -8,6 +8,7 @@
   "serversOnline": "{{online}} of {{total}} server{{plural}} online",
   "serverList": "Server list",
   "serverListSummary": "{{online}} of {{total}} servers online",
+  "serverListDetails": "including {{windows}} Windows, {{linux}} Linux, {{password}} password-protected",
   "showOfflineServers": "Show offline servers",
   "serverListEmptyDesc": "The central server list is currently empty.",
   "playerList": "Player list",

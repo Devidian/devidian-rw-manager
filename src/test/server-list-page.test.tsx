@@ -66,10 +66,10 @@ const serverList: ServerWithStatus[] = [
       contact: '',
       name: 'Busy Server',
       map: 'World C',
-      os: 'linux',
+      os: 'windows',
       uptime: 1,
       visible: true,
-      locked: false,
+      locked: true,
       whitelist: false,
       pvp: false,
       pve: true,
@@ -139,6 +139,9 @@ describe('server list page', () => {
     expect(screen.getByText('Pinned Server')).toBeInTheDocument();
     expect(screen.queryByText('Offline Server')).not.toBeInTheDocument();
     expect(screen.getByText('127.0.0.1:4255')).toBeInTheDocument();
+    expect(screen.getByText(/serverListDetails:\{"windows":1,"linux":1,"password":1\}/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Windows')).toBeInTheDocument();
+    expect(screen.getByLabelText('locked')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle('unpinServer'));
     expect(state.unpinServer).toHaveBeenCalledWith('server-a');
