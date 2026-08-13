@@ -32,4 +32,4 @@ Improve the server list and statistics workflows, then publish a frontend-only R
 - [x] Implement statistics range and pagination QOL.
 - [x] Add regression tests and validate the frontend.
 - [x] Align the Docker build Node baseline and validate the local RC image.
-- [ ] Commit, push and publish the frontend RC Docker image.
+- [x] Commit, push and publish the frontend RC Docker image (`1.6.0-rc.1`, amd64/arm64).
