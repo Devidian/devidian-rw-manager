@@ -44,9 +44,11 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import {
   buildServerStatisticsPoints,
   isoDate,
+  statisticsPickerValue,
   statisticsRange,
   type StatisticsView,
 } from '@/lib/statistics';
+import { StatisticsDatePicker } from '@/components/StatisticsDatePicker';
 import { serverConnectUrl } from '@/lib/serverConnect';
 import { PlayerUid } from '@/components/PlayerUid';
 import {
@@ -592,7 +594,11 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
             {t('statistics')}
           </CardTitle>
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={view} onValueChange={(value) => setView(value as StatisticsView)}>
+            <Select value={view} onValueChange={(value) => {
+              const nextView = value as StatisticsView;
+              setView(nextView);
+              setDateValue(statisticsPickerValue(nextView));
+            }}>
               <SelectTrigger className="h-8 w-40 text-xs">
                 <SelectValue />
               </SelectTrigger>
@@ -603,14 +609,7 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
                 <SelectItem value="weekday">{t('statisticsWeekday')}</SelectItem>
               </SelectContent>
             </Select>
-            {view !== 'weekday' && (
-              <Input
-                type="date"
-                value={dateValue}
-                onChange={(event) => setDateValue(event.target.value)}
-                className="h-8 w-36 text-xs"
-              />
-            )}
+            <StatisticsDatePicker view={view} value={dateValue} onChange={setDateValue} />
           </div>
         </div>
       </CardHeader>

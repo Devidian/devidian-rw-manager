@@ -11,7 +11,6 @@ import {
   type StatisticsView,
 } from '@/lib/statistics';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -20,6 +19,15 @@ import {
 } from '@/components/ui/table';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useAuth } from '@/context/AuthContext';
+import { StatisticsDatePicker } from '@/components/StatisticsDatePicker';
+
+const STATISTICS_PAGE_SIZE_KEY = 'risingworld_statistics_page_size';
+const PAGE_SIZES = [10, 25, 50, 100];
+
+function readPageSize(): number {
+  const value = Number(localStorage.getItem(STATISTICS_PAGE_SIZE_KEY));
+  return PAGE_SIZES.includes(value) ? value : 25;
+}
 
 const STEAM_ID_PATTERN = /^\d{17}$/;
 
@@ -58,6 +66,8 @@ export default function StatisticsPage() {
   const [players, setPlayers] = useState<GlobalStatisticsPayload['players']>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(readPageSize);
+  const [currentPage, setCurrentPage] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +95,22 @@ export default function StatisticsPage() {
     [buckets, dateValue, i18n.language, view],
   );
   const hasData = points.some((point) => point.samples > 0);
+  const totalPages = Math.max(1, Math.ceil(players.length / pageSize));
+  const pagedPlayers = players.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+
+  useEffect(() => { setCurrentPage(0); }, [players, pageSize]);
+
+  const changeView = (nextView: StatisticsView) => {
+    setView(nextView);
+    setDateValue(statisticsPickerValue(nextView));
+  };
+
+  const changePageSize = (value: string) => {
+    const nextSize = Number(value);
+    if (!PAGE_SIZES.includes(nextSize)) return;
+    localStorage.setItem(STATISTICS_PAGE_SIZE_KEY, String(nextSize));
+    setPageSize(nextSize);
+  };
 
   return (
     <div className="space-y-6">
@@ -94,7 +120,7 @@ export default function StatisticsPage() {
           <p className="text-sm text-muted-foreground mt-1">{t('globalStatisticsSummary')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={view} onValueChange={(value) => setView(value as StatisticsView)}>
+          <Select value={view} onValueChange={(value) => changeView(value as StatisticsView)}>
             <SelectTrigger className="h-8 w-40 text-xs">
               <SelectValue />
             </SelectTrigger>
@@ -105,14 +131,7 @@ export default function StatisticsPage() {
               <SelectItem value="weekday">{t('statisticsWeekday')}</SelectItem>
             </SelectContent>
           </Select>
-          {view !== 'weekday' && (
-            <Input
-              type="date"
-              value={dateValue}
-              onChange={(event) => setDateValue(event.target.value)}
-              className="h-8 w-36 text-xs"
-            />
-          )}
+          <StatisticsDatePicker view={view} value={dateValue} onChange={setDateValue} />
         </div>
       </div>
 
@@ -173,8 +192,9 @@ export default function StatisticsPage() {
           {players.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">{t('noPlayersFound')}</div>
           ) : (
-            <div className="rounded-lg border border-border overflow-hidden">
-              <Table>
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border overflow-hidden">
+                <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30 hover:bg-muted/30">
                     <TableHead>{t('name')}</TableHead>
@@ -182,7 +202,7 @@ export default function StatisticsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {players.map((player) => (
+                  {pagedPlayers.map((player) => (
                     <TableRow key={player.uid} className="hover:bg-muted/20">
                       <TableCell className="font-medium">{player.name || '-'}</TableCell>
                       <TableCell className="font-mono text-xs">
@@ -191,7 +211,24 @@ export default function StatisticsPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                </Table>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span>{t('pageSize')}:</span>
+                <Select value={String(pageSize)} onValueChange={changePageSize}>
+                  <SelectTrigger className="h-8 w-20 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZES.map((size) => <SelectItem key={size} value={String(size)}>{size}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" className="rounded border border-border px-2 py-1 disabled:opacity-50" disabled={currentPage === 0} onClick={() => setCurrentPage((page) => page - 1)}>‹</button>
+                <span>{t('page')} {currentPage + 1} {t('of')} {totalPages}</span>
+                <button type="button" className="rounded border border-border px-2 py-1 disabled:opacity-50" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage((page) => page + 1)}>›</button>
+              </div>
+              </div>
             </div>
           )}
         </CardContent>

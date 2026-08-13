@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Lock, RefreshCw, Star, Users, MapPin, Server as ServerIcon } from 'lucide-react';
+import { AppWindow, ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Lock, RefreshCw, Star, Terminal, Users, MapPin, Server as ServerIcon } from 'lucide-react';
 import { useServerContext } from '@/context/ServerContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -20,15 +20,20 @@ import { cn } from '@/lib/utils';
 import { serverConnectUrl } from '@/lib/serverConnect';
 import { getServerDisplayName, getServerSecondaryName } from '@/lib/serverDisplay';
 import { PinnedServerLimitAlert } from '@/components/PinnedServerLimitAlert';
+import { Switch } from '@/components/ui/switch';
 
-function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
+function StatusBadge({ server }: { server: ServerWithStatus }) {
   const { t } = useTranslation();
+  const { status, queryData } = server;
 
   if (status === 'online') {
     return (
       <Badge className="gap-1.5 bg-[hsl(120_55%_42%/0.15)] text-[hsl(120_55%_62%)] border-[hsl(120_55%_42%/0.4)]">
-        <span className="h-1.5 w-1.5 rounded-full status-dot-online" />
-        {t('online')}
+        <span className="h-1.5 w-1.5 rounded-full status-dot-online" aria-label={t('online')} title={t('online')} />
+        {(queryData?.locked || server.password) && <Lock className="h-3.5 w-3.5" aria-label={t('locked')} title={t('locked')} />}
+        {queryData?.os && (queryData.os.toLowerCase().includes('win')
+          ? <AppWindow className="h-3.5 w-3.5" aria-label="Windows" title="Windows" />
+          : <Terminal className="h-3.5 w-3.5" aria-label="Linux" title="Linux" />)}
       </Badge>
     );
   }
@@ -81,10 +86,11 @@ function statusBottomRank(status: ServerWithStatus['status']): number {
 
 export default function ServerListPage() {
   const { t } = useTranslation();
-  const { isSuperAdmin } = useAuth();
+  const { isAdmin, isSuperAdmin } = useAuth();
   const [sortKey, setSortKey] = useState<SortKey>('players');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [blockedPendingIds, setBlockedPendingIds] = useState<Set<string>>(() => new Set());
+  const [showOfflineServers, setShowOfflineServers] = useState(false);
   const {
     serverList,
     refreshServerList,
@@ -98,9 +104,13 @@ export default function ServerListPage() {
     isPinned,
   } = useServerContext();
 
-  const onlineCount = serverList.filter(server => server.status === 'online').length;
+  const visibleServerList = useMemo(
+    () => isAdmin && showOfflineServers ? serverList : serverList.filter((server) => server.status !== 'offline'),
+    [isAdmin, serverList, showOfflineServers],
+  );
+  const onlineCount = visibleServerList.filter(server => server.status === 'online').length;
   const sortedServers = useMemo(() => {
-    return [...serverList].sort((left, right) => {
+    return [...visibleServerList].sort((left, right) => {
       const leftPinned = isPinned(left.id);
       const rightPinned = isPinned(right.id);
       if (leftPinned !== rightPinned) return leftPinned ? -1 : 1;
@@ -117,7 +127,7 @@ export default function ServerListPage() {
       }
       return left.id.localeCompare(right.id, undefined, { numeric: true, sensitivity: 'base' });
     });
-  }, [isPinned, serverList, sortDirection, sortKey]);
+  }, [isPinned, sortDirection, sortKey, visibleServerList]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -164,16 +174,24 @@ export default function ServerListPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t('serverList')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {t('serverListSummary', { online: onlineCount, total: serverList.length })}
+            {t('serverListSummary', { online: onlineCount, total: visibleServerList.length })}
           </p>
         </div>
-        <Button size="sm" variant="outline" className="gap-2" onClick={refreshServerList}>
-          <RefreshCw className="h-4 w-4" />
-          {t('refreshAll')}
-        </Button>
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Switch checked={showOfflineServers} onCheckedChange={setShowOfflineServers} />
+              {t('showOfflineServers')}
+            </label>
+          )}
+          <Button size="sm" variant="outline" className="gap-2" onClick={refreshServerList}>
+            <RefreshCw className="h-4 w-4" />
+            {t('refreshAll')}
+          </Button>
+        </div>
       </div>
 
-      {serverList.length === 0 ? (
+      {visibleServerList.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted/30 border border-border mb-6">
             <ServerIcon className="h-10 w-10 text-muted-foreground/50" />
@@ -224,7 +242,7 @@ export default function ServerListPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={server.status} />
+                      <StatusBadge server={server} />
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-muted-foreground">

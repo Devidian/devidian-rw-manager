@@ -59,6 +59,7 @@ describe('StatisticsPage', () => {
   beforeEach(() => {
     state.isAuthenticated = false;
     state.getGlobalStatistics.mockReset().mockResolvedValue(payload);
+    localStorage.removeItem('risingworld_statistics_page_size');
   });
 
   it('masks player UIDs for guests and does not render Steam links', async () => {
@@ -76,5 +77,13 @@ describe('StatisticsPage', () => {
     const link = await screen.findByRole('link', { name: '76561198000000000' });
     expect(link).toHaveAttribute('href', 'https://steamcommunity.com/profiles/76561198000000000');
     await waitFor(() => expect(screen.getByText('standalone-player-uid')).toBeInTheDocument());
+  });
+
+  it('restores the saved player page size', async () => {
+    localStorage.setItem('risingworld_statistics_page_size', '10');
+    render(<StatisticsPage />);
+    await screen.findByText('Steam Player');
+
+    expect(screen.getByText('10').closest('button')).toBeInTheDocument();
   });
 });

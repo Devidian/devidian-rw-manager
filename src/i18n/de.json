@@ -8,6 +8,7 @@
   "serversOnline": "{{online}} von {{total}} Server{{plural}} online",
   "serverList": "Serverliste",
   "serverListSummary": "{{online}} von {{total}} Servern online",
+  "showOfflineServers": "Offline-Server anzeigen",
   "serverListEmptyDesc": "Die zentrale Serverliste ist aktuell leer.",
   "playerList": "Spielerliste",
   "playerListSummary": "{{count}} Spieler aktuell online",

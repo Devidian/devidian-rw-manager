@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   setServerBlocked: vi.fn(async () => undefined),
   isPinned: vi.fn((id: string) => id === 'server-a'),
   isSuperAdmin: false,
+  isAdmin: false,
   pinLimitReached: false,
 }));
 
@@ -102,6 +103,7 @@ vi.mock('@/context/ServerContext', () => ({
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     isSuperAdmin: state.isSuperAdmin,
+    isAdmin: state.isAdmin,
   }),
 }));
 
@@ -114,6 +116,7 @@ describe('server list page', () => {
     state.setServerBlocked.mockClear();
     state.isPinned.mockClear();
     state.isSuperAdmin = false;
+    state.isAdmin = false;
     state.pinLimitReached = false;
   });
 
@@ -126,7 +129,7 @@ describe('server list page', () => {
     expect(screen.getByTitle('unpinServer')).toBeEnabled();
   });
 
-  it('renders all servers and toggles pin state through the server context', () => {
+  it('hides offline servers for regular users and toggles pin state through the server context', () => {
     render(
       <MemoryRouter>
         <ServerListPage />
@@ -134,7 +137,7 @@ describe('server list page', () => {
     );
 
     expect(screen.getByText('Pinned Server')).toBeInTheDocument();
-    expect(screen.getByText('Offline Server')).toBeInTheDocument();
+    expect(screen.queryByText('Offline Server')).not.toBeInTheDocument();
     expect(screen.getByText('127.0.0.1:4255')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle('unpinServer'));
@@ -144,7 +147,15 @@ describe('server list page', () => {
     expect(state.pinServer).toHaveBeenCalledWith('server-c');
   });
 
-  it('keeps pinned servers first, offline servers last, then sorts by players and name', () => {
+  it('lets admins include offline servers', () => {
+    state.isAdmin = true;
+    render(<MemoryRouter><ServerListPage /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('switch'));
+    expect(screen.getByText('Offline Server')).toBeInTheDocument();
+  });
+
+  it('keeps pinned servers first, then sorts online servers by players and name', () => {
     const { container } = render(
       <MemoryRouter>
         <ServerListPage />
@@ -154,7 +165,7 @@ describe('server list page', () => {
     const rows = [...container.querySelectorAll('tbody tr')].map((row) => row.textContent ?? '');
     expect(rows[0]).toContain('Pinned Server');
     expect(rows[1]).toContain('Busy Server');
-    expect(rows[2]).toContain('Offline Server');
+    expect(rows).toHaveLength(2);
   });
 
   it('allows super admins to toggle server blocking', () => {
