@@ -18,6 +18,6 @@ browser persistence or backend contract is involved.
 
 ## Validation
 
-- [ ] Parse and retain valid relay presence updates in the chat context.
-- [ ] Render the responsive chat-side server list with DE/EN text.
-- [ ] Run frontend tests, lint, build, and publish an RC Docker image.
+- [x] Parse and retain valid relay presence updates in the chat context.
+- [x] Render the responsive chat-side server list with DE/EN text.
+- [x] Run frontend tests, lint, build, and publish an RC Docker image.

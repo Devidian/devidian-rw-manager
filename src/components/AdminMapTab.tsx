@@ -120,6 +120,10 @@ export function AdminMapTab({
       x: Math.floor(player.x / nativeTileSizeBlocks),
       z: Math.floor(player.z / nativeTileSizeBlocks),
     })), [nativeTileSizeBlocks, players]);
+  const onlinePlayerTileSignature = useMemo(
+    () => tileSignature(onlinePlayerTiles),
+    [onlinePlayerTiles],
+  );
   const [tileRefreshRevision, setTileRefreshRevision] = useState(() => Date.now());
   const mapIdentity = `${apiBaseUrl}|${tileUrl}|${metadata.worldKey}|${metadata.nativeZoom}|${metadata.tileSize}`;
 
@@ -136,10 +140,11 @@ export function AdminMapTab({
   }, [mapIdentity]);
 
   useEffect(() => {
-    if (!visible.autoRefresh || onlinePlayerTiles.length === 0) return undefined;
+    if (!visible.autoRefresh || !onlinePlayerTileSignature) return undefined;
+    setTileRefreshRevision(Date.now());
     const timer = window.setInterval(() => setTileRefreshRevision(Date.now()), 30_000);
     return () => window.clearInterval(timer);
-  }, [onlinePlayerTiles, visible.autoRefresh]);
+  }, [onlinePlayerTileSignature, visible.autoRefresh]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -717,6 +722,10 @@ interface NativeTileCoordinate {
   z: number;
 }
 
+export function tileSignature(tiles: NativeTileCoordinate[]): string {
+  return tiles.map((tile) => `${tile.x}:${tile.z}`).sort().join(',');
+}
+
 export function isOnlinePlayerTile(coords: { x: number; y: number; z: number }, nativeZoom: number, onlinePlayerTiles: NativeTileCoordinate[]): boolean {
   const scale = 2 ** Math.max(0, nativeZoom - coords.z);
   const backendZ = leafletYToBackendZ(coords.y);
@@ -732,7 +741,7 @@ class BackendTileLayer extends TileLayer {
   private playerTileSignature = '';
 
   refreshOnlinePlayerTiles(onlinePlayerTiles: NativeTileCoordinate[], refreshRevision: number) {
-    const signature = onlinePlayerTiles.map((tile) => `${tile.x}:${tile.z}`).sort().join(',');
+    const signature = tileSignature(onlinePlayerTiles);
     if (signature === this.playerTileSignature && refreshRevision === this.refreshRevision) return;
     this.onlinePlayerTiles = onlinePlayerTiles;
     this.playerTileSignature = signature;
