@@ -87,7 +87,7 @@ function sortValue(server: ServerWithStatus, key: SortKey): string | number {
   const data = server.queryData;
   if (key === 'name') return getServerDisplayName(server).toLocaleLowerCase();
   if (key === 'status') return server.status;
-  if (key === 'players') return data?.playercount ?? server.onlinePlayers?.length ?? 0;
+  if (key === 'players') return server.onlinePlayers?.length ?? data?.playercount ?? 0;
   if (key === 'map') return (data?.map ?? '').toLocaleLowerCase();
   if (key === 'version') return (data?.version ?? server.version ?? '').toLocaleLowerCase();
   return getAddress(server).toLocaleLowerCase();
@@ -258,7 +258,7 @@ export default function ServerListPage() {
                 const name = getServerDisplayName(server);
                 const secondaryName = getServerSecondaryName(server);
                 const map = data?.map ?? '-';
-                const playerCount = data?.playercount ?? server.onlinePlayers?.length ?? 0;
+                const playerCount = server.onlinePlayers?.length ?? data?.playercount ?? 0;
                 const maxPlayers = data?.maxplayers ?? '?';
                 const version = data?.version ?? server.version ?? '-';
                 const pinned = isPinned(server.id);

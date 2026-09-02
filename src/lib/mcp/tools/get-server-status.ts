@@ -30,7 +30,7 @@ export default defineTool({
         lastChecked: live.lastChecked,
         errorMessage: live.errorMessage,
         name: (live.queryData as { name?: string } | undefined)?.name,
-        players: (live.queryData as { playercount?: number } | undefined)?.playercount,
+        players: live.onlinePlayers?.length ?? (live.queryData as { playercount?: number } | undefined)?.playercount,
         maxPlayers: (live.queryData as { maxplayers?: number } | undefined)?.maxplayers,
         onlinePlayers: (live.onlinePlayers ?? []).map((p) => ({
           name: p.name,

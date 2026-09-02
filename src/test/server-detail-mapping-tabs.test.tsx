@@ -101,7 +101,7 @@ describe('server detail mapping tabs', () => {
 
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'overview',
-      'players',
+      'players1',
       'statistics',
       'map',
       'plugins',
@@ -147,7 +147,7 @@ describe('server detail mapping tabs', () => {
       state.dbPlayers,
     );
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'players' }), { button: 0, ctrlKey: false });
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /^players/ }), { button: 0, ctrlKey: false });
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'map' }), { button: 0, ctrlKey: false });
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'overview' }), { button: 0, ctrlKey: false });
 
@@ -163,7 +163,7 @@ describe('server detail mapping tabs', () => {
       </TooltipProvider>,
     );
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'players' }), { button: 0, ctrlKey: false });
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /^players/ }), { button: 0, ctrlKey: false });
 
     expect(screen.getAllByText('7656*********0001')).toHaveLength(2);
     expect(screen.queryByRole('link', { name: '76561198000000001' })).not.toBeInTheDocument();

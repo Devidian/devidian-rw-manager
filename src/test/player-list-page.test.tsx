@@ -56,7 +56,7 @@ describe('player list page', () => {
 
     const rows = [...container.querySelectorAll('tbody tr')].map(row => row.textContent ?? '');
     expect(rows[0]).toContain('Steam Player');
-    expect(rows[0]).toContain('8 / 20');
+    expect(rows[0]).toContain('1 / 20');
     expect(rows[1]).toContain('Ada');
     expect(rows[1]).toContain('1 / 12');
     expect(screen.getByRole('link', { name: 'Busy Server' })).toHaveAttribute('href', '/server/busy-server');

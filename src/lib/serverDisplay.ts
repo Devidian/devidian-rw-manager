@@ -17,7 +17,7 @@ export function getServerSecondaryName(server: ServerWithStatus): string | undef
 
 export function getServerCapacity(server: ServerWithStatus): { current: number; maximum: number | string } {
   return {
-    current: server.queryData?.playercount ?? server.onlinePlayers?.length ?? 0,
+    current: server.onlinePlayers?.length ?? server.queryData?.playercount ?? 0,
     maximum: server.queryData?.maxplayers ?? '?',
   };
 }

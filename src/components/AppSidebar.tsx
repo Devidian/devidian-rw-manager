@@ -26,7 +26,7 @@ function StatusIcon({ status }: { status: ServerWithStatus['status'] }) {
 
 function getPlayerCount(server: ServerWithStatus): { current: number | string; max: number | string } {
   return {
-    current: server.queryData?.playercount ?? server.onlinePlayers?.length ?? 0,
+    current: server.onlinePlayers?.length ?? server.queryData?.playercount ?? 0,
     max: server.queryData?.maxplayers ?? '?',
   };
 }

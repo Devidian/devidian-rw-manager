@@ -714,7 +714,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const data = server.queryData;
   const info = server.infoData;
   const serverName = data?.name ?? server.label;
-  const playercount = data?.playercount ?? 0;
+  const playercount = server.onlinePlayers?.length ?? data?.playercount ?? 0;
   const maxplayers = data?.maxplayers ?? '?';
   const gamemodeLabel = data?.gamemode === 0 ? t('survival') : data?.gamemode === 1 ? t('creative') : '—';
   const headerImageUrl = null;

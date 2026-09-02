@@ -11,6 +11,7 @@ interface ServerSummary {
   status?: string;
   lastSeen?: string;
   queryData?: { playercount?: number; maxplayers?: number; name?: string; map?: string };
+  onlinePlayers?: unknown[];
 }
 
 export default defineTool({
@@ -43,7 +44,7 @@ export default defineTool({
         version: s.version,
         region: s.region,
         status: s.status,
-        players: s.queryData?.playercount,
+        players: s.onlinePlayers?.length ?? s.queryData?.playercount,
         maxPlayers: s.queryData?.maxplayers,
         map: s.queryData?.map,
         lastSeen: s.lastSeen,
