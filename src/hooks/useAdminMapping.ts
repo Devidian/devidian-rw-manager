@@ -99,7 +99,6 @@ function isBounds(value: unknown): value is MapBounds {
 
 function isPluginInfo(value: unknown): value is PluginInfo {
   return isRecord(value) &&
-    typeof value.directory === 'string' &&
     typeof value.valid === 'boolean' &&
     (value.name === undefined || typeof value.name === 'string') &&
     (value.version === undefined || typeof value.version === 'string');

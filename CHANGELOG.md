@@ -11,6 +11,7 @@
 
 ### Fixed
 
+* render native plugin inventory entries without obsolete deployment-directory values
 * back off reconnects until the map subscription is confirmed
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable

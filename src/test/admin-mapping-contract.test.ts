@@ -34,7 +34,7 @@ describe('admin mapping contract', () => {
   it('rejects incompatible map and plugin responses', () => {
     expect(() => parseMapResponse(mapResponse({ schemaVersion: 4 }))).toThrow('Invalid map metadata');
     expect(() => parseMapResponse(mapResponse({ nativeTileSizeChunks: 0 }))).toThrow('Invalid map metadata');
-    expect(() => parsePluginsResponse({ items: [{ directory: 'plugin' }] })).toThrow('Invalid plugin response');
+    expect(() => parsePluginsResponse({ items: [{ name: 'plugin' }] })).toThrow('Invalid plugin response');
   });
 
   it('maps Leaflet image Y to signed backend Z coordinates', () => {
@@ -46,8 +46,8 @@ describe('admin mapping contract', () => {
   it('accepts valid and invalid plugin inventory entries', () => {
     expect(parsePluginsResponse({
       items: [
-        { directory: 'OZAdminUtils', name: 'OZ Admin Utils', version: '0.7.0', valid: true },
-        { directory: 'BrokenPlugin', valid: false },
+        { name: 'OZ Admin Utils', version: '0.7.0', valid: true },
+        { name: 'BrokenPlugin', valid: false },
       ],
     })).toHaveLength(2);
   });

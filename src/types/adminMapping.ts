@@ -28,7 +28,6 @@ export type ServerMapResponse =
   | { available: true; metadata: MapMetadata };
 
 export interface PluginInfo {
-  directory: string;
   name?: string;
   version?: string;
   valid: boolean;

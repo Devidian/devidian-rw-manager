@@ -23,8 +23,8 @@ describe('admin mapping UI', () => {
     expect(screen.getByText('noPlugins')).toBeInTheDocument();
 
     rerender(<PluginsTab plugins={[
-      { directory: 'OZAdminUtils', name: 'Admin Utils', version: '0.7.0', valid: true },
-      { directory: 'Broken', valid: false },
+      { name: 'Admin Utils', version: '0.7.0', valid: true },
+      { name: 'Broken', valid: false },
     ]} loading={false} error={false} />);
     expect(screen.getByText('Admin Utils')).toBeInTheDocument();
     expect(screen.getByText('0.7.0')).toBeInTheDocument();

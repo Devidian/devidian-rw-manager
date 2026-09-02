@@ -10,12 +10,11 @@ export function PluginsTab({ plugins, loading, error }: { plugins: PluginInfo[];
   if (plugins.length === 0) return <p className="text-sm text-muted-foreground">{t('noPlugins')}</p>;
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {plugins.map((plugin) => (
-        <Card key={plugin.directory}>
+      {plugins.map((plugin, index) => (
+        <Card key={`${plugin.name ?? 'plugin'}-${plugin.version ?? 'unknown'}-${index}`}>
           <CardContent className="flex items-center justify-between gap-4 p-4">
             <div>
-              <p className="font-medium">{plugin.name ?? plugin.directory}</p>
-              <p className="text-xs text-muted-foreground">{plugin.directory}</p>
+              <p className="font-medium">{plugin.name ?? t('unknown')}</p>
             </div>
             <Badge variant={plugin.valid ? 'secondary' : 'destructive'}>
               {plugin.valid ? plugin.version ?? t('unknown') : t('invalidPlugin')}
