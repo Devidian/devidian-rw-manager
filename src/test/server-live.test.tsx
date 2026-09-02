@@ -86,6 +86,23 @@ describe('server live subscription lifecycle', () => {
     await waitFor(() => expect(result.current.statusMap['server-a']?.status).toBe('online'));
   });
 
+  it('subscribes to every listed server while REST polling remains pinned-server only', () => {
+    const first: ServerConfig = {
+      id: 'server-a', label: 'A', queryUrl: 'https://a.example', createdAt: '2026-08-03T00:00:00.000Z',
+    };
+    const second: ServerConfig = {
+      id: 'server-b', label: 'B', queryUrl: 'https://b.example', createdAt: '2026-08-03T00:00:00.000Z',
+    };
+    renderHook(() => useServerStatus([first, second], adapterFor(first), [first], 'https://manager.example'));
+
+    const socket = FakeWebSocket.instances[0];
+    act(() => socket.open());
+    expect(JSON.parse(socket.sent[0])).toMatchObject({
+      type: 'server.status.subscribe',
+      serverIds: ['server-a', 'server-b'],
+    });
+  });
+
   it('keeps REST polling available when no backend WebSocket exists', async () => {
     const server: ServerConfig = {
       id: 'local-a', label: 'Local', queryUrl: 'http://local.example', createdAt: '2026-08-03T00:00:00.000Z',

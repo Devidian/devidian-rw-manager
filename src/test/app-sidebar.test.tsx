@@ -43,7 +43,7 @@ describe('app sidebar', () => {
     render(
       <MemoryRouter>
         <SidebarProvider>
-          <AppSidebar servers={[server()]} />
+          <AppSidebar servers={[server()]} onlinePlayerCount={0} />
         </SidebarProvider>
       </MemoryRouter>,
     );
@@ -59,7 +59,7 @@ describe('app sidebar', () => {
     render(
       <MemoryRouter>
         <SidebarProvider>
-          <AppSidebar servers={[]} />
+          <AppSidebar servers={[]} onlinePlayerCount={0} />
         </SidebarProvider>
       </MemoryRouter>,
     );

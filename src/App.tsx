@@ -62,7 +62,7 @@ function SessionExpiredDialog() {
 }
 
 function Layout() {
-  const { pinnedServerList } = useServerContext();
+  const { pinnedServerList, serverList } = useServerContext();
 
   return (
     <GlobalIntercomProvider>
@@ -70,6 +70,7 @@ function Layout() {
         <div className="min-h-screen flex w-full">
           <AppSidebar
             servers={pinnedServerList}
+            onlinePlayerCount={serverList.reduce((total, server) => total + (server.onlinePlayers?.length ?? 0), 0)}
           />
 
           <div className="flex flex-col flex-1 min-w-0">

@@ -15,6 +15,7 @@ import { RichText } from '@/components/RichText';
 
 interface AppSidebarProps {
   servers: ServerWithStatus[];
+  onlinePlayerCount: number;
 }
 
 function StatusIcon({ status }: { status: ServerWithStatus['status'] }) {
@@ -48,7 +49,7 @@ function LanguageToggle() {
   );
 }
 
-export function AppSidebar({ servers }: AppSidebarProps) {
+export function AppSidebar({ servers, onlinePlayerCount }: AppSidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, isAuthenticated, isAdmin, isSuperAdmin, hasAuthService, logout } = useAuth();
@@ -109,7 +110,12 @@ export function AppSidebar({ servers }: AppSidebarProps) {
                     activeClassName="bg-sidebar-accent text-primary font-medium"
                   >
                     <Users className="h-4 w-4 shrink-0" />
-                    <span>{t('playerList')}</span>
+                    <span className="min-w-0 flex-1 truncate">{t('playerList')}</span>
+                    {onlinePlayerCount > 0 && (
+                      <Badge className="h-5 min-w-5 shrink-0 justify-center px-1.5 text-[10px] tabular-nums">
+                        {onlinePlayerCount > 99 ? '99+' : onlinePlayerCount}
+                      </Badge>
+                    )}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

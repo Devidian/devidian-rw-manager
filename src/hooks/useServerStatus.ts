@@ -22,9 +22,9 @@ export function useServerStatus(
 ) {
   const [statusMap, setStatusMap] = useState<Record<string, ServerWithStatus>>({});
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const autoRefreshServerIds = useMemo(
-    () => autoRefreshServers.map((server) => server.id),
-    [autoRefreshServers],
+  const liveSubscriptionServerIds = useMemo(
+    () => servers.map((server) => server.id),
+    [servers],
   );
 
   const fetchServerFull = useCallback(async (server: ServerConfig): Promise<Partial<ServerWithStatus>> => {
@@ -119,7 +119,7 @@ export function useServerStatus(
 
   const liveState = useServerLiveSubscription(
     backendUrl,
-    autoRefreshServerIds,
+    liveSubscriptionServerIds,
     applySnapshot,
     applyChanged,
   );
