@@ -7,3 +7,4 @@ Each task must include objective, ownership, dependencies, risks, validation str
 ## Current Tasks
 
 - [Marketplace Map Offers Overlay](marketplace-map-offers-overlay.md)
+- [Server Access and Capability Presentation](server-access-and-capability-badges.md)

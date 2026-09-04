@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { MapBounds, MapMetadata, PluginInfo, ServerMapResponse } from '@/types/adminMapping';
+import { authHeaders } from '@/lib/authApi';
 
 export function useAdminMapping(backendUrl?: string, serverId?: string) {
   const [map, setMap] = useState<ServerMapResponse>({ available: false });
@@ -8,11 +9,15 @@ export function useAdminMapping(backendUrl?: string, serverId?: string) {
   const [pluginsLoading, setPluginsLoading] = useState(!!backendUrl);
   const [mapError, setMapError] = useState(false);
   const [pluginsError, setPluginsError] = useState(false);
+  const [pluginsAvailable, setPluginsAvailable] = useState(false);
+  const [admins, setAdmins] = useState<string[]>([]);
 
   useEffect(() => {
     if (!backendUrl || !serverId) {
       setMap({ available: false });
       setPlugins([]);
+      setPluginsAvailable(false);
+      setAdmins([]);
       setMapLoading(false);
       setPluginsLoading(false);
       return;
@@ -38,18 +43,30 @@ export function useAdminMapping(backendUrl?: string, serverId?: string) {
     fetch(`${serverBase}/plugins`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Plugin request failed');
-        setPlugins(parsePluginsResponse(await response.json()));
+        const pluginResponse = parsePluginsResponse(await response.json());
+        setPlugins(pluginResponse.items);
+        setPluginsAvailable(pluginResponse.available);
       })
       .catch((requestError) => {
         if ((requestError as Error).name === 'AbortError') return;
         setPlugins([]);
+        setPluginsAvailable(false);
         setPluginsError(true);
       })
       .finally(() => setPluginsLoading(false));
+    fetch(`${serverBase}/admins`, { headers: authHeaders(), signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Admins request failed');
+        setAdmins(parseAdminsResponse(await response.json()));
+      })
+      .catch((requestError) => {
+        if ((requestError as Error).name === 'AbortError') return;
+        setAdmins([]);
+      });
     return () => controller.abort();
   }, [backendUrl, serverId]);
 
-  return { map, plugins, mapLoading, pluginsLoading, mapError, pluginsError };
+  return { map, plugins, pluginsAvailable, mapLoading, pluginsLoading, mapError, pluginsError, admins };
 }
 
 export function parseMapResponse(value: unknown): ServerMapResponse {
@@ -59,11 +76,18 @@ export function parseMapResponse(value: unknown): ServerMapResponse {
   return { available: true, metadata: value.metadata };
 }
 
-export function parsePluginsResponse(value: unknown): PluginInfo[] {
-  if (!isRecord(value) || !Array.isArray(value.items) || !value.items.every(isPluginInfo)) {
+export function parsePluginsResponse(value: unknown): ServerPluginsResponse {
+  if (!isRecord(value) || (value.available !== undefined && typeof value.available !== 'boolean') || !Array.isArray(value.items) || !value.items.every(isPluginInfo)) {
     throw new Error('Invalid plugin response');
   }
-  return value.items;
+  return { available: value.available === true, items: value.items };
+}
+
+function parseAdminsResponse(value: unknown): string[] {
+  if (!isRecord(value) || !Array.isArray(value.admins) || !value.admins.every((admin) => typeof admin === 'string')) {
+    throw new Error('Invalid admins response');
+  }
+  return value.admins;
 }
 
 function isMapMetadata(value: unknown): value is MapMetadata {

@@ -675,7 +675,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const navigate = useNavigate();
   const { updateServer, setServerBlocked } = useServerContext();
   const { mode, fixedBackendUrl, backendUrl } = useStorageMode();
-  const { isAdmin, isAuthenticated, isSuperAdmin } = useAuth();
+  const { isAdmin, isAuthenticated, isSuperAdmin, user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [blockedPending, setBlockedPending] = useState(false);
   const canEdit = false;
@@ -717,8 +717,9 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const playercount = server.onlinePlayers?.length ?? data?.playercount ?? 0;
   const maxplayers = data?.maxplayers ?? '?';
   const gamemodeLabel = data?.gamemode === 0 ? t('survival') : data?.gamemode === 1 ? t('creative') : '—';
-  const headerImageUrl = null;
+  const headerImageUrl = info?.headerimage ? `${server.queryUrl.replace(/\/+$/, '')}/images/header` : null;
   const hasBackend = !!managerApiUrl;
+  const canViewConfig = hasBackend && isAuthenticated && !!user?.steamId && adminMapping.admins.includes(user.steamId);
   const connectUrl = serverConnectUrl(server);
   const toggleBlocked = async () => {
     if (!server) return;
@@ -732,17 +733,6 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
 
   return (
     <div className="space-y-6">
-      {headerImageUrl && (
-        <div className="rounded-lg overflow-hidden border border-border">
-          <img
-            src={headerImageUrl}
-            alt={`${serverName} Banner`}
-            className="w-full h-48 object-cover"
-            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        </div>
-      )}
-
       <div className="flex items-start justify-between gap-4">
         <div>
           <Button
@@ -876,29 +866,17 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
               {t('map')}
             </TabsTrigger>
           )}
-          {hasBackend && (
+          {hasBackend && adminMapping.pluginsAvailable && (
             <TabsTrigger value="plugins" className="gap-2 data-[state=active]:bg-muted">
               <Plug className="h-4 w-4" />
               {t('plugins')}
             </TabsTrigger>
           )}
-          {hasBackend && (
-            isAuthenticated ? (
-              <TabsTrigger value="config" className="gap-2 data-[state=active]:bg-muted">
-                <Settings className="h-4 w-4" />
-                {t('configuration')}
-              </TabsTrigger>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground/50 cursor-not-allowed">
-                    <Lock className="h-4 w-4" />
-                    {t('configuration')}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{t('configRequiresAuth')}</TooltipContent>
-              </Tooltip>
-            )
+          {canViewConfig && (
+            <TabsTrigger value="config" className="gap-2 data-[state=active]:bg-muted">
+              <Settings className="h-4 w-4" />
+              {t('configuration')}
+            </TabsTrigger>
           )}
         </TabsList>
 
@@ -918,6 +896,14 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
                 </div>
               ) : (
                 <div>
+                  {headerImageUrl && (
+                    <img
+                      src={headerImageUrl}
+                      alt={`${serverName} Banner`}
+                      className="mb-4 max-w-[300px] rounded border border-border object-contain"
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
                   <InfoRow icon={Tag} label={t('serverName')} value={serverName} />
                   {info?.shortname && <InfoRow icon={Tag} label={t('shortName')} value={info.shortname} />}
                   {info?.description && <InfoRow icon={Tag} label={t('description')} value={info.description} />}
@@ -970,13 +956,13 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           </TabsContent>
         )}
 
-        {hasBackend && (
+        {hasBackend && adminMapping.pluginsAvailable && (
           <TabsContent value="plugins" className="mt-4">
             <PluginsTab plugins={adminMapping.plugins} loading={adminMapping.pluginsLoading} error={adminMapping.pluginsError} />
           </TabsContent>
         )}
 
-        {hasBackend && isAuthenticated && (
+        {canViewConfig && (
           <TabsContent value="config" className="mt-4">
             <ConfigTab backendUrl={managerApiUrl!} serverId={server.id} />
           </TabsContent>

@@ -29,6 +29,8 @@ export interface ServerConfig {
   firstSeen?: string;
   lastSeen?: string;
   queryDataUpdatedAt?: string;
+  pluginListAvailable?: boolean;
+  ozToolsInstalled?: boolean;
   createdAt: string;
   userId?: string;
   public?: boolean;

@@ -34,7 +34,8 @@ describe('admin mapping UI', () => {
   it('keeps map availability when the plugin endpoint fails', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(response(mapResponse()))
-      .mockResolvedValueOnce(response({}, 500));
+      .mockResolvedValueOnce(response({}, 500))
+      .mockResolvedValueOnce(response({ admins: [] }));
 
     const { result } = renderHook(() => useAdminMapping('https://backend.example/', 'server-1'));
 
@@ -47,7 +48,8 @@ describe('admin mapping UI', () => {
   it('hides map data when schema-5 validation fails', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(response(mapResponse({ schemaVersion: 4 })))
-      .mockResolvedValueOnce(response({ items: [] }));
+      .mockResolvedValueOnce(response({ available: true, items: [] }))
+      .mockResolvedValueOnce(response({ admins: [] }));
 
     const { result } = renderHook(() => useAdminMapping('https://backend.example', 'server-1'));
 

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AppWindow, ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Lock, RefreshCw, Star, Terminal, Users, MapPin, Server as ServerIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Lock, RefreshCw, Star, Users, MapPin, Server as ServerIcon } from 'lucide-react';
 import { useServerContext } from '@/context/ServerContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,9 @@ function StatusBadge({ server }: { server: ServerWithStatus }) {
     return (
       <Badge className="gap-1.5 bg-[hsl(120_55%_42%/0.15)] text-[hsl(120_55%_62%)] border-[hsl(120_55%_42%/0.4)]">
         <span className="h-1.5 w-1.5 rounded-full status-dot-online" aria-label={t('online')} title={t('online')} />
+        {server.pluginListAvailable && server.ozToolsInstalled && (
+          <span className="font-semibold" aria-label="OZ Tools" title="OZ Tools">Ω</span>
+        )}
       </Badge>
     );
   }
@@ -51,6 +54,26 @@ function StatusBadge({ server }: { server: ServerWithStatus }) {
   );
 }
 
+function WindowsLogo() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" role="img" aria-label="Windows">
+      <path fill="currentColor" d="M3 5.1 10.3 4v7H3V5.1Zm8.6-1.3L21 2.5V11h-9.4V3.8ZM3 12.8h7.3v7L3 18.9v-6.1Zm8.6 0H21v8.7l-9.4-1.3v-7.4Z" />
+    </svg>
+  );
+}
+
+function LinuxPenguin() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" role="img" aria-label="Linux">
+      <path fill="currentColor" d="M12 2.5c-3.5 0-5.3 3.5-5.3 7.2 0 2-.8 3.7-1.8 5.1-.8 1.1-.1 2.7 1.3 2.7h11.6c1.4 0 2.1-1.6 1.3-2.7-1-1.4-1.8-3.1-1.8-5.1 0-3.7-1.8-7.2-5.3-7.2Z" />
+      <ellipse cx="12" cy="13.1" rx="3.2" ry="4.5" fill="hsl(var(--background))" />
+      <circle cx="10.2" cy="7.7" r=".8" fill="hsl(var(--background))" />
+      <circle cx="13.8" cy="7.7" r=".8" fill="hsl(var(--background))" />
+      <path fill="currentColor" d="M8 17.4c-2.1 0-3.5 1-3.5 2.1 0 .8 1.2 1.3 3.1 1.3h1.1v-3.4H8Zm8 0h-.7v3.4h1.1c1.9 0 3.1-.5 3.1-1.3 0-1.1-1.4-2.1-3.5-2.1Z" />
+    </svg>
+  );
+}
+
 function ServerTraitsBadges({ server }: { server: ServerWithStatus }) {
   const { t } = useTranslation();
   const os = server.queryData?.os?.toLowerCase();
@@ -60,8 +83,8 @@ function ServerTraitsBadges({ server }: { server: ServerWithStatus }) {
       {os && (
         <Badge variant="outline" className="gap-1.5 text-muted-foreground border-border">
           {os.includes('win')
-            ? <AppWindow className="h-3.5 w-3.5" aria-label="Windows" title="Windows" />
-            : <Terminal className="h-3.5 w-3.5" aria-label="Linux" title="Linux" />}
+            ? <WindowsLogo />
+            : <LinuxPenguin />}
         </Badge>
       )}
       {requiresPassword && (
@@ -296,7 +319,7 @@ export default function ServerListPage() {
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-muted-foreground max-w-[12rem]">
                         <MapPin className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{map}</span>
+                        <span className={cn('truncate', server.mapUrl && 'font-bold text-foreground')}>{map}</span>
                       </div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{version}</TableCell>

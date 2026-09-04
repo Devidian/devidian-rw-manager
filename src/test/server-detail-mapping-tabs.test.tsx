@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   fixedBackendUrl: 'https://manager.example' as string | null,
   getServerStatistics: vi.fn(),
   isAuthenticated: true,
+  userSteamId: 'steam-admin',
   dbPlayers: [] as Array<{ uid: string; name?: string; platform?: string }>,
   fetchPlayers: vi.fn(),
   useMapLayers: vi.fn(),
@@ -31,7 +32,7 @@ vi.mock('@/context/StorageModeContext', () => ({
   }),
 }));
 vi.mock('@/context/AuthContext', () => ({
-  useAuth: () => ({ isAdmin: false, isAuthenticated: state.isAuthenticated, isSuperAdmin: false }),
+  useAuth: () => ({ isAdmin: false, isAuthenticated: state.isAuthenticated, isSuperAdmin: false, user: { steamId: state.userSteamId } }),
 }));
 vi.mock('@/hooks/useDatabasePlayers', () => ({
   useDatabasePlayers: () => ({ players: state.dbPlayers, loading: false, error: null, fetchPlayers: state.fetchPlayers }),
@@ -46,8 +47,10 @@ vi.mock('@/hooks/useAdminMapping', () => ({
   useAdminMapping: () => ({
     map: state.mapAvailable ? { available: true, metadata: { worldKey: 'world-1' } } : { available: false },
     plugins: [],
+    pluginsAvailable: true,
     pluginsLoading: false,
     pluginsError: false,
+    admins: ['steam-admin'],
   }),
 }));
 vi.mock('@/components/AdminMapTab', () => ({
@@ -64,6 +67,7 @@ describe('server detail mapping tabs', () => {
     state.mapAvailable = true;
     state.fixedBackendUrl = 'https://manager.example';
     state.isAuthenticated = true;
+    state.userSteamId = 'steam-admin';
     state.dbPlayers = [];
     state.fetchPlayers.mockClear();
     state.fetchPlayers.mockResolvedValue(undefined);
@@ -124,6 +128,13 @@ describe('server detail mapping tabs', () => {
 
     expect(screen.queryByRole('tab', { name: 'map' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'plugins' })).not.toBeInTheDocument();
+  });
+
+  it('hides configuration from authenticated users who are not server admins', () => {
+    state.userSteamId = 'steam-user';
+    render(<ServerDetail server={server()} onRefresh={vi.fn()} />);
+
+    expect(screen.queryByRole('tab', { name: 'configuration' })).not.toBeInTheDocument();
   });
 
   it('opens the statistics tab without shadowing the Map constructor', async () => {

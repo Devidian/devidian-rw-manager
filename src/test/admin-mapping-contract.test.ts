@@ -45,11 +45,16 @@ describe('admin mapping contract', () => {
 
   it('accepts valid and invalid plugin inventory entries', () => {
     expect(parsePluginsResponse({
+      available: true,
       items: [
         { name: 'OZ Admin Utils', version: '0.7.0', valid: true },
         { name: 'BrokenPlugin', valid: false },
       ],
-    })).toHaveLength(2);
+    })).toEqual(expect.objectContaining({ available: true, items: expect.any(Array) }));
+  });
+
+  it('treats a legacy plugin response without availability as unavailable', () => {
+    expect(parsePluginsResponse({ items: [] })).toEqual({ available: false, items: [] });
   });
 
   it('maps block-space areas and players into native tile coordinates', () => {

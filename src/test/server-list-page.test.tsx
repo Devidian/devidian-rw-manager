@@ -18,6 +18,9 @@ const serverList: ServerWithStatus[] = [
     id: 'server-a',
     label: 'Pinned Server',
     queryUrl: 'https://server-a.example',
+    mapUrl: 'https://maps.example/server-a',
+    pluginListAvailable: true,
+    ozToolsInstalled: true,
     addr: '127.0.0.1:4255',
     createdAt: '2026-06-12T00:00:00.000Z',
     status: 'online',
@@ -139,8 +142,11 @@ describe('server list page', () => {
     expect(screen.getByText('Pinned Server')).toBeInTheDocument();
     expect(screen.queryByText('Offline Server')).not.toBeInTheDocument();
     expect(screen.getByText('127.0.0.1:4255')).toBeInTheDocument();
+    expect(screen.getByText('World A')).toHaveClass('font-bold');
     expect(screen.getByText(/serverListDetails:\{"windows":1,"linux":1,"password":1\}/)).toBeInTheDocument();
     expect(screen.getByLabelText('Windows')).toBeInTheDocument();
+    expect(screen.getByLabelText('Linux')).toBeInTheDocument();
+    expect(screen.getByLabelText('OZ Tools')).toBeInTheDocument();
     expect(screen.getByLabelText('locked')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle('unpinServer'));

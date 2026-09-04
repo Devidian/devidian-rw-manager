@@ -34,6 +34,7 @@ export interface PluginInfo {
 }
 
 export interface ServerPluginsResponse {
+  available: boolean;
   items: PluginInfo[];
 }
 
