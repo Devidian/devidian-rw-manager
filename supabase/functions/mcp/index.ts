@@ -64,7 +64,7 @@ var list_servers_default = defineTool({
         version: s.version,
         region: s.region,
         status: s.status,
-        players: s.queryData?.playercount,
+        players: s.onlinePlayers?.length ?? s.queryData?.playercount,
         maxPlayers: s.queryData?.maxplayers,
         map: s.queryData?.map,
         lastSeen: s.lastSeen
@@ -126,7 +126,7 @@ var get_server_status_default = defineTool3({
         lastChecked: live.lastChecked,
         errorMessage: live.errorMessage,
         name: live.queryData?.name,
-        players: live.queryData?.playercount,
+        players: live.onlinePlayers?.length ?? live.queryData?.playercount,
         maxPlayers: live.queryData?.maxplayers,
         onlinePlayers: (live.onlinePlayers ?? []).map((p) => ({
           name: p.name,
