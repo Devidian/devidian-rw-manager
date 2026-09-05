@@ -16,6 +16,27 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.6.1](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.6.0...rw-manager-v1.6.1) (2026-09-05)
+
+
+### Added
+
+* refine server capability presentation ([e7e18d1](https://github.com/Devidian/devidian-rw-manager/commit/e7e18d13703825f6abfd89ee7ea9bc17f0132c86))
+* show live online player count ([9d332e5](https://github.com/Devidian/devidian-rw-manager/commit/9d332e525e6fa3e66b295b4625201051f310e903))
+
+
+### Fixed
+
+* prefer live player list counts ([65a6d86](https://github.com/Devidian/devidian-rw-manager/commit/65a6d86cce4e27dd6e4538d7dbc366c5185aa999))
+* report native online player status in manager MCP ([15ced63](https://github.com/Devidian/devidian-rw-manager/commit/15ced63dda1c4ec0051ab2543830e58e930f8b17))
+* show native plugin inventory ([70fd329](https://github.com/Devidian/devidian-rw-manager/commit/70fd32966d3db3cd0014b79c7bc005f0c35ad657))
+
+
+### Build
+
+* **deps-dev:** bump browserslist ([6afa62a](https://github.com/Devidian/devidian-rw-manager/commit/6afa62a171925bd5d825e120a58038b6a98642c7))
+* **deps-dev:** bump browserslist from 4.25.1 to 4.28.8 in the npm_and_yarn group across 1 directory ([9e97c74](https://github.com/Devidian/devidian-rw-manager/commit/9e97c74328b03490e5fc34df5897a29a17845781))
+
 ## [1.6.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.6.0...rw-manager-v1.6.0) (2026-08-14)
 
 
