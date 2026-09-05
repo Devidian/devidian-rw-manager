@@ -717,7 +717,9 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const playercount = server.onlinePlayers?.length ?? data?.playercount ?? 0;
   const maxplayers = data?.maxplayers ?? '?';
   const gamemodeLabel = data?.gamemode === 0 ? t('survival') : data?.gamemode === 1 ? t('creative') : '—';
-  const headerImageUrl = info?.headerimage ? `${server.queryUrl.replace(/\/+$/, '')}/images/header` : null;
+  const headerImageUrl = info?.headerimage && managerApiUrl
+    ? `${managerApiUrl.replace(/\/+$/, '')}/api/data/server/${encodeURIComponent(server.id)}/header`
+    : null;
   const hasBackend = !!managerApiUrl;
   const canViewConfig = hasBackend && isAuthenticated && !!user?.steamId && adminMapping.admins.includes(user.steamId);
   const connectUrl = serverConnectUrl(server);
