@@ -100,6 +100,20 @@ describe('server detail mapping tabs', () => {
     });
   });
 
+  it('renders description line breaks and keeps unsupported HTML as text', () => {
+    const target = server();
+    target.infoData = {
+      name: 'New World', shortname: '', contact: '', headerimage: false,
+      description: String.raw`<b>Description title</b>\nNext line\n<img src=x onerror=alert(1)>`,
+    };
+    const { container } = render(<ServerDetail server={target} onRefresh={vi.fn()} />);
+    const title = screen.getByText('Description title');
+    expect(title.tagName).toBe('STRONG');
+    expect(title.parentElement).toHaveClass('whitespace-pre-wrap');
+    expect(title.parentElement?.textContent).toBe('Description title\nNext line\n<img src=x onerror=alert(1)>');
+    expect(container.querySelector('img[onerror]')).toBeNull();
+  });
+
   it('orders players, available map, plugins, and configuration tabs', () => {
     render(<ServerDetail server={server()} onRefresh={vi.fn()} />);
 

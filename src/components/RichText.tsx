@@ -3,10 +3,12 @@ import React from 'react';
 type RichTextNode =
   | string
   | { type: 'color'; value: string; children: RichTextNode[] }
-  | { type: 'bold'; children: RichTextNode[] };
+  | { type: 'bold'; children: RichTextNode[] }
+  | { type: 'break' }
+  | { type: 'align'; value: string; children: RichTextNode[] };
 
 type RichTextFrame = {
-  type: 'root' | 'color' | 'bold';
+  type: 'root' | 'color' | 'bold' | 'align';
   value?: string;
   children: RichTextNode[];
 };
@@ -26,7 +28,7 @@ export function RichText({ text, className, code }: RichTextProps) {
 }
 
 export function hasRichTextTags(text: string): boolean {
-  return /<\/?b>|<\/?color(?:=[^>]+)?>/i.test(text);
+  return /<\/?b>|<\/?color(?:=[^>]+)?>|<br\s*\/?>|<\/?align(?:=(?:left|center|right|justify|justified))?>/i.test(text);
 }
 
 function parseRichText(text: string): RichTextNode[] {
@@ -54,6 +56,16 @@ function parseRichText(text: string): RichTextNode[] {
 
 function applyTag(tag: string, stack: RichTextFrame[]): boolean {
   const lowerTag = tag.toLowerCase();
+  if (/^<br\s*\/?>$/i.test(tag)) {
+    currentFrame(stack).children.push({ type: 'break' });
+    return true;
+  }
+  if (lowerTag === '</align>') return closeFrame(stack, 'align');
+  const alignment = tag.match(/^<align=(left|center|right|justify|justified)>$/i);
+  if (alignment) {
+    stack.push({ type: 'align', value: alignment[1].toLowerCase().replace('justified', 'justify'), children: [] });
+    return true;
+  }
   if (lowerTag === '<b>') {
     stack.push({ type: 'bold', children: [] });
     return true;
@@ -74,7 +86,7 @@ function applyTag(tag: string, stack: RichTextFrame[]): boolean {
   return true;
 }
 
-function closeFrame(stack: RichTextFrame[], type: 'color' | 'bold'): boolean {
+function closeFrame(stack: RichTextFrame[], type: 'color' | 'bold' | 'align'): boolean {
   const frame = currentFrame(stack);
   if (frame.type !== type) return false;
 
@@ -96,6 +108,7 @@ function currentFrame(stack: RichTextFrame[]): RichTextFrame {
 }
 
 function frameToNode(frame: RichTextFrame): RichTextNode {
+  if (frame.type === 'align') return { type: 'align', value: frame.value ?? 'left', children: frame.children };
   return frame.type === 'color'
     ? { type: 'color', value: frame.value ?? 'inherit', children: frame.children }
     : { type: 'bold', children: frame.children };
@@ -105,6 +118,10 @@ function renderNodes(nodes: RichTextNode[], keyPrefix = 'rt'): React.ReactNode[]
   return nodes.map((node, index) => {
     const key = `${keyPrefix}-${index}`;
     if (typeof node === 'string') return node;
+    if (node.type === 'break') return <br key={key} />;
+    if (node.type === 'align') {
+      return <span key={key} style={{ display: 'block', textAlign: node.value as React.CSSProperties['textAlign'] }}>{renderNodes(node.children, key)}</span>;
+    }
     if (node.type === 'bold') {
       return <strong key={key}>{renderNodes(node.children, key)}</strong>;
     }

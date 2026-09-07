@@ -11,6 +11,7 @@ import { enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { RichText } from '@/components/RichText';
 import { serverConnectUrl } from '@/lib/serverConnect';
+import { formatServerDescription } from '@/lib/server-description';
 
 interface ServerCardProps {
   server: ServerWithStatus;
@@ -63,7 +64,7 @@ export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTo
   const data = server.queryData;
   const info = server.infoData;
   const serverName = data?.name ?? server.label;
-  const subtitle = info?.shortname || info?.description || null;
+  const subtitle = info?.shortname || (info?.description ? formatServerDescription(info.description) : null);
   const map = data?.map ?? '—';
   const playercount = server.onlinePlayers?.length ?? data?.playercount ?? 0;
   const maxplayers = data?.maxplayers ?? '?';

@@ -18,3 +18,20 @@ describe('RichText', () => {
     expect(screen.getByText(/normal/)).not.toHaveStyle({ color: '#00FFFF' });
   });
 });
+
+
+describe('safe description layout tags', () => {
+  it('renders alignment and all supported line break forms', () => {
+    const { container } = render(<RichText text={'<align=center><b>Title</b><br>First<br/>Second<BR />Third</align>Tail'} />);
+    expect(screen.getByText('Title').parentElement).toHaveStyle({ textAlign: 'center', display: 'block' });
+    expect(container.querySelectorAll('br')).toHaveLength(3);
+    expect(screen.getByText('Tail')).not.toHaveStyle({ textAlign: 'center' });
+  });
+
+  it('keeps arbitrary HTML attributes and invalid alignments as text', () => {
+    const text = '<align=expression(alert(1))>x</align><br onclick=alert(1)><script>alert(1)</script>';
+    const { container } = render(<RichText text={text} />);
+    expect(container.textContent).toBe(text);
+    expect(container.querySelector('script, br, [onclick]')).toBeNull();
+  });
+});

@@ -31,6 +31,7 @@ import { de as deFns } from 'date-fns/locale';
 import { enUS } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { hasRichTextTags, RichText } from '@/components/RichText';
+import { formatServerDescription } from '@/lib/server-description';
 import { EditServerDialog } from '@/components/EditServerDialog';
 import {
   Tooltip, TooltipContent, TooltipTrigger,
@@ -908,7 +909,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
                   )}
                   <InfoRow icon={Tag} label={t('serverName')} value={serverName} />
                   {info?.shortname && <InfoRow icon={Tag} label={t('shortName')} value={info.shortname} />}
-                  {info?.description && <InfoRow icon={Tag} label={t('description')} value={info.description} />}
+                  {info?.description && <InfoRow icon={Tag} label={t('description')} value={formatServerDescription(info.description)} />}
                   <InfoRow icon={MapPin} label={t('map')} value={data?.map} />
                   <InfoRow icon={Tag} label={t('version')} value={data?.version} />
                   <InfoRow icon={Users} label={t('playerCount')} value={`${playercount} / ${maxplayers}`} />
