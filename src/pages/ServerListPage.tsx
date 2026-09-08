@@ -30,9 +30,6 @@ function StatusBadge({ server }: { server: ServerWithStatus }) {
     return (
       <Badge className="gap-1.5 bg-[hsl(120_55%_42%/0.15)] text-[hsl(120_55%_62%)] border-[hsl(120_55%_42%/0.4)]">
         <span className="h-1.5 w-1.5 rounded-full status-dot-online" aria-label={t('online')} title={t('online')} />
-        {server.pluginListAvailable && server.ozToolsInstalled && (
-          <span className="font-semibold" aria-label="OZ Tools" title="OZ Tools">Ω</span>
-        )}
       </Badge>
     );
   }
@@ -81,19 +78,41 @@ function ServerTraitsBadges({ server }: { server: ServerWithStatus }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {os && (
-        <Badge variant="outline" className="gap-1.5 text-muted-foreground border-border">
+        <Badge variant="outline" className={cn('gap-1.5 border-border', os.includes('win') ? 'bg-blue-500/15 text-blue-500' : 'bg-green-500/15 text-green-600')}>
           {os.includes('win')
             ? <WindowsLogo />
             : <LinuxPenguin />}
         </Badge>
       )}
       {requiresPassword && (
-        <Badge variant="outline" className="gap-1.5 text-muted-foreground border-border">
+        <Badge variant="outline" className="gap-1.5 border-red-500/40 bg-red-500/15 text-red-600">
           <Lock className="h-3.5 w-3.5" aria-label={t('locked')} title={t('locked')} />
         </Badge>
       )}
     </div>
   );
+}
+
+function OZToolsBadge({ server }: { server: ServerWithStatus }) {
+  if (!server.ozToolsInstalled) return null;
+  const connected = server.status === 'online';
+  const exposed = server.pluginListAvailable;
+  const current = versionsMatch(server.ozToolsVersion, server.latestOZToolsVersion);
+  const className = !exposed && !current
+    ? 'border-muted-foreground/40 bg-muted text-muted-foreground'
+    : connected && !current
+      ? 'border-yellow-500/40 bg-yellow-500/15 text-yellow-700'
+      : connected
+        ? 'border-green-500/40 bg-green-500/15 text-green-600'
+        : 'border-blue-500/40 bg-blue-500/15 text-blue-600';
+  const title = server.latestOZToolsVersion
+    ? `OZ Tools ${server.ozToolsVersion ?? '?'} / latest ${server.latestOZToolsVersion}`
+    : `OZ Tools ${server.ozToolsVersion ?? ''}`.trim();
+  return <Badge variant="outline" className={cn('font-semibold', className)} title={title}>Ω</Badge>;
+}
+
+function versionsMatch(installed?: string, latest?: string): boolean {
+  return !!installed && !!latest && installed.replace(/^v/i, '') === latest.replace(/^v/i, '');
 }
 
 function getAddress(server: ServerWithStatus): string {
@@ -306,6 +325,7 @@ export default function ServerListPage() {
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <StatusBadge server={server} />
+                        <OZToolsBadge server={server} />
                         <ServerTraitsBadges server={server} />
                       </div>
                     </TableCell>

@@ -220,7 +220,7 @@ export function parseCapabilities(value: unknown): MapLayerCapabilities {
     value.sectorSizeBlocks !== 8192 ||
     !positiveInteger(value.recentPlayerDays) ||
     !booleans(value, [
-      'claims', 'claimSales', 'renewZones', 'marketplace', 'shop', 'players', 'gpsGlobalMarkers',
+      'claims', 'claimSales', 'renewZones', 'marketplace', 'shop', 'players', 'gpsGlobalMarkers', 'playerHistory',
     ])
   ) throw new Error('Invalid map layer capabilities');
   return value as unknown as MapLayerCapabilities;

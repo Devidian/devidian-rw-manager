@@ -5,6 +5,7 @@ import { authHeaders } from '@/lib/authApi';
 export function useAdminMapping(backendUrl?: string, serverId?: string) {
   const [map, setMap] = useState<ServerMapResponse>({ available: false });
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
+  const [latestPluginVersions, setLatestPluginVersions] = useState<Record<string, string>>({});
   const [mapLoading, setMapLoading] = useState(!!backendUrl);
   const [pluginsLoading, setPluginsLoading] = useState(!!backendUrl);
   const [mapError, setMapError] = useState(false);
@@ -16,6 +17,7 @@ export function useAdminMapping(backendUrl?: string, serverId?: string) {
     if (!backendUrl || !serverId) {
       setMap({ available: false });
       setPlugins([]);
+      setLatestPluginVersions({});
       setPluginsAvailable(false);
       setAdmins([]);
       setMapLoading(false);
@@ -45,11 +47,13 @@ export function useAdminMapping(backendUrl?: string, serverId?: string) {
         if (!response.ok) throw new Error('Plugin request failed');
         const pluginResponse = parsePluginsResponse(await response.json());
         setPlugins(pluginResponse.items);
+        setLatestPluginVersions(pluginResponse.latestVersions);
         setPluginsAvailable(pluginResponse.available);
       })
       .catch((requestError) => {
         if ((requestError as Error).name === 'AbortError') return;
         setPlugins([]);
+        setLatestPluginVersions({});
         setPluginsAvailable(false);
         setPluginsError(true);
       })
@@ -66,7 +70,7 @@ export function useAdminMapping(backendUrl?: string, serverId?: string) {
     return () => controller.abort();
   }, [backendUrl, serverId]);
 
-  return { map, plugins, pluginsAvailable, mapLoading, pluginsLoading, mapError, pluginsError, admins };
+  return { map, plugins, latestPluginVersions, pluginsAvailable, mapLoading, pluginsLoading, mapError, pluginsError, admins };
 }
 
 export function parseMapResponse(value: unknown): ServerMapResponse {
@@ -77,10 +81,14 @@ export function parseMapResponse(value: unknown): ServerMapResponse {
 }
 
 export function parsePluginsResponse(value: unknown): ServerPluginsResponse {
-  if (!isRecord(value) || (value.available !== undefined && typeof value.available !== 'boolean') || !Array.isArray(value.items) || !value.items.every(isPluginInfo)) {
+  if (!isRecord(value) || (value.available !== undefined && typeof value.available !== 'boolean') || !Array.isArray(value.items) || !value.items.every(isPluginInfo) || !isVersionMap(value.latestVersions)) {
     throw new Error('Invalid plugin response');
   }
-  return { available: value.available === true, items: value.items };
+  return { available: value.available === true, items: value.items, latestVersions: value.latestVersions };
+}
+
+function isVersionMap(value: unknown): value is Record<string, string> {
+  return isRecord(value) && Object.values(value).every((version) => typeof version === 'string');
 }
 
 function parseAdminsResponse(value: unknown): string[] {

@@ -31,6 +31,8 @@ export interface ServerConfig {
   queryDataUpdatedAt?: string;
   pluginListAvailable?: boolean;
   ozToolsInstalled?: boolean;
+  ozToolsVersion?: string;
+  latestOZToolsVersion?: string;
   createdAt: string;
   userId?: string;
   public?: boolean;

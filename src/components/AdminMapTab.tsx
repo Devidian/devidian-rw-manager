@@ -2,6 +2,7 @@ import {
   Maximize2,
   Minimize2,
   MonitorUp,
+  Layers,
   Store,
 } from 'lucide-react';
 import {
@@ -15,6 +16,7 @@ import {
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleMarker,
+  ImageOverlay,
   MapContainer,
   Marker,
   Popup,
@@ -57,6 +59,7 @@ import { applyEntityDelta, fetchMarketplaceOffers } from '@/hooks/useMapLayers';
 import type { MapLayersState } from '@/hooks/useMapLayers';
 import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
+import { authHeaders } from '@/lib/authApi';
 
 interface LayerVisibility {
   autoRefresh: boolean;
@@ -66,6 +69,13 @@ interface LayerVisibility {
   recent: boolean;
   longTerm: boolean;
   gpsGlobalMarkers: boolean;
+  playerHistory: boolean;
+}
+
+interface PlayerMapHistorySector {
+  sectorX: number;
+  sectorZ: number;
+  bitmap: string;
 }
 
 type MapDisplayMode = 'normal' | 'expanded' | 'fullscreen';
@@ -77,6 +87,7 @@ export function AdminMapTab({
   metadata,
   mapLayers,
   isAdmin = false,
+  isAuthenticated = false,
 }: {
   apiBaseUrl: string;
   serverId: string;
@@ -84,6 +95,7 @@ export function AdminMapTab({
   metadata: MapMetadata;
   mapLayers: MapLayersState;
   isAdmin?: boolean;
+  isAuthenticated?: boolean;
 }) {
   const { t } = useTranslation();
   const {
@@ -103,17 +115,17 @@ export function AdminMapTab({
     recent: false,
     longTerm: false,
     gpsGlobalMarkers: false,
+    playerHistory: false,
   });
+  const [playerHistory, setPlayerHistory] = useState<PlayerMapHistorySector[]>([]);
   const [displayMode, setDisplayMode] = useState<MapDisplayMode>('normal');
+  const [layersOpen, setLayersOpen] = useState(true);
   const [offersClaim, setOffersClaim] = useState<MapClaim | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const bounds = metadata.generatedTileBounds;
-  const mapBounds = latLngBounds(
-    [bounds.minZ, bounds.minX],
-    [bounds.maxZ + 1, bounds.maxX + 1],
-  );
   const tileUrl = resolveTileUrl(metadata.tileUrl, tileBaseUrl);
   const nativeTileSizeBlocks = metadata.chunkSize * metadata.nativeTileSizeChunks;
+  const initialSectorSize = 8192 / nativeTileSizeBlocks;
+  const initialBounds = latLngBounds([[0, 0], [initialSectorSize, initialSectorSize]]);
   const onlinePlayerTiles = useMemo(() => players
     .filter((player) => player.state === 'online')
     .map((player) => ({
@@ -136,8 +148,27 @@ export function AdminMapTab({
       recent: false,
       longTerm: false,
       gpsGlobalMarkers: false,
+      playerHistory: false,
     });
   }, [mapIdentity]);
+
+  useEffect(() => {
+    if (!visible.playerHistory || !isAuthenticated) return undefined;
+    const controller = new AbortController();
+    void fetch(`${apiBaseUrl.replace(/\/+$/, '')}/api/storage/server/${encodeURIComponent(serverId)}/map/layers/player-history`, {
+      headers: authHeaders(),
+      signal: controller.signal,
+    })
+      .then(async (response) => response.ok ? response.json() as Promise<unknown> : null)
+      .then((response) => {
+        if (controller.signal.aborted || !isPlayerMapHistoryResponse(response)) return;
+        setPlayerHistory(response.available ? response.items : []);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setPlayerHistory([]);
+      });
+    return () => controller.abort();
+  }, [apiBaseUrl, isAuthenticated, serverId, visible.playerHistory]);
 
   useEffect(() => {
     if (!visible.autoRefresh || !onlinePlayerTileSignature) return undefined;
@@ -196,7 +227,7 @@ export function AdminMapTab({
         <MapContainer
           key={mapIdentity}
           crs={CRS.Simple}
-          bounds={mapBounds}
+          bounds={initialBounds}
           minZoom={metadata.minZoom}
           maxZoom={metadata.nativeZoom}
           zoom={metadata.nativeZoom}
@@ -230,6 +261,12 @@ export function AdminMapTab({
               nativeTileSizeBlocks={nativeTileSizeBlocks}
             />
           )}
+          {visible.playerHistory && (
+            <PlayerHistoryLayer
+              sectors={playerHistory}
+              nativeTileSizeBlocks={nativeTileSizeBlocks}
+            />
+          )}
           <PlayerLayer
             players={players}
             visible={visible}
@@ -260,7 +297,10 @@ export function AdminMapTab({
                 ? <MonitorUp className="h-4 w-4" />
                 : <Minimize2 className="h-4 w-4" />}
           </Button>
-          <div className="pointer-events-auto w-full rounded-md border border-border bg-background/90 p-3 text-sm shadow-lg backdrop-blur">
+          <Button type="button" variant="outline" size="icon" className="pointer-events-auto bg-background/90 shadow-lg" onClick={() => setLayersOpen((value) => !value)} aria-label={t('mapLayers')} title={t('mapLayers')}>
+            <Layers className="h-4 w-4" />
+          </Button>
+          {layersOpen && <div className="pointer-events-auto w-full rounded-md border border-border bg-background/90 p-3 text-sm shadow-lg backdrop-blur">
             <div className="mb-2 text-xs font-medium text-muted-foreground">{t('mapLayers')}</div>
             <div className="flex flex-col gap-2">
               <LayerToggle label={t('mapLayerAutoRefresh')} checked={visible.autoRefresh}
@@ -291,9 +331,12 @@ export function AdminMapTab({
                   ...value,
                   gpsGlobalMarkers: checked,
                 }))} />
+              <LayerToggle label={t('mapLayerPlayerHistory')} checked={visible.playerHistory}
+                disabled={!isAuthenticated || !capabilities?.playerHistory}
+                onChange={(checked) => setVisible((value) => ({ ...value, playerHistory: checked }))} />
               {error && <span className="text-destructive">{t('mapLayerError')}</span>}
             </div>
-          </div>
+          </div>}
         </div>
       </div>
       <MarketplaceOffersDialog
@@ -379,6 +422,75 @@ function GpsGlobalMarkerLayer({
       </Popup>
     </CircleMarker>
   ));
+}
+
+function PlayerHistoryLayer({
+  sectors,
+  nativeTileSizeBlocks,
+}: {
+  sectors: PlayerMapHistorySector[];
+  nativeTileSizeBlocks: number;
+}) {
+  const sectorMapSize = 8192 / nativeTileSizeBlocks;
+  return sectors.map((sector) => (
+    <PlayerHistorySectorOverlay
+      key={`${sector.sectorX}|${sector.sectorZ}|${sector.bitmap}`}
+      sector={sector}
+      sectorMapSize={sectorMapSize}
+    />
+  ));
+}
+
+function PlayerHistorySectorOverlay({
+  sector,
+  sectorMapSize,
+}: {
+  sector: PlayerMapHistorySector;
+  sectorMapSize: number;
+}) {
+  const imageUrl = useMemo(() => playerHistoryBitmapUrl(sector.bitmap), [sector.bitmap]);
+  if (!imageUrl) return null;
+  const minX = sector.sectorX * sectorMapSize;
+  const minZ = sector.sectorZ * sectorMapSize;
+  return <ImageOverlay url={imageUrl} bounds={[[minZ, minX], [minZ + sectorMapSize, minX + sectorMapSize]]} opacity={0.6} interactive={false} />;
+}
+
+function isPlayerMapHistoryResponse(value: unknown): value is {
+  available: boolean;
+  items: PlayerMapHistorySector[];
+} {
+  if (!value || typeof value !== 'object') return false;
+  const response = value as Record<string, unknown>;
+  return typeof response.available === 'boolean' && Array.isArray(response.items)
+    && response.items.every((item) => item && typeof item === 'object'
+      && typeof (item as Record<string, unknown>).sectorX === 'number'
+      && typeof (item as Record<string, unknown>).sectorZ === 'number'
+      && typeof (item as Record<string, unknown>).bitmap === 'string');
+}
+
+function playerHistoryBitmapUrl(base64: string): string | null {
+  try {
+    const bytes = atob(base64);
+    if (bytes.length !== 8_192) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    const image = context.createImageData(256, 256);
+    for (let index = 0; index < 65_536; index += 1) {
+      if ((bytes.charCodeAt(index >> 3) & (1 << (index & 7))) === 0) continue;
+      const pixel = index * 4;
+      image.data[pixel] = 255;
+      image.data[pixel + 1] = 255;
+      image.data[pixel + 2] = 255;
+      image.data[pixel + 3] = 255;
+    }
+    context.putImageData(image, 0, 0);
+    return canvas.toDataURL('image/png');
+  } catch {
+    return null;
+  }
 }
 
 function formatPosition(marker: MapGpsMarker): string {
@@ -737,21 +849,30 @@ export function isOnlinePlayerTile(coords: { x: number; y: number; z: number }, 
 
 class BackendTileLayer extends TileLayer {
   private onlinePlayerTiles: NativeTileCoordinate[] = [];
+  private previousOnlinePlayerTiles: NativeTileCoordinate[] = [];
   private refreshRevision = 0;
   private playerTileSignature = '';
 
   refreshOnlinePlayerTiles(onlinePlayerTiles: NativeTileCoordinate[], refreshRevision: number) {
     const signature = tileSignature(onlinePlayerTiles);
     if (signature === this.playerTileSignature && refreshRevision === this.refreshRevision) return;
+    this.previousOnlinePlayerTiles = this.onlinePlayerTiles;
     this.onlinePlayerTiles = onlinePlayerTiles;
     this.playerTileSignature = signature;
     this.refreshRevision = refreshRevision;
-    this.redraw?.();
+    const tiles = (this as unknown as {
+      _tiles?: Record<string, { coords: Coords; el: HTMLImageElement }>;
+    })._tiles;
+    Object.values(tiles ?? {}).forEach((tile) => {
+      const nativeZoom = this.options.maxZoom ?? tile.coords.z;
+      if (!isOnlinePlayerTile(tile.coords, nativeZoom, this.onlinePlayerTiles)
+        && !isOnlinePlayerTile(tile.coords, nativeZoom, this.previousOnlinePlayerTiles)) return;
+      tile.el.removeAttribute('src');
+      tile.el.src = this.getTileUrl(tile.coords);
+    });
   }
 
   override getTileUrl(coords: Coords): string {
-    const url = super.getTileUrl({ ...coords, y: leafletYToBackendZ(coords.y) } as Coords);
-    if (!isOnlinePlayerTile(coords, this.options.maxZoom ?? coords.z, this.onlinePlayerTiles)) return url;
-    return `${url}${url.includes('?') ? '&' : '?'}live-player-tiles=${this.refreshRevision}`;
+    return super.getTileUrl({ ...coords, y: leafletYToBackendZ(coords.y) } as Coords);
   }
 }

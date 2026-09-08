@@ -36,6 +36,7 @@ export interface PluginInfo {
 export interface ServerPluginsResponse {
   available: boolean;
   items: PluginInfo[];
+  latestVersions: Record<string, string>;
 }
 
 export interface MapLayerCapabilities {
@@ -52,6 +53,7 @@ export interface MapLayerCapabilities {
   shop: boolean;
   players: boolean;
   gpsGlobalMarkers: boolean;
+  playerHistory: boolean;
 }
 
 export interface MapClaim {
