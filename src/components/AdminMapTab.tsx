@@ -480,7 +480,7 @@ function playerHistoryBitmapUrl(base64: string): string | null {
     const image = context.createImageData(256, 256);
     for (let index = 0; index < 65_536; index += 1) {
       if ((bytes.charCodeAt(index >> 3) & (1 << (index & 7))) === 0) continue;
-      const pixel = index * 4;
+      const pixel = playerMapBitmapPixelIndex(index) * 4;
       image.data[pixel] = 255;
       image.data[pixel + 1] = 255;
       image.data[pixel + 2] = 255;
@@ -491,6 +491,13 @@ function playerHistoryBitmapUrl(base64: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Leaflet's CRS.Simple renders the image top-down while world Z grows upward. */
+export function playerMapBitmapPixelIndex(bitmapIndex: number): number {
+  const localZ = Math.floor(bitmapIndex / 256);
+  const localX = bitmapIndex % 256;
+  return (255 - localZ) * 256 + localX;
 }
 
 function formatPosition(marker: MapGpsMarker): string {
