@@ -245,6 +245,7 @@ export function AdminMapTab({
             maxZoom={metadata.nativeZoom}
             onlinePlayerTiles={onlinePlayerTiles}
             refreshRevision={tileRefreshRevision}
+            refreshEnabled={visible.autoRefresh}
           />
           {visible.sectors && capabilities && (
             <SectorLayer
@@ -537,13 +538,14 @@ function LayerToggle({
   );
 }
 
-function SignedZTileLayer({ url, tileSize, minZoom, maxZoom, onlinePlayerTiles, refreshRevision }: {
+function SignedZTileLayer({ url, tileSize, minZoom, maxZoom, onlinePlayerTiles, refreshRevision, refreshEnabled }: {
   url: string;
   tileSize: number;
   minZoom: number;
   maxZoom: number;
   onlinePlayerTiles: NativeTileCoordinate[];
   refreshRevision: number;
+  refreshEnabled: boolean;
 }) {
   const map = useMap();
   const layerRef = useRef<BackendTileLayer | null>(null);
@@ -557,8 +559,9 @@ function SignedZTileLayer({ url, tileSize, minZoom, maxZoom, onlinePlayerTiles, 
     };
   }, [map, maxZoom, minZoom, tileSize, url]);
   useEffect(() => {
+    if (!shouldRefreshOnlinePlayerTiles(refreshEnabled)) return;
     layerRef.current?.refreshOnlinePlayerTiles(onlinePlayerTiles, refreshRevision);
-  }, [onlinePlayerTiles, refreshRevision]);
+  }, [onlinePlayerTiles, refreshEnabled, refreshRevision]);
   return null;
 }
 
@@ -853,6 +856,10 @@ interface NativeTileCoordinate {
 
 export function tileSignature(tiles: NativeTileCoordinate[]): string {
   return tiles.map((tile) => `${tile.x}:${tile.z}`).sort().join(',');
+}
+
+export function shouldRefreshOnlinePlayerTiles(autoRefresh: boolean): boolean {
+  return autoRefresh;
 }
 
 export function isOnlinePlayerTile(coords: { x: number; y: number; z: number }, nativeZoom: number, onlinePlayerTiles: NativeTileCoordinate[]): boolean {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isOnlinePlayerTile, tileSignature } from '@/components/AdminMapTab';
+import { isOnlinePlayerTile, shouldRefreshOnlinePlayerTiles, tileSignature } from '@/components/AdminMapTab';
 
 describe('online-player tile refresh selection', () => {
   it('selects only the native tile neighborhood around online players', () => {
@@ -18,5 +18,10 @@ describe('online-player tile refresh selection', () => {
   it('keeps the refresh timer stable while a player moves inside one native tile', () => {
     expect(tileSignature([{ x: 12, z: -5 }])).toBe(tileSignature([{ x: 12, z: -5 }]));
     expect(tileSignature([{ x: 12, z: -5 }])).not.toBe(tileSignature([{ x: 13, z: -5 }]));
+  });
+
+  it('does not reload player tiles when automatic reload is disabled', () => {
+    expect(shouldRefreshOnlinePlayerTiles(false)).toBe(false);
+    expect(shouldRefreshOnlinePlayerTiles(true)).toBe(true);
   });
 });
