@@ -655,8 +655,16 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
 
   const copyToClipboard = (text: string) => {
     if (!contextMenu) return;
-    if (!copyTextFallback(text) && navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(text);
+    const showCopyFallback = (reason: unknown) => {
+      const legacyCopied = copyTextFallback(text);
+      console.warn('[map] Clipboard write failed; showing manual copy fallback.', { reason, legacyCopied });
+      console.info('[map] Copy this value manually:', text);
+      window.alert(`${t('mapClipboardFallback')}\n\n${text}`);
+    };
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(text).catch(showCopyFallback);
+    } else {
+      showCopyFallback(new Error('Clipboard API is unavailable'));
     }
     setContextMenu(null);
   };

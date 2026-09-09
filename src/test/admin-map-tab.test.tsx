@@ -226,10 +226,12 @@ describe('AdminMapTab', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('tp 144 90 -96'));
   });
 
-  it('copies synchronously when the Clipboard API is unavailable in an iframe', () => {
+  it('shows the copied value when the Clipboard API is unavailable in an iframe', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
     const execCommand = vi.fn().mockReturnValue(true);
     Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
+    const alert = vi.fn();
+    Object.defineProperty(window, 'alert', { configurable: true, value: alert });
     render(
       <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
@@ -247,6 +249,39 @@ describe('AdminMapTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'mapCopyCoordinates' }));
 
     expect(execCommand).toHaveBeenCalledWith('copy');
+    expect(alert).toHaveBeenCalledWith('mapClipboardFallback\n\nX: 144, Z: -96');
+  });
+
+  it('logs the clipboard failure and shows the manual value when writing is rejected', async () => {
+    const clipboardError = new Error('Permission denied');
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(clipboardError) },
+    });
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn().mockReturnValue(false) });
+    const alert = vi.fn();
+    Object.defineProperty(window, 'alert', { configurable: true, value: alert });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    render(
+      <TestAdminMapTab
+        apiBaseUrl="https://manager.example.com"
+        serverId="server-1"
+        tileBaseUrl="https://map.example.com"
+        metadata={metadata('world-a', 'World A')}
+      />,
+    );
+
+    act(() => mapEventHandlers.current.contextmenu({
+      latlng: { lat: -1.5, lng: 2.25 },
+      containerPoint: { x: 20, y: 30 },
+      originalEvent: { preventDefault: vi.fn() },
+    } as never));
+    fireEvent.click(screen.getByRole('button', { name: 'mapCopyTeleportCommand' }));
+
+    await waitFor(() => expect(alert).toHaveBeenCalledWith('mapClipboardFallback\n\ntp 144 90 -96'));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Clipboard write failed'), expect.objectContaining({ reason: clipboardError }));
+    expect(info).toHaveBeenCalledWith(expect.stringContaining('Copy this value manually'), 'tp 144 90 -96');
   });
 
   it('passes city and leasehold colors from map-layer claims to Leaflet', () => {
