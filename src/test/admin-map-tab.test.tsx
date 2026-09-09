@@ -199,7 +199,7 @@ describe('AdminMapTab', () => {
       originalEvent: { preventDefault },
     } as never));
     expect(preventDefault).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('button', { name: 'mapCopyCoordinates' }));
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'mapCopyCoordinates' }));
     expect(screen.getByLabelText('mapClipboardReady')).toHaveValue('X: 144, Z: -96');
   });
 
@@ -218,7 +218,7 @@ describe('AdminMapTab', () => {
       containerPoint: { x: 20, y: 30 },
       originalEvent: { preventDefault: vi.fn() },
     } as never));
-    fireEvent.click(screen.getByRole('button', { name: 'mapCopyTeleportCommand' }));
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'mapCopyTeleportCommand' }));
     expect(screen.getByLabelText('mapClipboardReady')).toHaveValue('tp 144 90 -96');
   });
 

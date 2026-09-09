@@ -678,14 +678,14 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
           <button
             type="button"
             className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
-            onClick={() => openCopyDialog(formatWorldCoordinates(contextMenu.coordinates))}
+            onMouseDown={() => openCopyDialog(formatWorldCoordinates(contextMenu.coordinates))}
           >
             {t('mapCopyCoordinates')}
           </button>
           <button
             type="button"
             className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
-            onClick={() => openCopyDialog(teleportCommandForCoordinates(contextMenu.coordinates))}
+            onMouseDown={() => openCopyDialog(teleportCommandForCoordinates(contextMenu.coordinates))}
           >
             {t('mapCopyTeleportCommand')}
           </button>
