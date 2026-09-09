@@ -45,6 +45,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -637,6 +638,7 @@ function SectorLayer({
 function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks: number }) {
   const { t } = useTranslation();
   const [cursorCoordinates, setCursorCoordinates] = useState<{ x: number; z: number } | null>(null);
+  const [clipboardFallback, setClipboardFallback] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     coordinates: { x: number; z: number };
     x: number;
@@ -659,7 +661,7 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
       const legacyCopied = copyTextFallback(text);
       console.warn('[map] Clipboard write failed; showing manual copy fallback.', { reason, legacyCopied });
       console.info('[map] Copy this value manually:', text);
-      window.alert(`${t('mapClipboardFallback')}\n\n${text}`);
+      setClipboardFallback(text);
     };
     if (navigator.clipboard?.writeText) {
       void navigator.clipboard.writeText(text).catch(showCopyFallback);
@@ -699,6 +701,24 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
           </button>
         </div>
       )}
+      <Dialog open={clipboardFallback !== null} onOpenChange={(open) => !open && setClipboardFallback(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('mapClipboardFallbackTitle')}</DialogTitle>
+            <DialogDescription>{t('mapClipboardFallback')}</DialogDescription>
+          </DialogHeader>
+          {clipboardFallback && (
+            <Textarea
+              aria-label={t('mapClipboardFallback')}
+              autoFocus
+              readOnly
+              value={clipboardFallback}
+              onFocus={(event) => event.currentTarget.select()}
+              onClick={(event) => event.currentTarget.select()}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -226,12 +226,10 @@ describe('AdminMapTab', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('tp 144 90 -96'));
   });
 
-  it('shows the copied value when the Clipboard API is unavailable in an iframe', () => {
+  it('shows a selectable in-page fallback when the Clipboard API is unavailable in an iframe', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
     const execCommand = vi.fn().mockReturnValue(true);
     Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
-    const alert = vi.fn();
-    Object.defineProperty(window, 'alert', { configurable: true, value: alert });
     render(
       <TestAdminMapTab
         apiBaseUrl="https://manager.example.com"
@@ -249,7 +247,8 @@ describe('AdminMapTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'mapCopyCoordinates' }));
 
     expect(execCommand).toHaveBeenCalledWith('copy');
-    expect(alert).toHaveBeenCalledWith('mapClipboardFallback\n\nX: 144, Z: -96');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByLabelText('mapClipboardFallback')).toHaveValue('X: 144, Z: -96');
   });
 
   it('logs the clipboard failure and shows the manual value when writing is rejected', async () => {
@@ -259,8 +258,6 @@ describe('AdminMapTab', () => {
       value: { writeText: vi.fn().mockRejectedValue(clipboardError) },
     });
     Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn().mockReturnValue(false) });
-    const alert = vi.fn();
-    Object.defineProperty(window, 'alert', { configurable: true, value: alert });
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     render(
@@ -279,7 +276,7 @@ describe('AdminMapTab', () => {
     } as never));
     fireEvent.click(screen.getByRole('button', { name: 'mapCopyTeleportCommand' }));
 
-    await waitFor(() => expect(alert).toHaveBeenCalledWith('mapClipboardFallback\n\ntp 144 90 -96'));
+    await waitFor(() => expect(screen.getByLabelText('mapClipboardFallback')).toHaveValue('tp 144 90 -96'));
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('Clipboard write failed'), expect.objectContaining({ reason: clipboardError }));
     expect(info).toHaveBeenCalledWith(expect.stringContaining('Copy this value manually'), 'tp 144 90 -96');
   });

@@ -26,5 +26,7 @@ enable their private "Where have I been?" layer.
 - [x] Add the public route, embedded map data loading, and Steam return route.
 - [x] Make the reusable map use the public data endpoint only for the embedded
   view while retaining its current storage endpoint in the Manager.
+- [x] Provide an iframe-safe, selectable manual-copy fallback and document the
+  required `clipboard-write` iframe permission.
 - [ ] Run lint, tests, build, Docker build, publish an RC image, and activate it
   on Dev.

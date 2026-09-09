@@ -92,6 +92,21 @@ public `/api/data` map endpoints. Steam sign-in is available on the map itself;
 after the OpenID callback it returns to the same embedded route, where the
 signed-in player can enable the private "Where have I been?" layer.
 
+For the copy actions in the map context menu, grant the embedded document
+clipboard access:
+
+```html
+<iframe
+  src="https://rw-servers.omega-zirkel.de/embedded-map/server-51b6fa813f487c455df7ff04"
+  allow="clipboard-write"
+  title="Rising World map"
+></iframe>
+```
+
+If the embedding site uses `sandbox`, it must also permit the capabilities it
+needs. When clipboard access is denied, the map presents the value in a
+selectable in-page field for manual copying.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
