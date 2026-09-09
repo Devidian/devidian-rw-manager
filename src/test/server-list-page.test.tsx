@@ -146,7 +146,7 @@ describe('server list page', () => {
     expect(screen.getByText(/serverListDetails:\{"windows":1,"linux":1,"password":1\}/)).toBeInTheDocument();
     expect(screen.getByLabelText('Windows')).toBeInTheDocument();
     expect(screen.getByLabelText('Linux')).toBeInTheDocument();
-    expect(screen.getByLabelText('OZ Tools')).toBeInTheDocument();
+    expect(screen.getByTitle('OZ Tools')).toBeInTheDocument();
     expect(screen.getByLabelText('locked')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle('unpinServer'));

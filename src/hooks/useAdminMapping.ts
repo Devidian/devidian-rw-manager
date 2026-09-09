@@ -81,10 +81,14 @@ export function parseMapResponse(value: unknown): ServerMapResponse {
 }
 
 export function parsePluginsResponse(value: unknown): ServerPluginsResponse {
-  if (!isRecord(value) || (value.available !== undefined && typeof value.available !== 'boolean') || !Array.isArray(value.items) || !value.items.every(isPluginInfo) || !isVersionMap(value.latestVersions)) {
+  if (!isRecord(value) || (value.available !== undefined && typeof value.available !== 'boolean') || !Array.isArray(value.items) || !value.items.every(isPluginInfo) || (value.latestVersions !== undefined && !isVersionMap(value.latestVersions))) {
     throw new Error('Invalid plugin response');
   }
-  return { available: value.available === true, items: value.items, latestVersions: value.latestVersions };
+  return {
+    available: value.available === true,
+    items: value.items,
+    latestVersions: value.latestVersions === undefined ? {} : value.latestVersions,
+  };
 }
 
 function isVersionMap(value: unknown): value is Record<string, string> {

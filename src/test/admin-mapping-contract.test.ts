@@ -50,11 +50,12 @@ describe('admin mapping contract', () => {
         { name: 'OZ Admin Utils', version: '0.7.0', valid: true },
         { name: 'BrokenPlugin', valid: false },
       ],
+      latestVersions: {},
     })).toEqual(expect.objectContaining({ available: true, items: expect.any(Array) }));
   });
 
   it('treats a legacy plugin response without availability as unavailable', () => {
-    expect(parsePluginsResponse({ items: [] })).toEqual({ available: false, items: [] });
+    expect(parsePluginsResponse({ items: [] })).toEqual({ available: false, items: [], latestVersions: {} });
   });
 
   it('maps block-space areas and players into native tile coordinates', () => {
@@ -81,6 +82,7 @@ describe('admin mapping contract', () => {
       shop: true,
       players: true,
       gpsGlobalMarkers: true,
+      playerHistory: true,
     }).sectorSizeBlocks).toBe(8192);
     expect(parseClaims({
       schemaVersion: 1,

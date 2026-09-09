@@ -13,19 +13,19 @@ afterEach(() => {
 
 describe('admin mapping UI', () => {
   it('renders plugin loading, empty, error, valid, and invalid states', () => {
-    const { rerender } = render(<PluginsTab plugins={[]} loading error={false} />);
+    const { rerender } = render(<PluginsTab plugins={[]} latestVersions={{}} loading error={false} />);
     expect(screen.getByText('loadingPlugins')).toBeInTheDocument();
 
-    rerender(<PluginsTab plugins={[]} loading={false} error />);
+    rerender(<PluginsTab plugins={[]} latestVersions={{}} loading={false} error />);
     expect(screen.getByText('backendError')).toBeInTheDocument();
 
-    rerender(<PluginsTab plugins={[]} loading={false} error={false} />);
+    rerender(<PluginsTab plugins={[]} latestVersions={{}} loading={false} error={false} />);
     expect(screen.getByText('noPlugins')).toBeInTheDocument();
 
     rerender(<PluginsTab plugins={[
       { name: 'Admin Utils', version: '0.7.0', valid: true },
       { name: 'Broken', valid: false },
-    ]} loading={false} error={false} />);
+    ]} latestVersions={{}} loading={false} error={false} />);
     expect(screen.getByText('Admin Utils')).toBeInTheDocument();
     expect(screen.getByText('0.7.0')).toBeInTheDocument();
     expect(screen.getByText('invalidPlugin')).toBeInTheDocument();
