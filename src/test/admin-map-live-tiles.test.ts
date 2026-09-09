@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isOnlinePlayerTile, shouldRefreshOnlinePlayerTiles, tileSignature } from '@/components/AdminMapTab';
-import { tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
+import { MAP_TILE_REFRESH_MIN_INTERVAL_MS, tileRefreshDelay, tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
 
 describe('online-player tile refresh selection', () => {
   it('selects only the native tile neighborhood around online players', () => {
@@ -31,5 +31,12 @@ describe('online-player tile refresh selection', () => {
       .toBe('https://map.example/{z}/{x}/{y}.png?rw-map-refresh=123');
     expect(tileUrlWithRefreshRevision('https://map.example/tile.png?style=day#view', 456))
       .toBe('https://map.example/tile.png?style=day&rw-map-refresh=456#view');
+  });
+
+  it('enforces a ten-second minimum interval before any subsequent tile refresh', () => {
+    expect(MAP_TILE_REFRESH_MIN_INTERVAL_MS).toBe(10_000);
+    expect(tileRefreshDelay(100_000, 100_001)).toBe(9_999);
+    expect(tileRefreshDelay(100_000, 110_000)).toBe(0);
+    expect(tileRefreshDelay(100_000, 120_000)).toBe(0);
   });
 });

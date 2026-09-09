@@ -13,6 +13,7 @@ import {
   latLngBounds,
   type Coords,
   type LatLngBounds,
+  type Map as LeafletMap,
 } from 'leaflet';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -61,7 +62,7 @@ import type { MapLayersState } from '@/hooks/useMapLayers';
 import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
 import { authHeaders } from '@/lib/authApi';
-import { tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
+import { tileRefreshDelay, tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
 
 interface LayerVisibility {
   autoRefresh: boolean;
@@ -887,34 +888,57 @@ export function isOnlinePlayerTile(coords: { x: number; y: number; z: number }, 
 
 class BackendTileLayer extends TileLayer {
   private onlinePlayerTiles: NativeTileCoordinate[] = [];
-  private previousOnlinePlayerTiles: NativeTileCoordinate[] = [];
+  private lastRefreshedOnlinePlayerTiles: NativeTileCoordinate[] = [];
   private refreshRevision = 0;
   private playerTileSignature = '';
+  private lastNetworkRefreshAt = 0;
+  private pendingRefresh: number | null = null;
 
   refreshOnlinePlayerTiles(onlinePlayerTiles: NativeTileCoordinate[], refreshRevision: number) {
     const signature = tileSignature(onlinePlayerTiles);
     if (signature === this.playerTileSignature && refreshRevision === this.refreshRevision) return;
-    this.previousOnlinePlayerTiles = this.onlinePlayerTiles;
     this.onlinePlayerTiles = onlinePlayerTiles;
     this.playerTileSignature = signature;
     this.refreshRevision = refreshRevision;
+    const delay = tileRefreshDelay(this.lastNetworkRefreshAt, Date.now());
+    if (delay > 0) {
+      if (this.pendingRefresh === null) {
+        this.pendingRefresh = window.setTimeout(() => {
+          this.pendingRefresh = null;
+          this.refreshVisibleOnlinePlayerTiles();
+        }, delay);
+      }
+      return;
+    }
+    this.refreshVisibleOnlinePlayerTiles();
+  }
+
+  override onRemove(map: LeafletMap): this {
+    if (this.pendingRefresh !== null) window.clearTimeout(this.pendingRefresh);
+    this.pendingRefresh = null;
+    return super.onRemove(map);
+  }
+
+  private refreshVisibleOnlinePlayerTiles() {
+    this.lastNetworkRefreshAt = Date.now();
     const tiles = (this as unknown as {
       _tiles?: Record<string, { coords: Coords; el: HTMLImageElement }>;
     })._tiles;
     Object.values(tiles ?? {}).forEach((tile) => {
       const nativeZoom = this.options.maxZoom ?? tile.coords.z;
       if (!isOnlinePlayerTile(tile.coords, nativeZoom, this.onlinePlayerTiles)
-        && !isOnlinePlayerTile(tile.coords, nativeZoom, this.previousOnlinePlayerTiles)) return;
+        && !isOnlinePlayerTile(tile.coords, nativeZoom, this.lastRefreshedOnlinePlayerTiles)) return;
       tile.el.removeAttribute('src');
       tile.el.src = this.getTileUrl(tile.coords);
     });
+    this.lastRefreshedOnlinePlayerTiles = this.onlinePlayerTiles;
   }
 
   override getTileUrl(coords: Coords): string {
     const tileUrl = super.getTileUrl({ ...coords, y: leafletYToBackendZ(coords.y) } as Coords);
     const nativeZoom = this.options.maxZoom ?? coords.z;
     return isOnlinePlayerTile(coords, nativeZoom, this.onlinePlayerTiles)
-      || isOnlinePlayerTile(coords, nativeZoom, this.previousOnlinePlayerTiles)
+      || isOnlinePlayerTile(coords, nativeZoom, this.lastRefreshedOnlinePlayerTiles)
       ? tileUrlWithRefreshRevision(tileUrl, this.refreshRevision)
       : tileUrl;
   }
