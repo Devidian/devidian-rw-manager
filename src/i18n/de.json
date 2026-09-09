@@ -63,6 +63,7 @@
   "mapBrowserFullscreen": "Browser-Vollbild",
   "mapOpenEmbedded": "Eingebettete Karte öffnen",
   "mapCopyCoordinates": "Koordinaten kopieren",
+  "mapCopyTeleportCommand": "Teleport in Zwischenablage",
   "mapExitFullscreen": "Vollbild schließen",
   "mapClaimOwner": "Besitzer",
   "mapClaimCreated": "Erstellt",

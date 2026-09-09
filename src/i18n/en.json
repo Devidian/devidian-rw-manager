@@ -63,6 +63,7 @@
   "mapBrowserFullscreen": "Browser fullscreen",
   "mapOpenEmbedded": "Open embedded map",
   "mapCopyCoordinates": "Copy coordinates",
+  "mapCopyTeleportCommand": "Copy teleport command",
   "mapExitFullscreen": "Exit fullscreen",
   "mapClaimOwner": "Owner",
   "mapClaimCreated": "Created",

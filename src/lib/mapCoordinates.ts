@@ -45,3 +45,9 @@ export function mapPositionToWorldCoordinates(
 export function formatWorldCoordinates(coordinates: { x: number; z: number }): string {
   return `X: ${coordinates.x}, Z: ${coordinates.z}`;
 }
+
+export const MAP_TELEPORT_SURFACE_Y = 90;
+
+export function teleportCommandForCoordinates(coordinates: { x: number; z: number }): string {
+  return `tp ${coordinates.x} ${MAP_TELEPORT_SURFACE_Y} ${coordinates.z}`;
+}

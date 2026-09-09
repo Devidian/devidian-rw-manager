@@ -40,6 +40,7 @@ import {
   leafletYToBackendZ,
   mapPositionToWorldCoordinates,
   playerToMapPosition,
+  teleportCommandForCoordinates,
 } from '@/lib/mapCoordinates';
 import { useTranslation } from 'react-i18next';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -652,9 +653,8 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
     },
   });
 
-  const copyCoordinates = () => {
+  const copyToClipboard = (text: string) => {
     if (!contextMenu) return;
-    const text = formatWorldCoordinates(contextMenu.coordinates);
     if (navigator.clipboard?.writeText) {
       void navigator.clipboard.writeText(text).catch(() => copyTextFallback(text));
     } else {
@@ -680,9 +680,16 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
           <button
             type="button"
             className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
-            onClick={copyCoordinates}
+            onClick={() => copyToClipboard(formatWorldCoordinates(contextMenu.coordinates))}
           >
             {t('mapCopyCoordinates')}
+          </button>
+          <button
+            type="button"
+            className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
+            onClick={() => copyToClipboard(teleportCommandForCoordinates(contextMenu.coordinates))}
+          >
+            {t('mapCopyTeleportCommand')}
           </button>
         </div>
       )}
