@@ -93,6 +93,7 @@ export function AdminMapTab({
   apiPath = '/api/storage',
   mapControls,
   embeddedMapHref,
+  fullViewport = false,
 }: {
   apiBaseUrl: string;
   serverId?: string;
@@ -104,6 +105,7 @@ export function AdminMapTab({
   apiPath?: string;
   mapControls?: ReactNode;
   embeddedMapHref?: string;
+  fullViewport?: boolean;
 }) {
   const { t } = useTranslation();
   const {
@@ -224,13 +226,14 @@ export function AdminMapTab({
       ref={containerRef}
       className={cn(
         'space-y-3',
+        fullViewport && 'h-[100dvh] w-full space-y-0',
         expanded && 'fixed inset-0 z-50 flex h-[100dvh] w-screen flex-col space-y-0 bg-background',
       )}
     >
-      {!expanded && <p className="text-sm text-muted-foreground">{t('mapCaptureHint')}</p>}
+      {!expanded && !fullViewport && <p className="text-sm text-muted-foreground">{t('mapCaptureHint')}</p>}
       <div className={cn(
         'relative h-[65vh] min-h-[420px] overflow-hidden rounded-lg border border-border',
-        expanded && 'h-[100dvh] min-h-0 flex-1 rounded-none border-0',
+        (expanded || fullViewport) && 'h-[100dvh] min-h-0 flex-1 rounded-none border-0',
       )}>
         <MapContainer
           key={mapIdentity}

@@ -162,6 +162,20 @@ describe('AdminMapTab', () => {
     expect(link).toHaveAttribute('target', '_blank');
   });
 
+  it('uses the entire viewport without the capture hint when embedded', () => {
+    render(
+      <TestAdminMapTab
+        apiBaseUrl="https://manager.example.com"
+        serverId="server-1"
+        tileBaseUrl="https://map.example.com"
+        fullViewport
+        metadata={metadata('world-a', 'World A')}
+      />,
+    );
+
+    expect(screen.queryByText('mapCaptureHint')).not.toBeInTheDocument();
+  });
+
   it('passes city and leasehold colors from map-layer claims to Leaflet', () => {
     mapLayerState.claims = [
       claim({ areaId: 1, borderColor: '#7B61FF10', fillColor: '#7B61FF50' }),

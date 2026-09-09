@@ -64,7 +64,7 @@ export default function EmbeddedMapPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background p-3 sm:p-4">
+    <main className="h-[100dvh] w-full bg-background">
       <AdminMapTab
         apiBaseUrl={fixedBackendUrl}
         apiPath={DATA_API_PATH}
@@ -73,6 +73,7 @@ export default function EmbeddedMapPage() {
         mapLayers={mapLayers}
         isAdmin={isAdmin}
         isAuthenticated={isAuthenticated}
+        fullViewport
         mapControls={!isAuthenticated && hasAuthService ? (
           <Button
             type="button"
