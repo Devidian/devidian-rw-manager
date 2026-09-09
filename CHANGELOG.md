@@ -16,6 +16,27 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.6.1](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.6.1...rw-manager-v1.6.1) (2026-09-09)
+
+
+### Added
+
+* improve manager map controls and badges ([3199a6c](https://github.com/Devidian/devidian-rw-manager/commit/3199a6cd6e06aab4c015606713f26973da722ffc))
+
+
+### Fixed
+
+* align player map history with world coordinates ([839b1d0](https://github.com/Devidian/devidian-rw-manager/commit/839b1d0a5934f7295164cd4bec80428fb0ec4a2a))
+* load server headers through manager backend ([d363e18](https://github.com/Devidian/devidian-rw-manager/commit/d363e18aa842ddc6dae85403fab029313e0e8cc3))
+* render server description formatting ([eadd627](https://github.com/Devidian/devidian-rw-manager/commit/eadd627e14bea1892f97da7c7398b9f66d33a8e8))
+* restore manager CI and dependency updates ([16b9a7d](https://github.com/Devidian/devidian-rw-manager/commit/16b9a7dd849ddeb17737cf61c85f89460220cf13))
+
+
+### Build
+
+* **deps:** bump the npm_and_yarn group across 1 directory with 5 updates ([08212a3](https://github.com/Devidian/devidian-rw-manager/commit/08212a3a6e99890f86e2028dfad15d4f0e3428e5))
+* **deps:** bump the npm_and_yarn group across 1 directory with 5 updates ([1520c49](https://github.com/Devidian/devidian-rw-manager/commit/1520c495290602cbc328607cdae560c6d0e2ec62))
+
 ## [1.6.1](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.6.0...rw-manager-v1.6.1) (2026-09-05)
 
 
