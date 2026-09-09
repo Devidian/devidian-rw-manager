@@ -146,6 +146,22 @@ describe('AdminMapTab', () => {
     expect(screen.getByText('mapLayerAutoRefresh')).toBeInTheDocument();
   });
 
+  it('offers the server-specific embedded map from the normal map view', () => {
+    render(
+      <TestAdminMapTab
+        apiBaseUrl="https://manager.example.com"
+        serverId="server-1"
+        tileBaseUrl="https://map.example.com"
+        embeddedMapHref="/embedded-map/server-1"
+        metadata={metadata('world-a', 'World A')}
+      />,
+    );
+
+    const link = screen.getByRole('link', { name: 'mapOpenEmbedded' });
+    expect(link).toHaveAttribute('href', '/embedded-map/server-1');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
   it('passes city and leasehold colors from map-layer claims to Leaflet', () => {
     mapLayerState.claims = [
       claim({ areaId: 1, borderColor: '#7B61FF10', fillColor: '#7B61FF50' }),

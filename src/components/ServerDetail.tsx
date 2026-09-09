@@ -724,6 +724,8 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const hasBackend = !!managerApiUrl;
   const canViewConfig = hasBackend && isAuthenticated && !!user?.steamId && adminMapping.admins.includes(user.steamId);
   const connectUrl = serverConnectUrl(server);
+  const appBasePath = ((window as unknown as Record<string, unknown>)['__BASE_URL__'] as string | undefined) ?? '/';
+  const embeddedMapHref = `${appBasePath === '/' ? '' : appBasePath.replace(/\/$/, '')}/embedded-map/${encodeURIComponent(server.id)}`;
   const toggleBlocked = async () => {
     if (!server) return;
     setBlockedPending(true);
@@ -956,6 +958,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
               mapLayers={mapLayers}
               isAdmin={isAdmin}
               isAuthenticated={isAuthenticated}
+              embeddedMapHref={embeddedMapHref}
             />
           </TabsContent>
         )}

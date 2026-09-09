@@ -3,6 +3,7 @@ import {
   Minimize2,
   MonitorUp,
   Layers,
+  ExternalLink,
   Store,
 } from 'lucide-react';
 import {
@@ -60,6 +61,7 @@ import type { MapLayersState } from '@/hooks/useMapLayers';
 import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
 import { authHeaders } from '@/lib/authApi';
+import { tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
 
 interface LayerVisibility {
   autoRefresh: boolean;
@@ -90,6 +92,7 @@ export function AdminMapTab({
   isAuthenticated = false,
   apiPath = '/api/storage',
   mapControls,
+  embeddedMapHref,
 }: {
   apiBaseUrl: string;
   serverId?: string;
@@ -100,6 +103,7 @@ export function AdminMapTab({
   isAuthenticated?: boolean;
   apiPath?: string;
   mapControls?: ReactNode;
+  embeddedMapHref?: string;
 }) {
   const { t } = useTranslation();
   const {
@@ -280,6 +284,13 @@ export function AdminMapTab({
         </MapContainer>
         <div className="pointer-events-none absolute right-3 top-3 z-[1000] flex max-w-[min(24rem,calc(100vw-1.5rem))] flex-col items-end gap-3">
           {mapControls}
+          {embeddedMapHref && displayMode === 'normal' && (
+            <Button asChild type="button" variant="outline" size="icon" className="pointer-events-auto bg-background/90 shadow-lg backdrop-blur">
+              <a href={embeddedMapHref} target="_blank" rel="noreferrer" aria-label={t('mapOpenEmbedded')} title={t('mapOpenEmbedded')}>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -897,6 +908,11 @@ class BackendTileLayer extends TileLayer {
   }
 
   override getTileUrl(coords: Coords): string {
-    return super.getTileUrl({ ...coords, y: leafletYToBackendZ(coords.y) } as Coords);
+    const tileUrl = super.getTileUrl({ ...coords, y: leafletYToBackendZ(coords.y) } as Coords);
+    const nativeZoom = this.options.maxZoom ?? coords.z;
+    return isOnlinePlayerTile(coords, nativeZoom, this.onlinePlayerTiles)
+      || isOnlinePlayerTile(coords, nativeZoom, this.previousOnlinePlayerTiles)
+      ? tileUrlWithRefreshRevision(tileUrl, this.refreshRevision)
+      : tileUrl;
   }
 }

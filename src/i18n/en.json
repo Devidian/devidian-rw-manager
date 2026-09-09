@@ -61,6 +61,7 @@
   "mapFullscreen": "Fullscreen",
   "mapExpandWindow": "Expand map",
   "mapBrowserFullscreen": "Browser fullscreen",
+  "mapOpenEmbedded": "Open embedded map",
   "mapExitFullscreen": "Exit fullscreen",
   "mapClaimOwner": "Owner",
   "mapClaimCreated": "Created",
