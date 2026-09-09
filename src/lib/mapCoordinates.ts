@@ -31,3 +31,17 @@ export function playerToMapPosition(
     blockToMapCoordinate(player.x, nativeTileSizeBlocks),
   ];
 }
+
+export function mapPositionToWorldCoordinates(
+  position: { lat: number; lng: number },
+  nativeTileSizeBlocks: number,
+): { x: number; z: number } {
+  return {
+    x: Math.round(position.lng * nativeTileSizeBlocks),
+    z: Math.round(position.lat * nativeTileSizeBlocks),
+  };
+}
+
+export function formatWorldCoordinates(coordinates: { x: number; z: number }): string {
+  return `X: ${coordinates.x}, Z: ${coordinates.z}`;
+}

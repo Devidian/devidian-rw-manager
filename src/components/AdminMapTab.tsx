@@ -36,7 +36,9 @@ import type {
 } from '@/types/adminMapping';
 import {
   areaToMapBounds,
+  formatWorldCoordinates,
   leafletYToBackendZ,
+  mapPositionToWorldCoordinates,
   playerToMapPosition,
 } from '@/lib/mapCoordinates';
 import { useTranslation } from 'react-i18next';
@@ -255,6 +257,7 @@ export function AdminMapTab({
             refreshRevision={tileRefreshRevision}
             refreshEnabled={visible.autoRefresh}
           />
+          <MapCoordinatesOverlay nativeTileSizeBlocks={nativeTileSizeBlocks} />
           {visible.sectors && capabilities && (
             <SectorLayer
               sectorSizeBlocks={capabilities.sectorSizeBlocks}
@@ -628,6 +631,74 @@ function SectorLayer({
       </Fragment>
     );
   });
+}
+
+function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks: number }) {
+  const { t } = useTranslation();
+  const [cursorCoordinates, setCursorCoordinates] = useState<{ x: number; z: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    coordinates: { x: number; z: number };
+    x: number;
+    y: number;
+  } | null>(null);
+  useMapEvents({
+    mousemove: (event) => setCursorCoordinates(mapPositionToWorldCoordinates(event.latlng, nativeTileSizeBlocks)),
+    click: () => setContextMenu(null),
+    contextmenu: (event) => {
+      event.originalEvent.preventDefault();
+      const coordinates = mapPositionToWorldCoordinates(event.latlng, nativeTileSizeBlocks);
+      setCursorCoordinates(coordinates);
+      setContextMenu({ coordinates, x: event.containerPoint.x, y: event.containerPoint.y });
+    },
+  });
+
+  const copyCoordinates = () => {
+    if (!contextMenu) return;
+    const text = formatWorldCoordinates(contextMenu.coordinates);
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(text).catch(() => copyTextFallback(text));
+    } else {
+      copyTextFallback(text);
+    }
+    setContextMenu(null);
+  };
+
+  return (
+    <>
+      {cursorCoordinates && (
+        <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] rounded-md border border-border bg-background/90 px-3 py-2 font-mono text-xs shadow-lg backdrop-blur">
+          {formatWorldCoordinates(cursorCoordinates)}
+        </div>
+      )}
+      {contextMenu && (
+        <div
+          className="absolute z-[1001] min-w-48 rounded-md border border-border bg-background p-1 shadow-lg"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          <div className="px-2 py-1.5 font-mono text-xs text-muted-foreground">{formatWorldCoordinates(contextMenu.coordinates)}</div>
+          <button
+            type="button"
+            className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
+            onClick={copyCoordinates}
+          >
+            {t('mapCopyCoordinates')}
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function copyTextFallback(text: string) {
+  const input = document.createElement('textarea');
+  input.value = text;
+  input.style.position = 'fixed';
+  input.style.opacity = '0';
+  document.body.append(input);
+  input.select();
+  document.execCommand('copy');
+  input.remove();
 }
 
 function ClaimLayer({

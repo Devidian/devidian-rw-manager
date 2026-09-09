@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { useEffect } from 'react';
 import { vi } from 'vitest';
@@ -19,6 +19,7 @@ const mapLayerState = vi.hoisted(() => ({
 }));
 const fetchMarketplaceOffersMock = vi.hoisted(() => vi.fn());
 const refreshClaimsMock = vi.hoisted(() => vi.fn());
+const mapEventHandlers = vi.hoisted(() => ({ current: {} as Record<string, (event: never) => void> }));
 
 vi.mock('leaflet', async (importOriginal) => {
   const actual = await importOriginal<typeof import('leaflet')>();
@@ -69,9 +70,10 @@ vi.mock('react-leaflet', () => ({
     },
     getContainer: () => document.createElement('div'),
   }),
-  useMapEvents: () => ({
-    getBounds: vi.fn(),
-  }),
+  useMapEvents: (handlers: Record<string, (event: never) => void>) => {
+    mapEventHandlers.current = handlers;
+    return { getBounds: vi.fn() };
+  },
 }));
 
 vi.mock('react-i18next', () => ({
@@ -114,6 +116,7 @@ describe('AdminMapTab', () => {
     mapLayerState.claims = [];
     fetchMarketplaceOffersMock.mockReset();
     refreshClaimsMock.mockReset();
+    mapEventHandlers.current = {};
   });
 
   it('initially fits generated tiles without locking map panning to them', () => {
@@ -174,6 +177,32 @@ describe('AdminMapTab', () => {
     );
 
     expect(screen.queryByText('mapCaptureHint')).not.toBeInTheDocument();
+  });
+
+  it('shows world coordinates and copies coordinates from the map context menu', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    render(
+      <TestAdminMapTab
+        apiBaseUrl="https://manager.example.com"
+        serverId="server-1"
+        tileBaseUrl="https://map.example.com"
+        metadata={metadata('world-a', 'World A')}
+      />,
+    );
+
+    act(() => mapEventHandlers.current.mousemove({ latlng: { lat: -1.5, lng: 2.25 } } as never));
+    expect(screen.getByText('X: 144, Z: -96')).toBeInTheDocument();
+
+    const preventDefault = vi.fn();
+    act(() => mapEventHandlers.current.contextmenu({
+      latlng: { lat: -1.5, lng: 2.25 },
+      containerPoint: { x: 20, y: 30 },
+      originalEvent: { preventDefault },
+    } as never));
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'mapCopyCoordinates' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('X: 144, Z: -96'));
   });
 
   it('passes city and leasehold colors from map-layer claims to Leaflet', () => {

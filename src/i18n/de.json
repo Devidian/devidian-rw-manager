@@ -62,6 +62,7 @@
   "mapExpandWindow": "Karte vergrößern",
   "mapBrowserFullscreen": "Browser-Vollbild",
   "mapOpenEmbedded": "Eingebettete Karte öffnen",
+  "mapCopyCoordinates": "Koordinaten kopieren",
   "mapExitFullscreen": "Vollbild schließen",
   "mapClaimOwner": "Besitzer",
   "mapClaimCreated": "Erstellt",

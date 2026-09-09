@@ -62,6 +62,7 @@
   "mapExpandWindow": "Expand map",
   "mapBrowserFullscreen": "Browser fullscreen",
   "mapOpenEmbedded": "Open embedded map",
+  "mapCopyCoordinates": "Copy coordinates",
   "mapExitFullscreen": "Exit fullscreen",
   "mapClaimOwner": "Owner",
   "mapClaimCreated": "Created",
