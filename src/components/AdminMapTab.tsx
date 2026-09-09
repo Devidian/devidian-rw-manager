@@ -657,8 +657,15 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
 
   const copyToClipboard = (text: string) => {
     if (!contextMenu) return;
+    // Run the legacy path while this click still has browser user activation.
+    // A Clipboard API rejection is asynchronous, so attempting this in catch()
+    // is too late for browsers that require a direct gesture for execCommand.
+    const legacyCopied = copyTextFallback(text);
     const showCopyFallback = (reason: unknown) => {
-      const legacyCopied = copyTextFallback(text);
+      if (legacyCopied) {
+        console.info('[map] Copied with the synchronous legacy clipboard fallback:', text);
+        return;
+      }
       console.warn('[map] Clipboard write failed; showing manual copy fallback.', { reason, legacyCopied });
       console.info('[map] Copy this value manually:', text);
       setClipboardFallback(text);

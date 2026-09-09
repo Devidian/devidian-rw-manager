@@ -228,7 +228,7 @@ describe('AdminMapTab', () => {
 
   it('shows a selectable in-page fallback when the Clipboard API is unavailable in an iframe', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
-    const execCommand = vi.fn().mockReturnValue(true);
+    const execCommand = vi.fn().mockReturnValue(false);
     Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
     render(
       <TestAdminMapTab
@@ -249,6 +249,34 @@ describe('AdminMapTab', () => {
     expect(execCommand).toHaveBeenCalledWith('copy');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByLabelText('mapClipboardFallback')).toHaveValue('X: 144, Z: -96');
+  });
+
+  it('uses the legacy copy path synchronously when the Clipboard API rejects', async () => {
+    const clipboardError = new Error('Permission denied');
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(clipboardError) },
+    });
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
+    render(
+      <TestAdminMapTab
+        apiBaseUrl="https://manager.example.com"
+        serverId="server-1"
+        tileBaseUrl="https://map.example.com"
+        metadata={metadata('world-a', 'World A')}
+      />,
+    );
+
+    act(() => mapEventHandlers.current.contextmenu({
+      latlng: { lat: -1.5, lng: 2.25 },
+      containerPoint: { x: 20, y: 30 },
+      originalEvent: { preventDefault: vi.fn() },
+    } as never));
+    fireEvent.click(screen.getByRole('button', { name: 'mapCopyCoordinates' }));
+
+    expect(execCommand).toHaveBeenCalledWith('copy');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('logs the clipboard failure and shows the manual value when writing is rejected', async () => {
