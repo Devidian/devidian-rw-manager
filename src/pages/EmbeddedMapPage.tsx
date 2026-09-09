@@ -1,6 +1,7 @@
 import { Gamepad2, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { AdminMapTab } from '@/components/AdminMapTab';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -12,6 +13,7 @@ import type { ServerMapResponse } from '@/types/adminMapping';
 const DATA_API_PATH = '/api/data';
 
 export default function EmbeddedMapPage() {
+  const { serverId } = useParams<{ serverId: string }>();
   const { t } = useTranslation();
   const { fixedBackendUrl } = useStorageMode();
   const { hasAuthService, isAdmin, isAuthenticated, loginWithSteam } = useAuth();
@@ -19,14 +21,14 @@ export default function EmbeddedMapPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!fixedBackendUrl) {
+    if (!fixedBackendUrl || !serverId) {
       setMap({ available: false });
       setLoading(false);
       return;
     }
     const controller = new AbortController();
     setLoading(true);
-    fetch(`${fixedBackendUrl.replace(/\/$/, '')}${DATA_API_PATH}/server/map`, {
+    fetch(embeddedMapRequestUrl(fixedBackendUrl, serverId), {
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -41,7 +43,7 @@ export default function EmbeddedMapPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [fixedBackendUrl]);
+  }, [fixedBackendUrl, serverId]);
 
   const metadata = map.available ? map.metadata : undefined;
   const mapLayers = useMapLayers(
@@ -75,7 +77,7 @@ export default function EmbeddedMapPage() {
           <Button
             type="button"
             className="pointer-events-auto gap-2 bg-[hsl(215_60%_35%)] text-white shadow-lg hover:bg-[hsl(215_60%_40%)]"
-            onClick={() => loginWithSteam('/embedded-map/auth/steam/callback')}
+            onClick={() => loginWithSteam(`/embedded-map/${encodeURIComponent(serverId)}/auth/steam/callback`)}
           >
             <Gamepad2 className="h-4 w-4" />
             {t('loginWithSteam')}
@@ -84,4 +86,8 @@ export default function EmbeddedMapPage() {
       />
     </main>
   );
+}
+
+export function embeddedMapRequestUrl(backendUrl: string, serverId: string): string {
+  return `${backendUrl.replace(/\/$/, '')}${DATA_API_PATH}/server/${encodeURIComponent(serverId)}/map`;
 }

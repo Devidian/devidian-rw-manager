@@ -3,7 +3,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { ServerProvider, useServerContext } from '@/context/ServerContext';
@@ -142,8 +142,9 @@ function AppRoutes() {
         <Route path="/setup" element={<LandingPage />} />
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/steam/callback" element={<SteamCallbackPage />} />
-        <Route path="/embedded-map/auth/steam/callback" element={<SteamCallbackPage returnTo="/embedded-map" />} />
+        <Route path="/embedded-map/:serverId/auth/steam/callback" element={<EmbeddedMapSteamCallbackPage />} />
         <Route path="/embedded-map" element={<EmbeddedMapPage />} />
+        <Route path="/embedded-map/:serverId" element={<EmbeddedMapPage />} />
         <Route path="/imprint" element={<LegalPage pageKey="imprint" />} />
         <Route path="/privacy" element={<LegalPage pageKey="privacy" />} />
         <Route path="/terms" element={<LegalPage pageKey="terms" />} />
@@ -166,6 +167,11 @@ function AppRoutes() {
       </Routes>
     </AppWithAuth>
   );
+}
+
+function EmbeddedMapSteamCallbackPage() {
+  const { serverId } = useParams<{ serverId: string }>();
+  return <SteamCallbackPage returnTo={`/embedded-map/${encodeURIComponent(serverId ?? '')}`} />;
 }
 
 const App = () => (
