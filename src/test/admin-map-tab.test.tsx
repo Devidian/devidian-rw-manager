@@ -226,6 +226,29 @@ describe('AdminMapTab', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('tp 144 90 -96'));
   });
 
+  it('copies synchronously when the Clipboard API is unavailable in an iframe', () => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
+    render(
+      <TestAdminMapTab
+        apiBaseUrl="https://manager.example.com"
+        serverId="server-1"
+        tileBaseUrl="https://map.example.com"
+        metadata={metadata('world-a', 'World A')}
+      />,
+    );
+
+    act(() => mapEventHandlers.current.contextmenu({
+      latlng: { lat: -1.5, lng: 2.25 },
+      containerPoint: { x: 20, y: 30 },
+      originalEvent: { preventDefault: vi.fn() },
+    } as never));
+    fireEvent.click(screen.getByRole('button', { name: 'mapCopyCoordinates' }));
+
+    expect(execCommand).toHaveBeenCalledWith('copy');
+  });
+
   it('passes city and leasehold colors from map-layer claims to Leaflet', () => {
     mapLayerState.claims = [
       claim({ areaId: 1, borderColor: '#7B61FF10', fillColor: '#7B61FF50' }),

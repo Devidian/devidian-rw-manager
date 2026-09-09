@@ -655,10 +655,8 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
 
   const copyToClipboard = (text: string) => {
     if (!contextMenu) return;
-    if (navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(text).catch(() => copyTextFallback(text));
-    } else {
-      copyTextFallback(text);
+    if (!copyTextFallback(text) && navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(text);
     }
     setContextMenu(null);
   };
@@ -697,15 +695,19 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
   );
 }
 
-function copyTextFallback(text: string) {
+function copyTextFallback(text: string): boolean {
+  if (typeof document.execCommand !== 'function') return false;
   const input = document.createElement('textarea');
   input.value = text;
   input.style.position = 'fixed';
   input.style.opacity = '0';
   document.body.append(input);
   input.select();
-  document.execCommand('copy');
-  input.remove();
+  try {
+    return document.execCommand('copy');
+  } finally {
+    input.remove();
+  }
 }
 
 function ClaimLayer({
