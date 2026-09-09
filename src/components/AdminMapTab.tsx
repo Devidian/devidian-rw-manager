@@ -67,7 +67,6 @@ import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
 import { authHeaders } from '@/lib/authApi';
 import { preloadTileReplacement, tileRefreshDelay, tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
-import { useToast } from '@/hooks/use-toast';
 
 interface LayerVisibility {
   autoRefresh: boolean;
@@ -638,7 +637,6 @@ function SectorLayer({
 
 function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks: number }) {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const [cursorCoordinates, setCursorCoordinates] = useState<{ x: number; z: number } | null>(null);
   const [clipboardFallback, setClipboardFallback] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -657,24 +655,9 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
     },
   });
 
-  const copyToClipboard = (text: string) => {
+  const openCopyDialog = (text: string) => {
     if (!contextMenu) return;
-    // Run the legacy path while this click still has browser user activation.
-    // A Clipboard API rejection is asynchronous, so attempting this in catch()
-    // is too late for browsers that require a direct gesture for execCommand.
-    const legacyCopied = copyTextFallback(text);
-    const showCopyFallback = (reason: unknown) => {
-      console.warn('[map] Clipboard write failed; showing manual copy fallback.', { reason, legacyCopied });
-      console.info('[map] Copy this value manually:', text);
-      setClipboardFallback(text);
-    };
-    if (navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(text)
-        .then(() => toast({ title: t('mapClipboardCopied') }))
-        .catch(showCopyFallback);
-    } else {
-      showCopyFallback(new Error('Clipboard API is unavailable'));
-    }
+    setClipboardFallback(text);
     setContextMenu(null);
   };
 
@@ -695,14 +678,14 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
           <button
             type="button"
             className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
-            onClick={() => copyToClipboard(formatWorldCoordinates(contextMenu.coordinates))}
+            onClick={() => openCopyDialog(formatWorldCoordinates(contextMenu.coordinates))}
           >
             {t('mapCopyCoordinates')}
           </button>
           <button
             type="button"
             className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
-            onClick={() => copyToClipboard(teleportCommandForCoordinates(contextMenu.coordinates))}
+            onClick={() => openCopyDialog(teleportCommandForCoordinates(contextMenu.coordinates))}
           >
             {t('mapCopyTeleportCommand')}
           </button>
@@ -712,11 +695,11 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{t('mapClipboardFallbackTitle')}</DialogTitle>
-            <DialogDescription>{t('mapClipboardFallback')}</DialogDescription>
+            <DialogDescription>{t('mapClipboardReady')}</DialogDescription>
           </DialogHeader>
           {clipboardFallback && (
             <Textarea
-              aria-label={t('mapClipboardFallback')}
+              aria-label={t('mapClipboardReady')}
               autoFocus
               readOnly
               value={clipboardFallback}
@@ -728,21 +711,6 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
       </Dialog>
     </>
   );
-}
-
-function copyTextFallback(text: string): boolean {
-  if (typeof document.execCommand !== 'function') return false;
-  const input = document.createElement('textarea');
-  input.value = text;
-  input.style.position = 'fixed';
-  input.style.opacity = '0';
-  document.body.append(input);
-  input.select();
-  try {
-    return document.execCommand('copy');
-  } finally {
-    input.remove();
-  }
 }
 
 function ClaimLayer({
