@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isOnlinePlayerTile, shouldRefreshOnlinePlayerTiles, tileSignature } from '@/components/AdminMapTab';
-import { MAP_TILE_REFRESH_MIN_INTERVAL_MS, tileRefreshDelay, tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
+import { MAP_TILE_REFRESH_MIN_INTERVAL_MS, preloadTileReplacement, tileRefreshDelay, tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
 
 describe('online-player tile refresh selection', () => {
   it('selects only the native tile neighborhood around online players', () => {
@@ -38,5 +38,32 @@ describe('online-player tile refresh selection', () => {
     expect(tileRefreshDelay(100_000, 100_001)).toBe(9_999);
     expect(tileRefreshDelay(100_000, 110_000)).toBe(0);
     expect(tileRefreshDelay(100_000, 120_000)).toBe(0);
+  });
+
+  it('keeps the current tile visible until a newer tile has loaded', () => {
+    const tile = document.createElement('img');
+    tile.src = 'https://map.example/old.png';
+    const replacement = document.createElement('img');
+
+    preloadTileReplacement(tile, 'https://map.example/new.png', replacement);
+
+    expect(tile.src).toBe('https://map.example/old.png');
+    expect(replacement.src).toBe('https://map.example/new.png');
+    replacement.dispatchEvent(new Event('load'));
+    expect(tile.src).toBe('https://map.example/new.png');
+  });
+
+  it('does not let a stale preload replace a newer tile refresh', () => {
+    const tile = document.createElement('img');
+    tile.src = 'https://map.example/old.png';
+    const first = document.createElement('img');
+    const second = document.createElement('img');
+    preloadTileReplacement(tile, 'https://map.example/first.png', first);
+    preloadTileReplacement(tile, 'https://map.example/second.png', second);
+
+    first.dispatchEvent(new Event('load'));
+    expect(tile.src).toBe('https://map.example/old.png');
+    second.dispatchEvent(new Event('load'));
+    expect(tile.src).toBe('https://map.example/second.png');
   });
 });

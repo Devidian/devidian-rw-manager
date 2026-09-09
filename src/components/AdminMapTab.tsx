@@ -62,7 +62,7 @@ import type { MapLayersState } from '@/hooks/useMapLayers';
 import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
 import { authHeaders } from '@/lib/authApi';
-import { tileRefreshDelay, tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
+import { preloadTileReplacement, tileRefreshDelay, tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
 
 interface LayerVisibility {
   autoRefresh: boolean;
@@ -928,8 +928,7 @@ class BackendTileLayer extends TileLayer {
       const nativeZoom = this.options.maxZoom ?? tile.coords.z;
       if (!isOnlinePlayerTile(tile.coords, nativeZoom, this.onlinePlayerTiles)
         && !isOnlinePlayerTile(tile.coords, nativeZoom, this.lastRefreshedOnlinePlayerTiles)) return;
-      tile.el.removeAttribute('src');
-      tile.el.src = this.getTileUrl(tile.coords);
+      preloadTileReplacement(tile.el, this.getTileUrl(tile.coords));
     });
     this.lastRefreshedOnlinePlayerTiles = this.onlinePlayerTiles;
   }
