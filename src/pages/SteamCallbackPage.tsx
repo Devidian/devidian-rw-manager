@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LegalFooter } from '@/components/LegalFooter';
 
-export default function SteamCallbackPage() {
+export default function SteamCallbackPage({ returnTo = '/' }: { returnTo?: string }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -14,9 +14,9 @@ export default function SteamCallbackPage() {
 
   useEffect(() => {
     handleSteamCallback(location.search)
-      .then(() => navigate('/'))
+      .then(() => navigate(returnTo))
       .catch((e: Error) => setError(e.message || t('errLoginFailed')));
-  }, [handleSteamCallback, location.search, navigate, t]);
+  }, [handleSteamCallback, location.search, navigate, returnTo, t]);
 
   const link = <a href={window['__BASE_URL__']??'/'} className="text-primary underline">{t('back')}</a>
 

@@ -31,6 +31,7 @@ import SteamCallbackPage from './pages/SteamCallbackPage';
 import { LocalPinSyncDialog } from './components/LocalPinSyncDialog';
 import { LegalFooter } from './components/LegalFooter';
 import LegalPage from './pages/LegalPage';
+import EmbeddedMapPage from './pages/EmbeddedMapPage';
 
 const queryClient = new QueryClient();
 
@@ -141,6 +142,8 @@ function AppRoutes() {
         <Route path="/setup" element={<LandingPage />} />
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/steam/callback" element={<SteamCallbackPage />} />
+        <Route path="/embedded-map/auth/steam/callback" element={<SteamCallbackPage returnTo="/embedded-map" />} />
+        <Route path="/embedded-map" element={<EmbeddedMapPage />} />
         <Route path="/imprint" element={<LegalPage pageKey="imprint" />} />
         <Route path="/privacy" element={<LegalPage pageKey="privacy" />} />
         <Route path="/terms" element={<LegalPage pageKey="terms" />} />

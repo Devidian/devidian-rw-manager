@@ -26,10 +26,12 @@ import {
 
 export function useMapLayers(
   backendUrl: string,
-  serverId: string,
+  serverId: string | undefined,
   worldKey: string,
   onlinePlayers: ServerPlayerListPlayer[],
   databasePlayers: DbPlayer[] = [],
+  apiPath = '/api/storage',
+  liveUpdates = true,
 ) {
   const [capabilities, setCapabilities] = useState<MapLayerCapabilities | null>(null);
   const [claims, setClaims] = useState<MapClaim[]>([]);
@@ -47,13 +49,13 @@ export function useMapLayers(
   const refreshClaims = useCallback(async () => {
     const controller = new AbortController();
     const base = backendUrl.replace(/\/$/, '');
-    const serverBase = `${base}/api/storage/server/${encodeURIComponent(serverId)}`;
+    const serverBase = mapServerBase(base, apiPath, serverId);
     try {
       setClaims(await request(`${serverBase}/map/layers/claims`, controller.signal).then(parseClaims));
     } catch (requestError) {
       if (!aborted(requestError)) setError(true);
     }
-  }, [backendUrl, serverId]);
+  }, [apiPath, backendUrl, serverId]);
 
   const handleLiveLayers = useCallback((message: MapLayersChangedMessage) => {
     const { changes, layers } = message;
@@ -81,10 +83,10 @@ export function useMapLayers(
     if (layers.includes('players') && !changes?.players) setPlayerRevision((value) => value + 1);
   }, []);
 
-  const enabled = !!backendUrl && !!serverId && !!worldKey;
+  const enabled = !!backendUrl && !!worldKey;
   const liveSubscribed = useMapLiveSubscription(
-    enabled ? backendUrl : '',
-    enabled ? serverId : '',
+    enabled && liveUpdates ? backendUrl : '',
+    enabled && liveUpdates ? serverId ?? '' : '',
     handleLiveLayers,
   );
 
@@ -99,7 +101,7 @@ export function useMapLayers(
 
     const controller = new AbortController();
     const base = backendUrl.replace(/\/$/, '');
-    const serverBase = `${base}/api/storage/server/${encodeURIComponent(serverId)}`;
+    const serverBase = mapServerBase(base, apiPath, serverId);
 
     request(`${serverBase}/map/layers`, controller.signal)
       .then(parseCapabilities)
@@ -126,11 +128,11 @@ export function useMapLayers(
         if (!aborted(requestError)) setError(true);
       });
     return () => controller.abort();
-  }, [backendUrl, enabled, generalRevision, serverId, worldKey]);
+  }, [apiPath, backendUrl, enabled, generalRevision, serverId, worldKey]);
 
   const loadPlayerSnapshot = useCallback(async (signal: AbortSignal) => {
     const base = backendUrl.replace(/\/$/, '');
-    const serverBase = `${base}/api/storage/server/${encodeURIComponent(serverId)}`;
+    const serverBase = mapServerBase(base, apiPath, serverId);
     const stateVersion = playerStateVersionRef.current;
     const items = await request(
       `${serverBase}/map/layers/players`,
@@ -138,7 +140,7 @@ export function useMapLayers(
       true,
     ).then(parsePlayers);
     if (playerStateVersionRef.current === stateVersion) setLayerPlayers(items);
-  }, [backendUrl, serverId]);
+  }, [apiPath, backendUrl, serverId]);
 
   useEffect(() => {
     if (!enabled || !capabilities?.players) return;
@@ -200,15 +202,21 @@ export function applyEntityDelta<T, TId extends string | number>(
 
 export async function fetchMarketplaceOffers(
   backendUrl: string,
-  serverId: string,
+  serverId: string | undefined,
   areaId: number,
   signal?: AbortSignal,
+  apiPath = '/api/storage',
 ): Promise<MapMarketplaceOffer[]> {
   const base = backendUrl.replace(/\/$/, '');
   return parseOffers(await request(
-    `${base}/api/storage/server/${encodeURIComponent(serverId)}/map/layers/marketplaces/${areaId}/offers`,
+    `${mapServerBase(base, apiPath, serverId)}/map/layers/marketplaces/${areaId}/offers`,
     signal,
   ));
+}
+
+export function mapServerBase(baseUrl: string, apiPath: string, serverId?: string): string {
+  const normalizedPath = `/${apiPath.replace(/^\/+|\/+$/g, '')}`;
+  return `${baseUrl.replace(/\/$/, '')}${normalizedPath}/server${serverId ? `/${encodeURIComponent(serverId)}` : ''}`;
 }
 
 export function parseCapabilities(value: unknown): MapLayerCapabilities {

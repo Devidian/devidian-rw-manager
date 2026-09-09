@@ -17,7 +17,7 @@ interface AuthContextValue {
   clearSessionExpired: () => void;
   login: (username: string, password: string) => Promise<void>;
   register: (data: { username?: string; email: string; password: string; steamId?: string }) => Promise<void>;
-  loginWithSteam: () => void;
+  loginWithSteam: (callbackPath?: string) => void;
   logout: () => Promise<void>;
   linkSteamId: (steamId: string) => Promise<void>;
   handleSteamCallback: (search: string) => Promise<void>;
@@ -114,10 +114,11 @@ export function AuthProvider({
     setUser(res.user);
   }, [baseUrl]);
 
-  const loginWithSteam = useCallback(() => {
+  const loginWithSteam = useCallback((callbackPath = '/auth/steam/callback') => {
     const origin = window.location.origin;
     const base = ((window as unknown as Record<string, unknown>)['__BASE_URL__'] as string) ?? '/';
-    const returnTo = `${origin}${base === '/' ? '' : base.replace(/\/$/, '')}/auth/steam/callback`;
+    const normalizedCallbackPath = callbackPath.startsWith('/') ? callbackPath : `/${callbackPath}`;
+    const returnTo = `${origin}${base === '/' ? '' : base.replace(/\/$/, '')}${normalizedCallbackPath}`;
     steamProvider.startLogin(returnTo, origin);
   }, []);
 

@@ -83,6 +83,14 @@ The repository CI validates linting, tests, the production build, and the Docker
 image. Published GitHub releases build and push versioned multi-platform images
 to `devidian/rw-manager-frontend` on Docker Hub.
 
+## Embedded map
+
+With `VITE_FIXED_BACKEND_URL` configured, `/embedded-map` is a public,
+standalone map route suitable for an iframe. It loads only the backend's public
+`/api/data` map endpoints. Steam sign-in is available on the map itself; after
+the OpenID callback it returns to the embedded route, where the signed-in player
+can enable the private "Where have I been?" layer.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!

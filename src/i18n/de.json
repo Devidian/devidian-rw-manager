@@ -101,6 +101,7 @@
   "serverOffline": "Server ist offline oder nicht erreichbar.",
   "playerCount": "Spieler",
   "map": "Karte",
+  "embeddedMapUnavailable": "Die eingebettete Karte ist derzeit nicht verfügbar.",
   "version": "Version",
   "gamemode": "Spielmodus",
   "survival": "Survival",

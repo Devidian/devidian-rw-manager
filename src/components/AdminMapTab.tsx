@@ -13,7 +13,7 @@ import {
   type Coords,
   type LatLngBounds,
 } from 'leaflet';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleMarker,
   ImageOverlay,
@@ -55,7 +55,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { applyEntityDelta, fetchMarketplaceOffers } from '@/hooks/useMapLayers';
+import { applyEntityDelta, fetchMarketplaceOffers, mapServerBase } from '@/hooks/useMapLayers';
 import type { MapLayersState } from '@/hooks/useMapLayers';
 import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
@@ -88,14 +88,18 @@ export function AdminMapTab({
   mapLayers,
   isAdmin = false,
   isAuthenticated = false,
+  apiPath = '/api/storage',
+  mapControls,
 }: {
   apiBaseUrl: string;
-  serverId: string;
+  serverId?: string;
   tileBaseUrl?: string;
   metadata: MapMetadata;
   mapLayers: MapLayersState;
   isAdmin?: boolean;
   isAuthenticated?: boolean;
+  apiPath?: string;
+  mapControls?: ReactNode;
 }) {
   const { t } = useTranslation();
   const {
@@ -155,7 +159,7 @@ export function AdminMapTab({
   useEffect(() => {
     if (!visible.playerHistory || !isAuthenticated) return undefined;
     const controller = new AbortController();
-    void fetch(`${apiBaseUrl.replace(/\/+$/, '')}/api/storage/server/${encodeURIComponent(serverId)}/map/layers/player-history`, {
+    void fetch(`${mapServerBase(apiBaseUrl, apiPath, serverId)}/map/layers/player-history`, {
       headers: authHeaders(),
       signal: controller.signal,
     })
@@ -168,7 +172,7 @@ export function AdminMapTab({
         if (!controller.signal.aborted) setPlayerHistory([]);
       });
     return () => controller.abort();
-  }, [apiBaseUrl, isAuthenticated, serverId, visible.playerHistory]);
+  }, [apiBaseUrl, apiPath, isAuthenticated, serverId, visible.playerHistory]);
 
   useEffect(() => {
     if (!visible.autoRefresh || !onlinePlayerTileSignature) return undefined;
@@ -274,6 +278,7 @@ export function AdminMapTab({
           />
         </MapContainer>
         <div className="pointer-events-none absolute right-3 top-3 z-[1000] flex max-w-[min(24rem,calc(100vw-1.5rem))] flex-col items-end gap-3">
+          {mapControls}
           <Button
             type="button"
             variant="outline"
@@ -341,6 +346,7 @@ export function AdminMapTab({
       </div>
       <MarketplaceOffersDialog
         apiBaseUrl={apiBaseUrl}
+        apiPath={apiPath}
         serverId={serverId}
         claim={offersClaim}
         liveDelta={marketplaceOffersDelta}
@@ -667,6 +673,7 @@ function ClaimLayer({
 
 function MarketplaceOffersDialog({
   apiBaseUrl,
+  apiPath,
   serverId,
   claim,
   liveDelta,
@@ -674,7 +681,8 @@ function MarketplaceOffersDialog({
   onOpenChange,
 }: {
   apiBaseUrl: string;
-  serverId: string;
+  apiPath: string;
+  serverId?: string;
   claim: MapClaim | null;
   liveDelta: { sequence: number; areas: MapMarketplaceAreaDelta[] } | null;
   portalContainer?: HTMLElement | null;
@@ -696,7 +704,9 @@ function MarketplaceOffersDialog({
     setOffers([]);
     setLoading(true);
     setError(false);
-    fetchMarketplaceOffers(apiBaseUrl, serverId, claim.areaId, controller.signal)
+    (apiPath === '/api/storage'
+      ? fetchMarketplaceOffers(apiBaseUrl, serverId, claim.areaId, controller.signal)
+      : fetchMarketplaceOffers(apiBaseUrl, serverId, claim.areaId, controller.signal, apiPath))
       .then((items) => setOffers(items))
       .catch((requestError) => {
         if (!(requestError instanceof Error) || requestError.name !== 'AbortError') {
@@ -708,7 +718,7 @@ function MarketplaceOffersDialog({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [apiBaseUrl, claim, serverId]);
+  }, [apiBaseUrl, apiPath, claim, serverId]);
 
   useEffect(() => {
     if (!claim || !liveDelta) return;
