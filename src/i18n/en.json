@@ -64,6 +64,7 @@
   "mapOpenEmbedded": "Open embedded map",
   "mapCopyCoordinates": "Copy coordinates",
   "mapCopyTeleportCommand": "Copy teleport command",
+  "mapClipboardCopied": "Copied to clipboard.",
   "mapClipboardFallbackTitle": "Value to copy",
   "mapClipboardFallback": "Copying failed. Please copy this text manually:",
   "mapExitFullscreen": "Exit fullscreen",

@@ -251,7 +251,7 @@ describe('AdminMapTab', () => {
     expect(screen.getByLabelText('mapClipboardFallback')).toHaveValue('X: 144, Z: -96');
   });
 
-  it('uses the legacy copy path synchronously when the Clipboard API rejects', async () => {
+  it('shows the manual value when the Clipboard API rejects despite a legacy copy result', async () => {
     const clipboardError = new Error('Permission denied');
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -276,7 +276,7 @@ describe('AdminMapTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'mapCopyCoordinates' }));
 
     expect(execCommand).toHaveBeenCalledWith('copy');
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText('mapClipboardFallback')).toHaveValue('X: 144, Z: -96'));
   });
 
   it('logs the clipboard failure and shows the manual value when writing is rejected', async () => {

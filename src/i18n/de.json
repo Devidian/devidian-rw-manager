@@ -64,6 +64,7 @@
   "mapOpenEmbedded": "Eingebettete Karte öffnen",
   "mapCopyCoordinates": "Koordinaten kopieren",
   "mapCopyTeleportCommand": "Teleport in Zwischenablage",
+  "mapClipboardCopied": "In die Zwischenablage kopiert.",
   "mapClipboardFallbackTitle": "Wert zum Kopieren",
   "mapClipboardFallback": "Kopieren nicht möglich. Bitte Text manuell kopieren:",
   "mapExitFullscreen": "Vollbild schließen",

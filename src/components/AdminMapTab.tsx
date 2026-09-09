@@ -67,6 +67,7 @@ import type { MapMarketplaceAreaDelta } from '@/lib/mapLive';
 import { cn } from '@/lib/utils';
 import { authHeaders } from '@/lib/authApi';
 import { preloadTileReplacement, tileRefreshDelay, tileUrlWithRefreshRevision } from '@/lib/mapTileRefresh';
+import { useToast } from '@/hooks/use-toast';
 
 interface LayerVisibility {
   autoRefresh: boolean;
@@ -637,6 +638,7 @@ function SectorLayer({
 
 function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks: number }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [cursorCoordinates, setCursorCoordinates] = useState<{ x: number; z: number } | null>(null);
   const [clipboardFallback, setClipboardFallback] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -662,16 +664,14 @@ function MapCoordinatesOverlay({ nativeTileSizeBlocks }: { nativeTileSizeBlocks:
     // is too late for browsers that require a direct gesture for execCommand.
     const legacyCopied = copyTextFallback(text);
     const showCopyFallback = (reason: unknown) => {
-      if (legacyCopied) {
-        console.info('[map] Copied with the synchronous legacy clipboard fallback:', text);
-        return;
-      }
       console.warn('[map] Clipboard write failed; showing manual copy fallback.', { reason, legacyCopied });
       console.info('[map] Copy this value manually:', text);
       setClipboardFallback(text);
     };
     if (navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(text).catch(showCopyFallback);
+      void navigator.clipboard.writeText(text)
+        .then(() => toast({ title: t('mapClipboardCopied') }))
+        .catch(showCopyFallback);
     } else {
       showCopyFallback(new Error('Clipboard API is unavailable'));
     }
