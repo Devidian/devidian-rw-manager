@@ -4,6 +4,7 @@
 
 ### Added
 
+* show separately colored marketplace-crier and shop-trader map markers with current offers, prices, stocks, and wallet balances
 * subscribe the open map to live invalidations for only its selected server
 * apply claim, player, GPS marker, and marketplace offer deltas without REST reloads
 * subscribe to all dashboard server statuses over one mutable WebSocket

@@ -33,6 +33,7 @@ import type {
   MapMarketplaceOffer,
   MapMetadata,
   MapPlayer,
+  MapNpcMarket,
 } from '@/types/adminMapping';
 import {
   areaToMapBounds,
@@ -77,6 +78,8 @@ interface LayerVisibility {
   longTerm: boolean;
   gpsGlobalMarkers: boolean;
   playerHistory: boolean;
+  marketCriers: boolean;
+  shopTraders: boolean;
 }
 
 interface PlayerMapHistorySector {
@@ -131,11 +134,16 @@ export function AdminMapTab({
     longTerm: false,
     gpsGlobalMarkers: false,
     playerHistory: false,
+    marketCriers: false,
+    shopTraders: false,
   });
   const [playerHistory, setPlayerHistory] = useState<PlayerMapHistorySector[]>([]);
   const [displayMode, setDisplayMode] = useState<MapDisplayMode>('normal');
   const [layersOpen, setLayersOpen] = useState(true);
   const [offersClaim, setOffersClaim] = useState<MapClaim | null>(null);
+  const [marketCriers, setMarketCriers] = useState<MapNpcMarket[]>([]);
+  const [shopTraders, setShopTraders] = useState<MapNpcMarket[]>([]);
+  const [npcMarket, setNpcMarket] = useState<MapNpcMarket | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const tileUrl = resolveTileUrl(metadata.tileUrl, tileBaseUrl);
   const nativeTileSizeBlocks = metadata.chunkSize * metadata.nativeTileSizeChunks;
@@ -164,8 +172,27 @@ export function AdminMapTab({
       longTerm: false,
       gpsGlobalMarkers: false,
       playerHistory: false,
+      marketCriers: false,
+      shopTraders: false,
     });
   }, [mapIdentity]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async (kind: 'market-criers' | 'shop-traders', setter: (items: MapNpcMarket[]) => void) => {
+      const response = await fetch(`${mapServerBase(apiBaseUrl, apiPath, serverId)}/map/layers/${kind}`, {
+        headers: authHeaders(),
+        signal: controller.signal,
+      });
+      const payload: unknown = response.ok ? await response.json() : null;
+      const items = payload && typeof payload === 'object' && Array.isArray((payload as { items?: unknown }).items)
+        ? (payload as { items: MapNpcMarket[] }).items : [];
+      if (!controller.signal.aborted) setter(items);
+    };
+    void load('market-criers', setMarketCriers).catch(() => setMarketCriers([]));
+    void load('shop-traders', setShopTraders).catch(() => setShopTraders([]));
+    return () => controller.abort();
+  }, [apiBaseUrl, apiPath, serverId]);
 
   useEffect(() => {
     if (!visible.playerHistory || !isAuthenticated) return undefined;
@@ -285,6 +312,8 @@ export function AdminMapTab({
               nativeTileSizeBlocks={nativeTileSizeBlocks}
             />
           )}
+          {visible.marketCriers && <NpcMarketLayer markets={marketCriers} color="#9C27B0" nativeTileSizeBlocks={nativeTileSizeBlocks} onOpen={setNpcMarket} />}
+          {visible.shopTraders && <NpcMarketLayer markets={shopTraders} color="#F57C00" nativeTileSizeBlocks={nativeTileSizeBlocks} onOpen={setNpcMarket} />}
           <PlayerLayer
             players={players}
             visible={visible}
@@ -360,6 +389,10 @@ export function AdminMapTab({
               <LayerToggle label={t('mapLayerPlayerHistory')} checked={visible.playerHistory}
                 disabled={!isAuthenticated || !capabilities?.playerHistory}
                 onChange={(checked) => setVisible((value) => ({ ...value, playerHistory: checked }))} />
+              <LayerToggle label={t('mapLayerMarketCriers')} checked={visible.marketCriers} disabled={!capabilities?.marketCriers}
+                onChange={(checked) => setVisible((value) => ({ ...value, marketCriers: checked }))} />
+              <LayerToggle label={t('mapLayerShopTraders')} checked={visible.shopTraders} disabled={!capabilities?.shopTraders}
+                onChange={(checked) => setVisible((value) => ({ ...value, shopTraders: checked }))} />
               {error && <span className="text-destructive">{t('mapLayerError')}</span>}
             </div>
           </div>}
@@ -376,6 +409,7 @@ export function AdminMapTab({
           if (!open) setOffersClaim(null);
         }}
       />
+      <NpcMarketDialog market={npcMarket} onOpenChange={(open) => { if (!open) setNpcMarket(null); }} />
     </div>
   );
 }
@@ -910,6 +944,36 @@ function MarketplaceOffersTable({ offers }: { offers: MapMarketplaceOffer[] }) {
 
 function formatOfferName(offer: MapMarketplaceOffer): string {
   return offer.itemVariant > 0 ? `${offer.itemName} #${offer.itemVariant}` : offer.itemName;
+}
+
+function NpcMarketLayer({ markets, color, nativeTileSizeBlocks, onOpen }: { markets: MapNpcMarket[]; color: string; nativeTileSizeBlocks: number; onOpen: (market: MapNpcMarket) => void }) {
+  const icon = new DivIcon({
+    className: 'npc-market-marker',
+    html: `<span style="display:block;width:14px;height:14px;background:${color};border:2px solid #fff"></span>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+  return markets.map((market) => <Marker key={market.id} position={playerToMapPosition(market, nativeTileSizeBlocks)} icon={icon} eventHandlers={{ click: () => onOpen(market) }} />);
+}
+
+function NpcMarketDialog({ market, onOpenChange }: { market: MapNpcMarket | null; onOpenChange: (open: boolean) => void }) {
+  const { t } = useTranslation();
+  return <Dialog open={!!market} onOpenChange={onOpenChange}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>{market?.name}</DialogTitle>
+        <DialogDescription>{market?.balances.map((balance) => `${balance.balance} ${balance.currency}`).join(' · ') || t('mapNpcNoBalance')}</DialogDescription>
+      </DialogHeader>
+      {market && market.offers.length > 0 ? <Table>
+        <TableHeader><TableRow><TableHead>{t('mapNpcItem')}</TableHead><TableHead>{t('mapNpcPrice')}</TableHead><TableHead>{t('mapNpcStock')}</TableHead></TableRow></TableHeader>
+        <TableBody>{market.offers.map((offer) => <TableRow key={offer.id}>
+          <TableCell>{offer.itemName}{offer.itemVariant > 0 ? ` #${offer.itemVariant}` : ''} × {offer.amount}</TableCell>
+          <TableCell>{offer.price} {offer.currency}</TableCell>
+          <TableCell>{offer.stock ?? '—'}</TableCell>
+        </TableRow>)}</TableBody>
+      </Table> : <p className="text-sm text-muted-foreground">{t('mapNoOffers')}</p>}
+    </DialogContent>
+  </Dialog>;
 }
 
 function PlayerLayer({
