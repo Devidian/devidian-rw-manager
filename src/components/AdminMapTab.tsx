@@ -865,7 +865,7 @@ function MarketplaceOffersDialog({
     <Dialog open={!!claim} onOpenChange={onOpenChange}>
       <DialogContent
         portalContainer={portalContainer}
-        className="max-h-[85vh] overflow-y-auto sm:max-w-3xl"
+        className="max-h-[85vh] overflow-x-auto overflow-y-auto sm:max-w-5xl"
       >
         <DialogHeader>
           <DialogTitle>{t('mapOffersTitle')}</DialogTitle>
@@ -911,7 +911,7 @@ export function MarketplaceOffersTable({ offers }: { offers: MapMarketplaceOffer
           <TableBody>
             {offers.map((offer) => (
               <TableRow key={offer.id}>
-                <TableCell className="font-medium">{formatOfferName(offer)}</TableCell>
+                <TableCell className="max-w-[28rem] whitespace-normal break-words font-medium">{formatOfferName(offer)}</TableCell>
                 <TableCell className="text-right">{offer.amount}</TableCell>
                 <TableCell className="text-right">{offer.price} {offer.currency}</TableCell>
                 <TableCell>{offer.sellerName}</TableCell>
@@ -959,7 +959,7 @@ function NpcMarketLayer({ markets, color, nativeTileSizeBlocks, onOpen }: { mark
 function NpcMarketDialog({ market, onOpenChange }: { market: MapNpcMarket | null; onOpenChange: (open: boolean) => void }) {
   const { t } = useTranslation();
   return <Dialog open={!!market} onOpenChange={onOpenChange}>
-    <DialogContent>
+    <DialogContent className="max-h-[85vh] overflow-x-auto overflow-y-auto sm:max-w-5xl">
       <DialogHeader>
         <DialogTitle>{market?.name}</DialogTitle>
         <DialogDescription>{market?.balances.map((balance) => `${balance.balance} ${balance.currency}`).join(' · ') || t('mapNpcNoBalance')}</DialogDescription>
@@ -967,7 +967,7 @@ function NpcMarketDialog({ market, onOpenChange }: { market: MapNpcMarket | null
       {market && market.offers.length > 0 ? <Table>
         <TableHeader><TableRow><TableHead>{t('mapNpcItem')}</TableHead><TableHead>{t('mapNpcBuyPrice')}</TableHead><TableHead>{t('mapNpcSellPrice')}</TableHead><TableHead>{t('mapNpcStock')}</TableHead></TableRow></TableHeader>
         <TableBody>{market.offers.map((offer) => <TableRow key={offer.id}>
-          <TableCell>{offer.nameDe || offer.nameEn || offer.itemName}{offer.itemVariant > 0 ? ` #${offer.itemVariant}` : ''} × {offer.amount}</TableCell>
+          <TableCell className="max-w-[28rem] whitespace-normal break-words">{offer.nameDe || offer.nameEn || offer.itemName}{offer.itemVariant > 0 ? ` #${offer.itemVariant}` : ''} × {offer.amount}</TableCell>
           <TableCell>{offer.playerBuyPrice ?? offer.price} {offer.currency}</TableCell>
           <TableCell>{offer.playerSellPrice ?? '—'}{offer.playerSellPrice === undefined ? '' : ` ${offer.currency}`}</TableCell>
           <TableCell>{offer.stock ?? '—'}{offer.maxStock === undefined ? '' : ` / ${offer.maxStock}`}</TableCell>

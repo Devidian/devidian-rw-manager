@@ -1,7 +1,7 @@
 {
   "name": "rw-manager",
   "private": true,
-  "version": "1.6.2-rc.22",
+  "version": "1.6.2-rc.23",
   "type": "module",
   "scripts": {
     "dev": "vite",
