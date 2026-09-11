@@ -83,6 +83,8 @@ describe('admin mapping contract', () => {
       players: true,
       gpsGlobalMarkers: true,
       playerHistory: true,
+      marketCriers: true,
+      shopTraders: true,
     }).sectorSizeBlocks).toBe(8192);
     expect(parseClaims({
       schemaVersion: 1,

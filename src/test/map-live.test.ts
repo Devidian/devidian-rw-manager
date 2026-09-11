@@ -165,6 +165,8 @@ describe('map live subscription lifecycle', () => {
           players: true,
           gpsGlobalMarkers: false,
           playerHistory: false,
+          marketCriers: false,
+          shopTraders: false,
         }));
       }
       if (url.endsWith('/map/layers/players')) return playerResponse;

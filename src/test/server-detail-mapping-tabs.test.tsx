@@ -122,6 +122,7 @@ describe('server detail mapping tabs', () => {
       'players1',
       'statistics',
       'map',
+      'globalMarketplace',
       'plugins',
       'configuration',
     ]);

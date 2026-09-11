@@ -81,6 +81,7 @@
   "mapRenewZone": "Erneuert",
   "mapRenewZoneDue": "Faellig bei der naechsten Stundenpruefung",
   "mapMarketplace": "Marktplatz",
+  "globalMarketplace": "Globaler Markt",
   "mapShop": "Shop",
   "mapOffersLoading": "Angebote werden geladen…",
   "mapOffersError": "Angebote konnten nicht geladen werden.",

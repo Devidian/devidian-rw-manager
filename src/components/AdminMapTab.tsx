@@ -893,7 +893,7 @@ function MarketplaceOffersDialog({
   );
 }
 
-function MarketplaceOffersTable({ offers }: { offers: MapMarketplaceOffer[] }) {
+export function MarketplaceOffersTable({ offers }: { offers: MapMarketplaceOffer[] }) {
   const { t } = useTranslation();
   return (
     <>

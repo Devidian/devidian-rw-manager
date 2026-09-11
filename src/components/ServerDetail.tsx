@@ -17,7 +17,7 @@ import {
   Search, Loader2, WifiOff, HardDrive, Globe, Shield,
   Clock, Monitor, Sword, Heart, Star, ExternalLink, Settings, Pencil,
   ArrowUp, ArrowDown,
-  Map as MapIcon, Plug, BarChart3, Drumstick, Droplets,
+  Map as MapIcon, Plug, BarChart3, Drumstick, Droplets, Store,
 } from 'lucide-react';
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
 import type { UseDatabasePlayersResult } from '@/hooks/useDatabasePlayers';
@@ -40,6 +40,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAdminMapping } from '@/hooks/useAdminMapping';
 import { useMapLayers } from '@/hooks/useMapLayers';
 import { AdminMapTab } from '@/components/AdminMapTab';
+import { GlobalMarketplaceTab } from '@/components/GlobalMarketplaceTab';
 import { PluginsTab } from '@/components/PluginsTab';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import {
@@ -871,6 +872,12 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
               {t('map')}
             </TabsTrigger>
           )}
+          {hasBackend && adminMapping.map.available && (
+            <TabsTrigger value="global-marketplace" className="gap-2 data-[state=active]:bg-muted">
+              <Store className="h-4 w-4" />
+              {t('globalMarketplace')}
+            </TabsTrigger>
+          )}
           {hasBackend && adminMapping.pluginsAvailable && (
             <TabsTrigger value="plugins" className="gap-2 data-[state=active]:bg-muted">
               <Plug className="h-4 w-4" />
@@ -960,6 +967,12 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
               isAuthenticated={isAuthenticated}
               embeddedMapHref={embeddedMapHref}
             />
+          </TabsContent>
+        )}
+
+        {hasBackend && adminMapping.map.available && (
+          <TabsContent value="global-marketplace" className="mt-4">
+            <GlobalMarketplaceTab apiBaseUrl={managerApiUrl!} serverId={server.id} />
           </TabsContent>
         )}
 

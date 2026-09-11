@@ -81,6 +81,7 @@
   "mapRenewZone": "Renews",
   "mapRenewZoneDue": "Due on the next hourly check",
   "mapMarketplace": "Marketplace",
+  "globalMarketplace": "Global market",
   "mapShop": "Shop",
   "mapOffersLoading": "Loading offers…",
   "mapOffersError": "Offers could not be loaded.",

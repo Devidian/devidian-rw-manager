@@ -214,6 +214,19 @@ export async function fetchMarketplaceOffers(
   ));
 }
 
+export async function fetchGlobalMarketplaceOffers(
+  backendUrl: string,
+  serverId: string | undefined,
+  signal?: AbortSignal,
+  apiPath = '/api/storage',
+): Promise<MapMarketplaceOffer[]> {
+  const base = backendUrl.replace(/\/$/, '');
+  return parseGlobalOffers(await request(
+    `${mapServerBase(base, apiPath, serverId)}/map/layers/marketplaces/global/offers`,
+    signal,
+  ));
+}
+
 export function mapServerBase(baseUrl: string, apiPath: string, serverId?: string): string {
   const normalizedPath = `/${apiPath.replace(/^\/+|\/+$/g, '')}`;
   return `${baseUrl.replace(/\/$/, '')}${normalizedPath}/server${serverId ? `/${encodeURIComponent(serverId)}` : ''}`;
@@ -291,6 +304,14 @@ export function parseOffers(value: unknown): MapMarketplaceOffer[] {
     !positiveInteger(value.areaId) ||
     !Array.isArray(value.items) || !value.items.every(isMapMarketplaceOffer)) {
     throw new Error('Invalid marketplace offers response');
+  }
+  return value.available ? value.items : [];
+}
+
+export function parseGlobalOffers(value: unknown): MapMarketplaceOffer[] {
+  if (!record(value) || value.schemaVersion !== 1 || typeof value.available !== 'boolean' ||
+    !Array.isArray(value.items) || !value.items.every(isMapMarketplaceOffer)) {
+    throw new Error('Invalid global marketplace offers response');
   }
   return value.available ? value.items : [];
 }
