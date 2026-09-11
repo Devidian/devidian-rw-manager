@@ -61,6 +61,8 @@
   "mapNpcNoBalance": "No wallet balance available",
   "mapNpcItem": "Item",
   "mapNpcPrice": "Current price",
+    "mapNpcBuyPrice": "Sell price",
+    "mapNpcSellPrice": "Buy price",
   "mapNpcStock": "Stock",
   "mapLayerError": "Layer data could not be loaded.",
   "mapLayers": "Layers",

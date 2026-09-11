@@ -965,11 +965,12 @@ function NpcMarketDialog({ market, onOpenChange }: { market: MapNpcMarket | null
         <DialogDescription>{market?.balances.map((balance) => `${balance.balance} ${balance.currency}`).join(' · ') || t('mapNpcNoBalance')}</DialogDescription>
       </DialogHeader>
       {market && market.offers.length > 0 ? <Table>
-        <TableHeader><TableRow><TableHead>{t('mapNpcItem')}</TableHead><TableHead>{t('mapNpcPrice')}</TableHead><TableHead>{t('mapNpcStock')}</TableHead></TableRow></TableHeader>
+        <TableHeader><TableRow><TableHead>{t('mapNpcItem')}</TableHead><TableHead>{t('mapNpcBuyPrice')}</TableHead><TableHead>{t('mapNpcSellPrice')}</TableHead><TableHead>{t('mapNpcStock')}</TableHead></TableRow></TableHeader>
         <TableBody>{market.offers.map((offer) => <TableRow key={offer.id}>
-          <TableCell>{offer.itemName}{offer.itemVariant > 0 ? ` #${offer.itemVariant}` : ''} × {offer.amount}</TableCell>
-          <TableCell>{offer.price} {offer.currency}</TableCell>
-          <TableCell>{offer.stock ?? '—'}</TableCell>
+          <TableCell>{offer.nameDe || offer.nameEn || offer.itemName}{offer.itemVariant > 0 ? ` #${offer.itemVariant}` : ''} × {offer.amount}</TableCell>
+          <TableCell>{offer.playerBuyPrice ?? offer.price} {offer.currency}</TableCell>
+          <TableCell>{offer.playerSellPrice ?? '—'}{offer.playerSellPrice === undefined ? '' : ` ${offer.currency}`}</TableCell>
+          <TableCell>{offer.stock ?? '—'}{offer.maxStock === undefined ? '' : ` / ${offer.maxStock}`}</TableCell>
         </TableRow>)}</TableBody>
       </Table> : <p className="text-sm text-muted-foreground">{t('mapNoOffers')}</p>}
     </DialogContent>

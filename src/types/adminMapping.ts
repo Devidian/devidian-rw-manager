@@ -109,5 +109,5 @@ export interface MapMarketplaceOffer {
   createdAt: string;
 }
 
-export interface MapNpcMarketOffer { id: number | string; itemName: string; itemVariant: number; amount: number; price: number; stock?: number; currency: string; }
+export interface MapNpcMarketOffer { id: number | string; itemName: string; itemVariant: number; amount: number; price: number; stock?: number; playerBuyPrice?: number; playerSellPrice?: number; maxStock?: number; nameDe?: string; nameEn?: string; currency: string; }
 export interface MapNpcMarket { id: number; name: string; x: number; y: number; z: number; balances: Array<{ currency: string; balance: number }>; offers: MapNpcMarketOffer[]; }

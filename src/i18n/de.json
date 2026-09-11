@@ -61,6 +61,8 @@
   "mapNpcNoBalance": "Kein Wallet-Guthaben verfügbar",
   "mapNpcItem": "Gegenstand",
   "mapNpcPrice": "Aktueller Preis",
+    "mapNpcBuyPrice": "Verkaufspreis",
+    "mapNpcSellPrice": "Ankaufspreis",
   "mapNpcStock": "Bestand",
   "mapLayerError": "Layer-Daten konnten nicht geladen werden.",
   "mapLayers": "Ebenen",
