@@ -17,6 +17,54 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.7.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.6.1...rw-manager-v1.7.0) (2026-09-11)
+
+
+### Added
+
+* add embeddable server map ([81d1a31](https://github.com/Devidian/devidian-rw-manager/commit/81d1a311a2d8ba786caa4dac754cf6090b6c490f))
+* add global marketplace tab rc ([3229ba1](https://github.com/Devidian/devidian-rw-manager/commit/3229ba1d5988ac13971ea6c35fbfaae50cc35a50))
+* add map coordinate controls ([93e0917](https://github.com/Devidian/devidian-rw-manager/commit/93e0917b6ac1adae8de017badf4c5e64b7de9dd8))
+* copy map teleport commands ([d9f59ed](https://github.com/Devidian/devidian-rw-manager/commit/d9f59ed297c5ecda92d65478093c5e067d1f0cf6))
+* enrich NPC market offers for rc ([e675e4f](https://github.com/Devidian/devidian-rw-manager/commit/e675e4f65ce78859970b6745f038c19b1aa779f8))
+* improve manager map controls and badges ([3199a6c](https://github.com/Devidian/devidian-rw-manager/commit/3199a6cd6e06aab4c015606713f26973da722ffc))
+* show NPC markets on map ([3a82930](https://github.com/Devidian/devidian-rw-manager/commit/3a829303e02df720201d12007f6ccb4e7a0eaca5))
+
+
+### Fixed
+
+* align player map history with world coordinates ([839b1d0](https://github.com/Devidian/devidian-rw-manager/commit/839b1d0a5934f7295164cd4bec80428fb0ec4a2a))
+* confirm map clipboard results ([2d6eca7](https://github.com/Devidian/devidian-rw-manager/commit/2d6eca755b5b7687383fe04dba37b6b00d6ecbf5))
+* copy map context menu values ([1541e77](https://github.com/Devidian/devidian-rw-manager/commit/1541e77c8ed9c9653c806e3ff8190251fabe53a8))
+* expose map copy fallbacks ([8003d28](https://github.com/Devidian/devidian-rw-manager/commit/8003d281c3690531b30ab08cf424088f50809925))
+* fill embedded map viewport ([f2b75bd](https://github.com/Devidian/devidian-rw-manager/commit/f2b75bd7c64048022aac4abd92cfcf4cd3d0fd05))
+* honor disabled map auto refresh ([a6c0378](https://github.com/Devidian/devidian-rw-manager/commit/a6c03784cf58c7e5f9eb511e429e128357a694de))
+* load server headers through manager backend ([d363e18](https://github.com/Devidian/devidian-rw-manager/commit/d363e18aa842ddc6dae85403fab029313e0e8cc3))
+* open map copy dialog before leaflet click ([a796b89](https://github.com/Devidian/devidian-rw-manager/commit/a796b8952ddfb1f519ea5315b5f9df41db213cea))
+* preload refreshed map tiles ([7f9d3ab](https://github.com/Devidian/devidian-rw-manager/commit/7f9d3ab9338532846790c6ff84a6b11e7aaed44b))
+* preserve map copy user activation ([c7f1f09](https://github.com/Devidian/devidian-rw-manager/commit/c7f1f09b89098c90b7f04d918620ab71f7f17cec))
+* provide iframe-safe map copy fallback ([07b9fbf](https://github.com/Devidian/devidian-rw-manager/commit/07b9fbf17e2ede78557333d8054de909cc5a7a64))
+* render server description formatting ([eadd627](https://github.com/Devidian/devidian-rw-manager/commit/eadd627e14bea1892f97da7c7398b9f66d33a8e8))
+* request refreshed map tiles ([ed04996](https://github.com/Devidian/devidian-rw-manager/commit/ed049967a5755f2cb1270b9a7af090cdc565c4c8))
+* restore manager CI and dependency updates ([16b9a7d](https://github.com/Devidian/devidian-rw-manager/commit/16b9a7dd849ddeb17737cf61c85f89460220cf13))
+* show map copy value directly ([c8c4a65](https://github.com/Devidian/devidian-rw-manager/commit/c8c4a65b6ecba77b46cab522ac62516f964b0e88))
+* target embedded maps by server ([4cbdf1b](https://github.com/Devidian/devidian-rw-manager/commit/4cbdf1b4e3090cec7e83a81773e808cad22e3330))
+* throttle map tile refreshes ([60b5c4a](https://github.com/Devidian/devidian-rw-manager/commit/60b5c4a8d54c067a8f1519d20b63079ab9c9ac40))
+* widen market information dialogs ([f44197c](https://github.com/Devidian/devidian-rw-manager/commit/f44197cde8a57025b132a0416b2544a426afaa3c))
+
+
+### Build
+
+* **deps:** bump the npm_and_yarn group across 1 directory with 5 updates ([08212a3](https://github.com/Devidian/devidian-rw-manager/commit/08212a3a6e99890f86e2028dfad15d4f0e3428e5))
+* **deps:** bump the npm_and_yarn group across 1 directory with 5 updates ([1520c49](https://github.com/Devidian/devidian-rw-manager/commit/1520c495290602cbc328607cdae560c6d0e2ec62))
+
+
+### Maintenance
+
+* **main:** release rw-manager 1.6.1 ([7282d92](https://github.com/Devidian/devidian-rw-manager/commit/7282d92767f525f696fdc58c5eef42c39da8ae57))
+* **main:** release rw-manager 1.6.1 ([7a04eb2](https://github.com/Devidian/devidian-rw-manager/commit/7a04eb2a3fb60b29855b45b9264e9c06de7cbd78))
+* prepare 1.7.0 release ([8a8cf73](https://github.com/Devidian/devidian-rw-manager/commit/8a8cf73df77e1e4ce362d6ffecc90e7b8f845d09))
+
 ## [1.6.1](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.6.1...rw-manager-v1.6.1) (2026-09-09)
 
 
