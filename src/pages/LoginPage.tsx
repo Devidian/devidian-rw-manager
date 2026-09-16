@@ -29,7 +29,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm space-y-4">
           {steamLoginAvailable ? (
             <Button
-              onClick={loginWithSteam}
+              onClick={() => loginWithSteam()}
               className="w-full gap-2 bg-[hsl(215_60%_35%)] hover:bg-[hsl(215_60%_40%)] text-white"
               size="lg"
             >

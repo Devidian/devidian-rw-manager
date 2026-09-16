@@ -157,7 +157,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="mt-1">
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={loginWithSteam}>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => loginWithSteam()}>
                   <Link2 className="h-4 w-4" />
                   {t('connectSteam')}
                 </Button>
