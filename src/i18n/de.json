@@ -155,6 +155,10 @@
   "group": "Gruppe",
   "playtime": "Spielzeit",
   "lastSeen": "Zuletzt gesehen",
+  "globalIntercomChannel": {
+    "global": "#GLOBAL",
+    "web": "#WEB"
+  },
   "health": "Gesundheit",
   "hunger": "Hunger",
   "thirst": "Durst",

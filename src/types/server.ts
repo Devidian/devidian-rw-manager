@@ -59,6 +59,7 @@ export interface PublicUserInterface {
   role: UserRole;
   steamId?: string;
   pinnedServers: string[];
+  lastSeenAt?: string;
   createdAt: string;
 }
 

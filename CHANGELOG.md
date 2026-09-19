@@ -4,6 +4,8 @@
 
 ### Added
 
+* split Global Intercom into `#GLOBAL` and `#WEB` tabs with per-channel and aggregate unread badges
+* show an account's latest recorded presence in user management
 * show separately colored marketplace-crier and shop-trader map markers with current offers, prices, stocks, and wallet balances
 * subscribe the open map to live invalidations for only its selected server
 * apply claim, player, GPS marker, and marketplace offer deltas without REST reloads

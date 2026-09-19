@@ -39,7 +39,7 @@ const ROLE_VARIANTS: Record<UserRole, 'default' | 'secondary' | 'outline'> = {
   admin: 'default',
 };
 
-type SortField = 'username' | 'state' | 'role' | 'createdAt';
+type SortField = 'username' | 'state' | 'role' | 'createdAt' | 'lastSeenAt';
 type SortDir = 'asc' | 'desc';
 
 function SortableHeader({ field, label, sortField, sortDir, onSort }: {
@@ -91,6 +91,7 @@ export default function UserManagementPage() {
         case 'state': cmp = a.state.localeCompare(b.state); break;
         case 'role': cmp = a.role.localeCompare(b.role); break;
         case 'createdAt': cmp = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(); break;
+        case 'lastSeenAt': cmp = new Date(a.lastSeenAt || 0).getTime() - new Date(b.lastSeenAt || 0).getTime(); break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -182,6 +183,7 @@ export default function UserManagementPage() {
                     <SortableHeader field="role" label={t('role')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                     <TableHead>{t('steamId')}</TableHead>
                     <SortableHeader field="createdAt" label={t('createdAt')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                    <SortableHeader field="lastSeenAt" label={t('lastSeen')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                     <TableHead className="w-12" />
                   </TableRow>
                 </TableHeader>
@@ -243,6 +245,11 @@ export default function UserManagementPage() {
                         <TableCell className="text-muted-foreground text-xs">
                           {user.createdAt
                             ? formatDistanceToNow(new Date(user.createdAt), { addSuffix: true, locale: dateLocale })
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {user.lastSeenAt
+                            ? formatDistanceToNow(new Date(user.lastSeenAt), { addSuffix: true, locale: dateLocale })
                             : '—'}
                         </TableCell>
                         <TableCell>

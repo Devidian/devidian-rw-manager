@@ -16,10 +16,12 @@ import {
   createGlobalIntercomMessage,
   getGlobalIntercomWebSocketUrl,
   GlobalIntercomChatMessage,
+  GlobalIntercomChannel,
   GlobalIntercomEnvelope,
   GlobalIntercomServerPresence,
   GlobalIntercomServerPresenceUpdate,
   GLOBAL_INTERCOM_CHANNEL,
+  GLOBAL_INTERCOM_CHANNELS,
   isGlobalIntercomChatMessage,
   isGlobalIntercomServerPresenceUpdate,
 } from '@/lib/globalIntercom';
@@ -35,9 +37,12 @@ interface GlobalIntercomContextValue {
   canSend: boolean;
   connectionState: GlobalIntercomConnectionState;
   messages: GlobalIntercomChatEntry[];
+  activeChannel: GlobalIntercomChannel;
   servers: GlobalIntercomServerPresence[];
   unreadCount: number;
+  unreadCounts: Record<GlobalIntercomChannel, number>;
   sendMessage: (content: string) => void;
+  selectChannel: (channel: GlobalIntercomChannel) => void;
   markRead: () => void;
 }
 
@@ -54,17 +59,25 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
   const guestIdRef = useRef(`web-${Math.random().toString(36).slice(2)}`);
   const pendingEchoKeysRef = useRef(new Set<string>());
   const [connectionState, setConnectionState] = useState<GlobalIntercomConnectionState>('connecting');
-  const [messages, setMessages] = useState<GlobalIntercomChatEntry[]>([]);
+  const [messagesByChannel, setMessagesByChannel] = useState<Record<GlobalIntercomChannel, GlobalIntercomChatEntry[]>>({ global: [], web: [] });
+  const [activeChannel, setActiveChannel] = useState<GlobalIntercomChannel>(GLOBAL_INTERCOM_CHANNEL);
   const [servers, setServers] = useState<GlobalIntercomServerPresence[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCounts, setUnreadCounts] = useState<Record<GlobalIntercomChannel, number>>({ global: 0, web: 0 });
   const wsUrl = useMemo(() => getGlobalIntercomWebSocketUrl(), []);
   const displayName = user?.username || user?.email || user?.steamId || t('globalIntercomWebUser');
   const playerUID = user?.steamId || user?.id || guestIdRef.current;
   const isChatOpenRef = useRef(location.pathname === '/global-intercom');
+  const activeChannelRef = useRef(activeChannel);
+  const messages = messagesByChannel[activeChannel];
+  const unreadCount = unreadCounts.global + unreadCounts.web;
+
+  useEffect(() => {
+    activeChannelRef.current = activeChannel;
+  }, [activeChannel]);
 
   useEffect(() => {
     isChatOpenRef.current = location.pathname === '/global-intercom';
-    if (isChatOpenRef.current) setUnreadCount(0);
+    if (isChatOpenRef.current) setUnreadCounts(current => ({ ...current, [activeChannelRef.current]: 0 }));
   }, [location.pathname]);
 
   useEffect(() => {
@@ -121,11 +134,16 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
           return;
         }
         const entry = parseChatEntry(event.data, 'incoming');
-        if (!entry || entry.chatChannel !== GLOBAL_INTERCOM_CHANNEL) return;
+        if (!entry || !isIntercomChannel(entry.chatChannel)) return;
         const echoKey = messageEchoKey(entry);
         if (entry.playerUID === playerUID && pendingEchoKeysRef.current.delete(echoKey)) return;
-        setMessages(current => appendStoredMessage(current, entry));
-        if (!isChatOpenRef.current) setUnreadCount(current => current + 1);
+        setMessagesByChannel(current => ({
+          ...current,
+          [entry.chatChannel]: appendStoredMessage(current[entry.chatChannel], entry),
+        }));
+        if (!isChatOpenRef.current || activeChannelRef.current !== entry.chatChannel) {
+          setUnreadCounts(current => ({ ...current, [entry.chatChannel]: current[entry.chatChannel] + 1 }));
+        }
       });
     };
 
@@ -155,6 +173,7 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
       content: trimmed,
       playerName: displayName,
       playerUID,
+      channel: activeChannel,
     });
     const envelope: GlobalIntercomEnvelope<GlobalIntercomChatMessage> = {
       event: 'broadcastMessage',
@@ -163,18 +182,28 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
 
     socket.send(JSON.stringify(envelope));
     pendingEchoKeysRef.current.add(messageEchoKey(message));
-    setMessages(current => appendStoredMessage(current, toChatEntry(message, 'outgoing')));
-  }, [connectionState, displayName, isAuthenticated, playerUID]);
+    setMessagesByChannel(current => ({
+      ...current,
+      [activeChannel]: appendStoredMessage(current[activeChannel], toChatEntry(message, 'outgoing')),
+    }));
+  }, [activeChannel, connectionState, displayName, isAuthenticated, playerUID]);
 
-  const markRead = useCallback(() => setUnreadCount(0), []);
+  const markRead = useCallback(() => setUnreadCounts(current => ({ ...current, [activeChannelRef.current]: 0 })), []);
+  const selectChannel = useCallback((channel: GlobalIntercomChannel) => {
+    setActiveChannel(channel);
+    setUnreadCounts(current => ({ ...current, [channel]: 0 }));
+  }, []);
 
   const value: GlobalIntercomContextValue = {
     canSend: isAuthenticated && connectionState === 'connected',
     connectionState,
     messages,
+    activeChannel,
     servers,
     unreadCount,
+    unreadCounts,
     sendMessage,
+    selectChannel,
     markRead,
   };
 
@@ -233,8 +262,14 @@ function sendPlayerState(socket: WebSocket, playerName: string, playerUID: strin
   const payload = { playerName, playerUID };
   socket.send(JSON.stringify({ event: 'clientRegister', payload: { type: 'web', userName: playerName } }));
   socket.send(JSON.stringify({ event: 'playerOnline', payload }));
-  socket.send(JSON.stringify({ event: 'playerJoinChannel', payload: { ...payload, channel: GLOBAL_INTERCOM_CHANNEL } }));
+  for (const channel of GLOBAL_INTERCOM_CHANNELS) {
+    socket.send(JSON.stringify({ event: 'playerJoinChannel', payload: { ...payload, channel } }));
+  }
   socket.send(JSON.stringify({ event: 'serverPresenceSubscribe', payload: { channel: GLOBAL_INTERCOM_CHANNEL } }));
+}
+
+function isIntercomChannel(channel: string): channel is GlobalIntercomChannel {
+  return GLOBAL_INTERCOM_CHANNELS.includes(channel as GlobalIntercomChannel);
 }
 
 function parseServerPresence(data: unknown): GlobalIntercomServerPresenceUpdate | null {

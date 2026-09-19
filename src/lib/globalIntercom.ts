@@ -1,4 +1,7 @@
 export const GLOBAL_INTERCOM_CHANNEL = 'global';
+export const WEB_INTERCOM_CHANNEL = 'web';
+export const GLOBAL_INTERCOM_CHANNELS = [GLOBAL_INTERCOM_CHANNEL, WEB_INTERCOM_CHANNEL] as const;
+export type GlobalIntercomChannel = typeof GLOBAL_INTERCOM_CHANNELS[number];
 
 export interface GlobalIntercomChatMessage {
   createdOn: string;
@@ -62,13 +65,14 @@ export function createGlobalIntercomMessage(params: {
   content: string;
   playerName: string;
   playerUID: string;
+  channel: GlobalIntercomChannel;
   sourceName?: string;
 }): GlobalIntercomChatMessage {
   return {
     createdOn: new Date().toISOString(),
     chatVersion: 2,
     chatContent: params.content.trim(),
-    chatChannel: GLOBAL_INTERCOM_CHANNEL,
+    chatChannel: params.channel,
     playerName: params.playerName,
     playerUID: params.playerUID,
     sourceName: params.sourceName || 'RW Manager',
