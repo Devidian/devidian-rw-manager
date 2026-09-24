@@ -28,5 +28,5 @@ enable their private "Where have I been?" layer.
   view while retaining its current storage endpoint in the Manager.
 - [x] Provide an iframe-safe, selectable manual-copy fallback and document the
   required `clipboard-write` iframe permission.
-- [ ] Run lint, tests, build, Docker build, publish an RC image, and activate it
-  on Dev.
+- [x] Run lint, tests, build, Docker build, publish an RC image, and activate it
+  on the shared Manager runtime. Current frontend 1.7.1-rc.3 is healthy.

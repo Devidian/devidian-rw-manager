@@ -31,4 +31,5 @@ the old frontend ignores the additive field.
 - [x] Add backend coverage for presence and favorite removal persistence.
 - [x] Run frontend lint, tests, and production build.
 - [x] Run backend build and tests.
-- [ ] Publish RC images and deploy them only to the development manager runtime.
+- [x] Publish and deploy the compatible Manager RCs. Frontend runtime acceptance
+      completed with 1.7.1-rc.3 and backend 0.7.1-rc.2 on 2026-09-24.

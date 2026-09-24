@@ -14,11 +14,11 @@ This app consumes the stable Manager-backend DTO after the native security and W
 
 ## Checklist
 
-- [ ] Extend frontend DTOs and API mocks only after the backend contract is versioned; gracefully render servers from older backend versions.
+- [x] Extend frontend DTOs and API mocks after the backend contract was versioned; gracefully render servers from older backend versions.
 - [x] Show the Configuration tab only when the current authenticated user's linked SteamID is in that server's backend-provided administrator UID list. Hide it for guests, unlinked accounts, missing admin data and access failure.
 - [x] Show the Plugins tab only when the backend reports native `/pluginlist` availability; do not infer it from a non-empty plugin list.
 - [x] Add an Omega badge when native plugin list is exposed and it contains OZ Tools.
-- [ ] Add distinct localized `No access` presentation when the backend reports the secure pairing failure state.
+- [x] Add distinct localized `No access` presentation when the backend reports the secure pairing failure state.
 - [x] Render Linux with a recognizable penguin icon and Windows with the Windows logo as local SVGs, avoiding an additional icon dependency.
 - [ ] Render two green online indicators only for a fresh active game-server WebSocket connection, otherwise one.
 - [x] Render the Map-column value bold when the existing backend `mapUrl` marks an online map.
@@ -40,3 +40,11 @@ Keep rendering compatible with the prior backend shape and hide new badges/tabs 
 ## Validation Strategy
 
 Run the configured lint, tests and production build, followed by the Development combinations named above.
+
+## Current evidence (2026-09-24)
+
+The additive nativeAccess contract is parsed with legacy-response fallback, and
+noAccess renders a localized Plugins-tab error. The current frontend suite
+passed 98 tests and the production build before deployment of 1.7.1-rc.3.
+Remaining checklist items are separate capability-indicator and accessibility
+work; they are intentionally still active.

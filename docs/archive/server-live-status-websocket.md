@@ -31,4 +31,6 @@ set and stop periodic per-server `/live` polling while it is confirmed.
 - [x] Poll REST only when WebSocket support is unavailable.
 - [x] Enforce and explain the backend-configured favorite limit.
 - [x] Pass tests, type checking, lint, and build.
-- [ ] Publish RC and perform runtime browser acceptance.
+- [x] Publish RC and perform runtime browser acceptance. Development runs
+  `1.7.1-rc.2`; authenticated dashboard acceptance confirmed live player-list
+  updates on 2026-09-23.
