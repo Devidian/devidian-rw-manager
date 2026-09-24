@@ -35,6 +35,7 @@ export interface PluginInfo {
 
 export interface ServerPluginsResponse {
   available: boolean;
+  nativeAccess: 'available' | 'noAccess' | 'unavailable';
   items: PluginInfo[];
   latestVersions: Record<string, string>;
 }

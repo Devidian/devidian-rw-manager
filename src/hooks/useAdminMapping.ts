@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { MapBounds, MapMetadata, PluginInfo, ServerMapResponse } from '@/types/adminMapping';
+import type { MapBounds, MapMetadata, PluginInfo, ServerMapResponse, ServerPluginsResponse } from '@/types/adminMapping';
 import { authHeaders } from '@/lib/authApi';
 
 export function useAdminMapping(backendUrl?: string, serverId?: string) {
@@ -11,6 +11,7 @@ export function useAdminMapping(backendUrl?: string, serverId?: string) {
   const [mapError, setMapError] = useState(false);
   const [pluginsError, setPluginsError] = useState(false);
   const [pluginsAvailable, setPluginsAvailable] = useState(false);
+  const [nativePluginAccess, setNativePluginAccess] = useState<ServerPluginsResponse['nativeAccess']>('unavailable');
   const [admins, setAdmins] = useState<string[]>([]);
 
   useEffect(() => {
@@ -19,6 +20,7 @@ export function useAdminMapping(backendUrl?: string, serverId?: string) {
       setPlugins([]);
       setLatestPluginVersions({});
       setPluginsAvailable(false);
+      setNativePluginAccess('unavailable');
       setAdmins([]);
       setMapLoading(false);
       setPluginsLoading(false);
@@ -49,12 +51,14 @@ export function useAdminMapping(backendUrl?: string, serverId?: string) {
         setPlugins(pluginResponse.items);
         setLatestPluginVersions(pluginResponse.latestVersions);
         setPluginsAvailable(pluginResponse.available);
+        setNativePluginAccess(pluginResponse.nativeAccess);
       })
       .catch((requestError) => {
         if ((requestError as Error).name === 'AbortError') return;
         setPlugins([]);
         setLatestPluginVersions({});
         setPluginsAvailable(false);
+        setNativePluginAccess('unavailable');
         setPluginsError(true);
       })
       .finally(() => setPluginsLoading(false));
@@ -70,7 +74,7 @@ export function useAdminMapping(backendUrl?: string, serverId?: string) {
     return () => controller.abort();
   }, [backendUrl, serverId]);
 
-  return { map, plugins, latestPluginVersions, pluginsAvailable, mapLoading, pluginsLoading, mapError, pluginsError, admins };
+  return { map, plugins, latestPluginVersions, pluginsAvailable, nativePluginAccess, mapLoading, pluginsLoading, mapError, pluginsError, admins };
 }
 
 export function parseMapResponse(value: unknown): ServerMapResponse {
@@ -81,11 +85,12 @@ export function parseMapResponse(value: unknown): ServerMapResponse {
 }
 
 export function parsePluginsResponse(value: unknown): ServerPluginsResponse {
-  if (!isRecord(value) || (value.available !== undefined && typeof value.available !== 'boolean') || !Array.isArray(value.items) || !value.items.every(isPluginInfo) || (value.latestVersions !== undefined && !isVersionMap(value.latestVersions))) {
+  if (!isRecord(value) || (value.available !== undefined && typeof value.available !== 'boolean') || !Array.isArray(value.items) || !value.items.every(isPluginInfo) || (value.latestVersions !== undefined && !isVersionMap(value.latestVersions)) || (value.nativeAccess !== undefined && value.nativeAccess !== 'available' && value.nativeAccess !== 'noAccess' && value.nativeAccess !== 'unavailable')) {
     throw new Error('Invalid plugin response');
   }
   return {
     available: value.available === true,
+    nativeAccess: value.nativeAccess === undefined ? (value.available === true ? 'available' : 'unavailable') : value.nativeAccess,
     items: value.items,
     latestVersions: value.latestVersions === undefined ? {} : value.latestVersions,
   };

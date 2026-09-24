@@ -978,7 +978,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
 
         {hasBackend && adminMapping.pluginsAvailable && (
           <TabsContent value="plugins" className="mt-4">
-            <PluginsTab plugins={adminMapping.plugins} latestVersions={adminMapping.latestPluginVersions} loading={adminMapping.pluginsLoading} error={adminMapping.pluginsError} />
+            <PluginsTab plugins={adminMapping.plugins} latestVersions={adminMapping.latestPluginVersions} nativeAccess={adminMapping.nativePluginAccess} loading={adminMapping.pluginsLoading} error={adminMapping.pluginsError} />
           </TabsContent>
         )}
 

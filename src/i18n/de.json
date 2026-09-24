@@ -46,6 +46,7 @@
   "plugins": "Plugins",
   "loadingPlugins": "Plugins werden geladen…",
   "noPlugins": "Keine Plugins gefunden.",
+  "nativeAccessDenied": "Native Plugin-Datenzugriff wurde vom Server abgelehnt.",
   "invalidPlugin": "Ungültig",
   "mapCaptureHint": "Die Karte wird beim Verlassen von Chunks erfasst und zeitversetzt durch das Backend aktualisiert.",
   "mapLayerAutoRefresh": "Automatischer Reload",
