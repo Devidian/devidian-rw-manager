@@ -5,6 +5,7 @@ import type { AuthUser } from '@/types/server';
 
 const state = vi.hoisted(() => ({
   user: null as AuthUser | null,
+  updateIntercomChannels: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -15,6 +16,7 @@ vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: state.user,
     isAuthenticated: state.user != null,
+    updateIntercomChannels: state.updateIntercomChannels,
   }),
 }));
 
@@ -58,6 +60,9 @@ const { default: GlobalIntercomChatPage } = await import('@/pages/GlobalIntercom
 describe('global intercom chat page', () => {
   beforeEach(() => {
     state.user = null;
+    state.updateIntercomChannels.mockReset().mockImplementation(async (channels: string[]) => {
+      if (state.user) state.user = { ...state.user, intercomChannels: channels };
+    });
     MockWebSocket.instances = [];
     vi.stubEnv('VITE_GLOBAL_INTERCOM_WS_URL', 'ws://relay.example/ws');
     vi.stubGlobal('WebSocket', MockWebSocket);
@@ -119,6 +124,18 @@ describe('global intercom chat page', () => {
         playerUID: '7656',
       },
     });
+  });
+
+  it('restores saved channels and joins a new channel through the user preference', async () => {
+    state.user = { id: 'user-1', username: 'Maik', role: 'user', pinnedServers: [], intercomChannels: ['global', 'web', 'trade'] };
+    renderPage();
+    act(() => MockWebSocket.instances[0].open());
+    expect(MockWebSocket.instances[0].sent.map((frame) => JSON.parse(frame)).some((frame) => frame.event === 'playerJoinChannel' && frame.payload.channel === 'trade')).toBe(true);
+
+    fireEvent.change(screen.getByLabelText('globalIntercomChannelName'), { target: { value: '#Market' } });
+    fireEvent.click(screen.getByRole('button', { name: 'globalIntercomJoinChannel' }));
+    await waitFor(() => expect(state.updateIntercomChannels).toHaveBeenCalledWith(['global', 'web', 'trade', 'market']));
+    await waitFor(() => expect(MockWebSocket.instances[0].sent.map((frame) => JSON.parse(frame)).some((frame) => frame.event === 'playerJoinChannel' && frame.payload.channel === 'market')).toBe(true));
   });
 
   it('ignores the relay echo for messages sent by the current user', async () => {

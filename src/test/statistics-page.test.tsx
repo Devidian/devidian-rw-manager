@@ -1,11 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GlobalStatisticsPayload } from '@/types/server';
+import { isoDate } from '@/lib/statistics';
 
-const state = vi.hoisted(() => ({
-  isAuthenticated: false,
-  getGlobalStatistics: vi.fn(),
-}));
+const state = vi.hoisted(() => {
+  const getGlobalStatistics = vi.fn();
+  return { isAuthenticated: false, getGlobalStatistics, adapter: { getGlobalStatistics }, chartRenders: vi.fn() };
+});
 
 const payload: GlobalStatisticsPayload = {
   buckets: [
@@ -37,9 +39,7 @@ vi.mock('react-i18next', () => ({
 }));
 vi.mock('@/context/StorageModeContext', () => ({
   useStorageMode: () => ({
-    adapter: {
-      getGlobalStatistics: state.getGlobalStatistics,
-    },
+    adapter: state.adapter,
   }),
 }));
 vi.mock('@/context/AuthContext', () => ({
@@ -48,7 +48,7 @@ vi.mock('@/context/AuthContext', () => ({
   }),
 }));
 vi.mock('@/components/ui/chart', () => ({
-  ChartContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ChartContainer: ({ children }: { children: React.ReactNode }) => { state.chartRenders(); return <div>{children}</div>; },
   ChartTooltip: () => null,
   ChartTooltipContent: () => null,
 }));
@@ -59,11 +59,12 @@ describe('StatisticsPage', () => {
   beforeEach(() => {
     state.isAuthenticated = false;
     state.getGlobalStatistics.mockReset().mockResolvedValue(payload);
+    state.chartRenders.mockReset();
     localStorage.removeItem('risingworld_statistics_page_size');
   });
 
   it('masks player UIDs for guests and does not render Steam links', async () => {
-    render(<StatisticsPage />);
+    render(<MemoryRouter><StatisticsPage /></MemoryRouter>);
 
     expect(await screen.findByText('7656*********0000')).toBeInTheDocument();
     expect(screen.getByText('stan*************-uid')).toBeInTheDocument();
@@ -72,7 +73,7 @@ describe('StatisticsPage', () => {
 
   it('renders Steam IDs as profile links for authenticated users', async () => {
     state.isAuthenticated = true;
-    render(<StatisticsPage />);
+    render(<MemoryRouter><StatisticsPage /></MemoryRouter>);
 
     const link = await screen.findByRole('link', { name: '76561198000000000' });
     expect(link).toHaveAttribute('href', 'https://steamcommunity.com/profiles/76561198000000000');
@@ -81,9 +82,18 @@ describe('StatisticsPage', () => {
 
   it('restores the saved player page size', async () => {
     localStorage.setItem('risingworld_statistics_page_size', '10');
-    render(<StatisticsPage />);
+    render(<MemoryRouter><StatisticsPage /></MemoryRouter>);
     await screen.findByText('Steam Player');
 
     expect(screen.getByText('10').closest('button')).toBeInTheDocument();
+  });
+
+  it('keeps the chart mounted across unrelated parent renders', async () => {
+    const { rerender } = render(<MemoryRouter><StatisticsPage /></MemoryRouter>);
+    fireEvent.change(screen.getByDisplayValue(isoDate(new Date())), { target: { value: '2026-07-02' } });
+    await waitFor(() => expect(state.chartRenders.mock.calls.length).toBeGreaterThan(0));
+    const renders = state.chartRenders.mock.calls.length;
+    rerender(<MemoryRouter><StatisticsPage /></MemoryRouter>);
+    expect(state.chartRenders).toHaveBeenCalledTimes(renders);
   });
 });

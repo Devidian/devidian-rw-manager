@@ -63,6 +63,13 @@ This project is built with:
 Server detail pages include a lazy-loaded statistics tab when a manager backend
 is configured. The tab reads `/api/storage/server/:id/statistics` and renders
 hourly, weekly, monthly, and accumulated weekday availability/player charts.
+Player names in the live player list, server details, and global statistics open
+a profile showing the servers where that UID is currently online. Playtime is
+shown when the server's native player data exposes it.
+
+Signed-in users can join additional public Global Intercom channels. The
+manager backend stores their subscriptions and the browser rejoins them after
+sign-in and WebSocket reconnect. `global` and `web` remain subscribed by default.
 
 ## Runtime configuration
 

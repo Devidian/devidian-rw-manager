@@ -20,6 +20,7 @@ import {
   Map as MapIcon, Plug, BarChart3, Drumstick, Droplets, Store,
 } from 'lucide-react';
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
+import { PlayerNameLink } from '@/components/PlayerNameLink';
 import type { UseDatabasePlayersResult } from '@/hooks/useDatabasePlayers';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useServerContext } from '@/context/ServerContext';
@@ -192,7 +193,7 @@ function OnlinePlayersSection({
         <TableBody>
           {players.map(p => (
             <TableRow key={p.uid ?? p.id} className="hover:bg-muted/20">
-              <TableCell className="font-medium">{p.name || '-'}</TableCell>
+              <TableCell className="font-medium"><PlayerNameLink uid={p.uid} name={p.name} /></TableCell>
               <TableCell><PlayerUid uid={p.uid} platform={p.platform} authenticated={authenticated} /></TableCell>
               <TableCell className="text-muted-foreground text-sm">{p.platform || '-'}</TableCell>
               <TableCell className="text-muted-foreground text-sm">{displayNumber(p.ping, ' ms')}</TableCell>
@@ -474,7 +475,7 @@ function PlayersTab({
                       <TableBody>
                         {pagedDb.map(player => (
                           <TableRow key={player.uid} className="hover:bg-muted/20">
-                            <TableCell className="font-medium">{player.name || '-'}</TableCell>
+                            <TableCell className="font-medium"><PlayerNameLink uid={player.uid} name={player.name} /></TableCell>
                             <TableCell><PlayerUid uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>
                             <TableCell className="text-muted-foreground text-sm">{player.platform || '-'}</TableCell>
                             <TableCell>

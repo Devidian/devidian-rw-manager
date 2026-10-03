@@ -24,6 +24,7 @@ import {
   GLOBAL_INTERCOM_CHANNELS,
   isGlobalIntercomChatMessage,
   isGlobalIntercomServerPresenceUpdate,
+  normalizeIntercomChannel,
 } from '@/lib/globalIntercom';
 
 export type GlobalIntercomConnectionState = 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -38,11 +39,15 @@ interface GlobalIntercomContextValue {
   connectionState: GlobalIntercomConnectionState;
   messages: GlobalIntercomChatEntry[];
   activeChannel: GlobalIntercomChannel;
+  channels: GlobalIntercomChannel[];
+  channelError: string | null;
   servers: GlobalIntercomServerPresence[];
   unreadCount: number;
   unreadCounts: Record<GlobalIntercomChannel, number>;
   sendMessage: (content: string) => void;
   selectChannel: (channel: GlobalIntercomChannel) => void;
+  joinChannel: (channel: string) => Promise<void>;
+  leaveChannel: (channel: string) => Promise<void>;
   markRead: () => void;
 }
 
@@ -52,9 +57,10 @@ const GlobalIntercomContext = createContext<GlobalIntercomContextValue | null>(n
 
 export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, updateIntercomChannels } = useAuth();
   const location = useLocation();
   const socketRef = useRef<WebSocket | null>(null);
+  const socketIdentityRef = useRef('');
   const reconnectTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const guestIdRef = useRef(`web-${Math.random().toString(36).slice(2)}`);
   const pendingEchoKeysRef = useRef(new Set<string>());
@@ -63,13 +69,33 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
   const [activeChannel, setActiveChannel] = useState<GlobalIntercomChannel>(GLOBAL_INTERCOM_CHANNEL);
   const [servers, setServers] = useState<GlobalIntercomServerPresence[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<GlobalIntercomChannel, number>>({ global: 0, web: 0 });
+  const [channelError, setChannelError] = useState<string | null>(null);
+  const channels = useMemo(() => [...new Set([...GLOBAL_INTERCOM_CHANNELS, ...(user?.intercomChannels ?? []).filter((channel) => normalizeIntercomChannel(channel) === channel)])], [user?.intercomChannels]);
+  const channelsRef = useRef(channels);
   const wsUrl = useMemo(() => getGlobalIntercomWebSocketUrl(), []);
   const displayName = user?.username || user?.email || user?.steamId || t('globalIntercomWebUser');
   const playerUID = user?.steamId || user?.id || guestIdRef.current;
+  const identity = `${playerUID}\u0000${displayName}`;
   const isChatOpenRef = useRef(location.pathname === '/global-intercom');
   const activeChannelRef = useRef(activeChannel);
-  const messages = messagesByChannel[activeChannel];
-  const unreadCount = unreadCounts.global + unreadCounts.web;
+  const messages = messagesByChannel[activeChannel] ?? [];
+  const unreadCount = channels.reduce((sum, channel) => sum + (unreadCounts[channel] ?? 0), 0);
+
+  useEffect(() => {
+    const previous = channelsRef.current;
+    channelsRef.current = channels;
+    const socket = socketRef.current;
+    if (socket?.readyState === WebSocket.OPEN && socketIdentityRef.current === identity) {
+      const payload = { playerName: displayName, playerUID };
+      for (const channel of channels.filter((item) => !previous.includes(item))) {
+        socket.send(JSON.stringify({ event: 'playerJoinChannel', payload: { ...payload, channel } }));
+      }
+      for (const channel of previous.filter((item) => !channels.includes(item))) {
+        socket.send(JSON.stringify({ event: 'playerLeaveChannel', payload: { ...payload, channel } }));
+      }
+    }
+    if (!channels.includes(activeChannelRef.current)) setActiveChannel(GLOBAL_INTERCOM_CHANNEL);
+  }, [channels, displayName, identity, playerUID]);
 
   useEffect(() => {
     activeChannelRef.current = activeChannel;
@@ -112,7 +138,8 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
       socket.addEventListener('open', () => {
         if (!active || socketRef.current !== socket) return;
         setConnectionState('connected');
-        sendPlayerState(socket, displayName, playerUID);
+        socketIdentityRef.current = identity;
+        sendPlayerState(socket, displayName, playerUID, channelsRef.current);
       });
       socket.addEventListener('close', () => {
         if (!active || socketRef.current !== socket) return;
@@ -133,16 +160,21 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
           setServers(presence.servers);
           return;
         }
+        const response = parseChannelError(event.data);
+        if (response) {
+          setChannelError(response);
+          return;
+        }
         const entry = parseChatEntry(event.data, 'incoming');
-        if (!entry || !isIntercomChannel(entry.chatChannel)) return;
+        if (!entry || !channelsRef.current.includes(entry.chatChannel)) return;
         const echoKey = messageEchoKey(entry);
         if (entry.playerUID === playerUID && pendingEchoKeysRef.current.delete(echoKey)) return;
         setMessagesByChannel(current => ({
           ...current,
-          [entry.chatChannel]: appendStoredMessage(current[entry.chatChannel], entry),
+          [entry.chatChannel]: appendStoredMessage(current[entry.chatChannel] ?? [], entry),
         }));
         if (!isChatOpenRef.current || activeChannelRef.current !== entry.chatChannel) {
-          setUnreadCounts(current => ({ ...current, [entry.chatChannel]: current[entry.chatChannel] + 1 }));
+          setUnreadCounts(current => ({ ...current, [entry.chatChannel]: (current[entry.chatChannel] ?? 0) + 1 }));
         }
       });
     };
@@ -154,6 +186,7 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
       clearReconnectTimeout();
       const socket = socketRef.current;
       socketRef.current = null;
+      socketIdentityRef.current = '';
       if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           event: 'playerOffline',
@@ -162,7 +195,7 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
       }
       socket?.close();
     };
-  }, [displayName, playerUID, wsUrl]);
+  }, [displayName, identity, playerUID, wsUrl]);
 
   const sendMessage = useCallback((content: string) => {
     const trimmed = content.trim();
@@ -184,7 +217,7 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
     pendingEchoKeysRef.current.add(messageEchoKey(message));
     setMessagesByChannel(current => ({
       ...current,
-      [activeChannel]: appendStoredMessage(current[activeChannel], toChatEntry(message, 'outgoing')),
+      [activeChannel]: appendStoredMessage(current[activeChannel] ?? [], toChatEntry(message, 'outgoing')),
     }));
   }, [activeChannel, connectionState, displayName, isAuthenticated, playerUID]);
 
@@ -194,16 +227,34 @@ export function GlobalIntercomProvider({ children }: { children: ReactNode }) {
     setUnreadCounts(current => ({ ...current, [channel]: 0 }));
   }, []);
 
+  const joinChannel = useCallback(async (value: string) => {
+    const channel = normalizeIntercomChannel(value);
+    if (!channel) throw new Error('INVALID_CHANNEL');
+    if (!isAuthenticated) throw new Error('UNAUTHORIZED');
+    setChannelError(null);
+    if (!channels.includes(channel)) await updateIntercomChannels([...channels, channel]);
+    setActiveChannel(channel);
+  }, [channels, isAuthenticated, updateIntercomChannels]);
+
+  const leaveChannel = useCallback(async (channel: string) => {
+    if (GLOBAL_INTERCOM_CHANNELS.includes(channel as typeof GLOBAL_INTERCOM_CHANNELS[number])) return;
+    await updateIntercomChannels(channels.filter((item) => item !== channel));
+  }, [channels, updateIntercomChannels]);
+
   const value: GlobalIntercomContextValue = {
     canSend: isAuthenticated && connectionState === 'connected',
     connectionState,
     messages,
     activeChannel,
+    channels,
+    channelError,
     servers,
     unreadCount,
     unreadCounts,
     sendMessage,
     selectChannel,
+    joinChannel,
+    leaveChannel,
     markRead,
   };
 
@@ -258,18 +309,26 @@ function messageEchoKey(message: Pick<GlobalIntercomChatMessage, 'createdOn' | '
   return `${message.createdOn}|${message.chatChannel}|${message.playerUID}|${message.chatContent}`;
 }
 
-function sendPlayerState(socket: WebSocket, playerName: string, playerUID: string): void {
+function sendPlayerState(socket: WebSocket, playerName: string, playerUID: string, channels: string[]): void {
   const payload = { playerName, playerUID };
   socket.send(JSON.stringify({ event: 'clientRegister', payload: { type: 'web', userName: playerName } }));
   socket.send(JSON.stringify({ event: 'playerOnline', payload }));
-  for (const channel of GLOBAL_INTERCOM_CHANNELS) {
+  for (const channel of channels) {
     socket.send(JSON.stringify({ event: 'playerJoinChannel', payload: { ...payload, channel } }));
   }
   socket.send(JSON.stringify({ event: 'serverPresenceSubscribe', payload: { channel: GLOBAL_INTERCOM_CHANNEL } }));
 }
 
-function isIntercomChannel(channel: string): channel is GlobalIntercomChannel {
-  return GLOBAL_INTERCOM_CHANNELS.includes(channel as GlobalIntercomChannel);
+function parseChannelError(data: unknown): string | null {
+  if (typeof data !== 'string') return null;
+  try {
+    const envelope = JSON.parse(data) as GlobalIntercomEnvelope & { errorCode?: string; subject?: string };
+    return envelope.event === 'playerResponseError' && envelope.errorCode
+      ? `${envelope.subject ?? ''}: ${envelope.errorCode}`
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function parseServerPresence(data: unknown): GlobalIntercomServerPresenceUpdate | null {

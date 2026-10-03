@@ -5,6 +5,7 @@ import { Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useServerContext } from '@/context/ServerContext';
 import { PlayerUid } from '@/components/PlayerUid';
+import { PlayerNameLink } from '@/components/PlayerNameLink';
 import { RichText } from '@/components/RichText';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getServerCapacity, getServerDisplayName, getServerSecondaryName } from '@/lib/serverDisplay';
@@ -72,7 +73,7 @@ export default function PlayerListPage() {
             <TableBody>
               {players.map(player => (
                 <TableRow key={`${player.serverId}:${player.uid}`}>
-                  <TableCell className="font-medium">{player.playerName}</TableCell>
+                  <TableCell className="font-medium"><PlayerNameLink uid={player.uid} name={player.playerName} /></TableCell>
                   <TableCell><PlayerUid uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>
                   <TableCell className="min-w-[16rem]">
                     <Link to={`/server/${player.serverId}`} className="font-medium text-foreground hover:text-primary">

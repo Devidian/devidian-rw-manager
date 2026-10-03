@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServerWithStatus } from '@/types/server';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -19,6 +20,7 @@ vi.mock('react-i18next', () => ({
 }));
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
 }));
 vi.mock('@/context/ServerContext', () => ({
   useServerContext: () => ({ updateServer: vi.fn(), setServerBlocked: vi.fn() }),

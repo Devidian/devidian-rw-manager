@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Info, LogIn, MessageSquare, Send, Server, Users } from 'lucide-react';
+import { Info, LogIn, MessageSquare, Send, Server, Users, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,10 @@ export default function GlobalIntercomChatPage() {
   const { isAuthenticated } = useAuth();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [draft, setDraft] = useState('');
-  const { activeChannel, canSend: canSendMessage, connectionState, markRead, messages, selectChannel, sendMessage, servers, unreadCounts } = useGlobalIntercom();
+  const [channelDraft, setChannelDraft] = useState('');
+  const [channelSaving, setChannelSaving] = useState(false);
+  const [channelSaveError, setChannelSaveError] = useState<string | null>(null);
+  const { activeChannel, channels, channelError, canSend: canSendMessage, connectionState, joinChannel, leaveChannel, markRead, messages, selectChannel, sendMessage, servers, unreadCounts } = useGlobalIntercom();
   const [presenceView, setPresenceView] = useState<'servers' | 'players'>('servers');
   const players = useMemo(() => servers.flatMap((server) => server.players.map((name) => ({ name, server: server.name }))), [servers]);
 
@@ -32,6 +35,19 @@ export default function GlobalIntercomChatPage() {
   }, [messages]);
 
   const canSend = canSendMessage && draft.trim().length > 0;
+  const addChannel = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setChannelSaving(true);
+    setChannelSaveError(null);
+    try {
+      await joinChannel(channelDraft);
+      setChannelDraft('');
+    } catch (error) {
+      setChannelSaveError(error instanceof Error && error.message === 'INVALID_CHANNEL' ? t('globalIntercomInvalidChannel') : t('globalIntercomSaveFailed'));
+    } finally {
+      setChannelSaving(false);
+    }
+  };
 
   return (
     <div className="mx-auto flex h-[calc(100vh-7rem)] max-w-5xl flex-col gap-4">
@@ -84,20 +100,31 @@ export default function GlobalIntercomChatPage() {
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-card md:flex-row">
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex border-b border-border px-2 py-2 text-xs uppercase tracking-widest text-muted-foreground">
-            {GLOBAL_INTERCOM_CHANNELS.map((channel) => (
+          <div className="flex flex-wrap items-center gap-1 border-b border-border px-2 py-2 text-xs text-muted-foreground">
+            {channels.map((channel) => (
+              <div key={channel} className="flex items-center">
               <button
-                key={channel}
                 type="button"
                 aria-pressed={activeChannel === channel}
                 onClick={() => selectChannel(channel)}
                 className={cn('flex items-center gap-1 rounded px-2 py-1.5', activeChannel === channel && 'bg-muted text-foreground')}
               >
-                {t(`globalIntercomChannel.${channel}`)}
+                {GLOBAL_INTERCOM_CHANNELS.includes(channel as typeof GLOBAL_INTERCOM_CHANNELS[number]) ? t(`globalIntercomChannel.${channel}`) : `#${channel.toUpperCase()}`}
                 {unreadCounts[channel] > 0 && <Badge className="h-4 min-w-4 px-1 text-[10px]">{unreadCounts[channel]}</Badge>}
               </button>
+              {isAuthenticated && !GLOBAL_INTERCOM_CHANNELS.includes(channel as typeof GLOBAL_INTERCOM_CHANNELS[number]) && (
+                <button type="button" aria-label={t('globalIntercomLeaveChannel', { channel })} onClick={() => void leaveChannel(channel).catch(() => setChannelSaveError(t('globalIntercomSaveFailed')))} className="rounded p-1 hover:bg-muted"><X className="h-3 w-3" /></button>
+              )}
+              </div>
             ))}
+            {isAuthenticated && (
+              <form onSubmit={(event) => void addChannel(event)} className="ml-auto flex items-center gap-1">
+                <Input aria-label={t('globalIntercomChannelName')} value={channelDraft} onChange={(event) => setChannelDraft(event.target.value)} placeholder={t('globalIntercomChannelName')} className="h-7 w-32 text-xs" maxLength={65} />
+                <Button type="submit" size="sm" variant="outline" className="h-7" disabled={channelSaving || !channelDraft.trim()}>{t('globalIntercomJoinChannel')}</Button>
+              </form>
+            )}
           </div>
+          {(channelError || channelSaveError) && <p role="alert" className="border-b border-border px-3 py-2 text-xs text-destructive">{channelError || channelSaveError}</p>}
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
@@ -147,7 +174,7 @@ export default function GlobalIntercomChatPage() {
             value={draft}
             onChange={(event) => setDraft(event.target.value.slice(0, MAX_MESSAGE_LENGTH))}
             disabled={!isAuthenticated || connectionState !== 'connected'}
-            placeholder={isAuthenticated ? t('globalIntercomMessagePlaceholder') : t('globalIntercomLoginPlaceholder')}
+            placeholder={isAuthenticated ? t('globalIntercomMessagePlaceholder', { channel: activeChannel }) : t('globalIntercomLoginPlaceholder')}
             aria-label={t('globalIntercomMessage')}
           />
           <Button type="submit" disabled={!canSend} className="gap-2">

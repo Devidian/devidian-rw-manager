@@ -4,6 +4,8 @@
 
 ### Added
 
+* let signed-in users save additional public Global Intercom channels and restore them on reconnect
+* open player profiles from player names with current servers and available playtime
 * split Global Intercom into `#GLOBAL` and `#WEB` tabs with per-channel and aggregate unread badges
 * show an account's latest recorded presence in user management
 * show separately colored marketplace-crier and shop-trader map markers with current offers, prices, stocks, and wallet balances
@@ -14,6 +16,8 @@
 
 ### Fixed
 
+* align month and ISO-week statistics with the selected local calendar period
+* avoid redrawing unchanged global statistics during unrelated updates
 * render native plugin inventory entries without obsolete deployment-directory values
 * back off reconnects until the map subscription is confirmed
 * use periodic REST player refresh only while live updates are unavailable
