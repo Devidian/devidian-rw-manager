@@ -125,7 +125,8 @@ function isMapMetadata(value: unknown): value is MapMetadata {
     isBounds(value.generatedTileBounds) &&
     typeof value.updatedAt === 'string' &&
     !Number.isNaN(Date.parse(value.updatedAt)) &&
-    typeof value.tileUrl === 'string';
+    typeof value.tileUrl === 'string' &&
+    (value.satelliteTileUrl === undefined || typeof value.satelliteTileUrl === 'string');
 }
 
 function isBounds(value: unknown): value is MapBounds {

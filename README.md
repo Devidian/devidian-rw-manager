@@ -92,6 +92,11 @@ to `devidian/rw-manager-frontend` on Docker Hub.
 
 ## Embedded map
 
+When the renderer publishes `satelliteTileUrl`, both the embedded and regular
+map offer a satellite base-layer toggle. Without satellite tiles the control
+stays hidden. Player profiles read the backend's cached server history and
+display per-server playtime where available.
+
 With `VITE_FIXED_BACKEND_URL` configured, `/embedded-map/:serverId` is a public,
 standalone map route suitable for an iframe, for example
 `/embedded-map/server-51b6fa813f487c455df7ff04`. It loads only that server's

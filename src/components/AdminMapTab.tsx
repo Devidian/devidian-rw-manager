@@ -140,12 +140,16 @@ export function AdminMapTab({
   const [playerHistory, setPlayerHistory] = useState<PlayerMapHistorySector[]>([]);
   const [displayMode, setDisplayMode] = useState<MapDisplayMode>('normal');
   const [layersOpen, setLayersOpen] = useState(true);
+  const [baseLayer, setBaseLayer] = useState<'surface' | 'satellite'>('surface');
   const [offersClaim, setOffersClaim] = useState<MapClaim | null>(null);
   const [marketCriers, setMarketCriers] = useState<MapNpcMarket[]>([]);
   const [shopTraders, setShopTraders] = useState<MapNpcMarket[]>([]);
   const [npcMarket, setNpcMarket] = useState<MapNpcMarket | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const tileUrl = resolveTileUrl(metadata.tileUrl, tileBaseUrl);
+  const satelliteTileUrl = metadata.satelliteTileUrl
+    ? resolveTileUrl(metadata.satelliteTileUrl, tileBaseUrl) : undefined;
+  const selectedTileUrl = baseLayer === 'satellite' && satelliteTileUrl ? satelliteTileUrl : tileUrl;
   const nativeTileSizeBlocks = metadata.chunkSize * metadata.nativeTileSizeChunks;
   const initialSectorSize = 8192 / nativeTileSizeBlocks;
   const initialBounds = latLngBounds([[0, 0], [initialSectorSize, initialSectorSize]]);
@@ -278,7 +282,7 @@ export function AdminMapTab({
         >
           <InvalidateMapSize active={displayMode} />
           <SignedZTileLayer
-            url={tileUrl}
+            url={selectedTileUrl}
             tileSize={metadata.tileSize}
             minZoom={metadata.minZoom}
             maxZoom={metadata.nativeZoom}
@@ -358,6 +362,8 @@ export function AdminMapTab({
           {layersOpen && <div className="pointer-events-auto w-full rounded-md border border-border bg-background/90 p-3 text-sm shadow-lg backdrop-blur">
             <div className="mb-2 text-xs font-medium text-muted-foreground">{t('mapLayers')}</div>
             <div className="flex flex-col gap-2">
+              {satelliteTileUrl && <LayerToggle label={t('mapLayerSatellite')} checked={baseLayer === 'satellite'}
+                onChange={(checked) => setBaseLayer(checked ? 'satellite' : 'surface')} />}
               <LayerToggle label={t('mapLayerAutoRefresh')} checked={visible.autoRefresh}
                 onChange={(checked) => setVisible((value) => ({ ...value, autoRefresh: checked }))} />
               <LayerToggle label={t('mapLayerSectors')} checked={visible.sectors}

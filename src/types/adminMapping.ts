@@ -21,6 +21,7 @@ export interface MapMetadata {
   generatedTileBounds: MapBounds;
   updatedAt: string;
   tileUrl: string;
+  satelliteTileUrl?: string;
 }
 
 export type ServerMapResponse =
