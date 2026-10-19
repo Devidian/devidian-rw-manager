@@ -20,6 +20,7 @@ import Index from './pages/Index';
 import ServerDetailPage from './pages/ServerDetailPage';
 import ServerListPage from './pages/ServerListPage';
 import PlayerListPage from './pages/PlayerListPage';
+import { uniqueOnlinePlayers } from '@/lib/onlinePlayers';
 import PlayerProfilePage from './pages/PlayerProfilePage';
 import StatisticsPage from './pages/StatisticsPage';
 import GlobalIntercomChatPage from './pages/GlobalIntercomChatPage';
@@ -72,7 +73,7 @@ function Layout() {
         <div className="min-h-screen flex w-full">
           <AppSidebar
             servers={pinnedServerList}
-            onlinePlayerCount={serverList.reduce((total, server) => total + (server.onlinePlayers?.length ?? 0), 0)}
+            onlinePlayerCount={uniqueOnlinePlayers(serverList).length}
           />
 
           <div className="flex flex-col flex-1 min-w-0">

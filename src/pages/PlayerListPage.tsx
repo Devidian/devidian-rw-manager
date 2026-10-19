@@ -9,6 +9,7 @@ import { PlayerNameLink } from '@/components/PlayerNameLink';
 import { RichText } from '@/components/RichText';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getServerCapacity, getServerDisplayName, getServerSecondaryName } from '@/lib/serverDisplay';
+import { uniqueOnlinePlayers } from '@/lib/onlinePlayers';
 
 interface OnlinePlayerRow {
   serverId: string;
@@ -25,9 +26,9 @@ export default function PlayerListPage() {
   const { isAuthenticated } = useAuth();
   const { serverList } = useServerContext();
 
-  const players = useMemo(() => serverList.flatMap(server => {
+  const players = useMemo(() => uniqueOnlinePlayers(serverList).map(({ server, player }) => {
     const capacity = getServerCapacity(server);
-    return (server.onlinePlayers ?? []).map(player => ({
+    return {
       serverId: server.id,
       serverName: getServerDisplayName(server),
       serverSecondaryName: getServerSecondaryName(server),
@@ -35,7 +36,7 @@ export default function PlayerListPage() {
       uid: player.uid,
       platform: player.platform,
       capacity,
-    }));
+    };
   }).sort((left, right) => {
     const capacity = right.capacity.current - left.capacity.current;
     if (capacity !== 0) return capacity;

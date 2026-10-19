@@ -16,6 +16,7 @@
 
 ### Fixed
 
+* show each online player once when multiple server addresses return the same player list; prefer the address most recently advertised by the master list
 * format server names in player profiles with the same RichText renderer used by server cards
 * align month and ISO-week statistics with the selected local calendar period
 * avoid redrawing unchanged global statistics during unrelated updates

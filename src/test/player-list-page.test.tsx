@@ -7,7 +7,7 @@ const state = vi.hoisted(() => ({
   isAuthenticated: false,
 }));
 
-const serverList: ServerWithStatus[] = [
+const baseServerList: ServerWithStatus[] = [
   {
     id: 'quiet-server',
     label: 'Quiet Server',
@@ -33,6 +33,7 @@ const serverList: ServerWithStatus[] = [
     onlinePlayers: [{ id: 2, name: 'Steam Player', uid: '76561198000000000', platform: 'Steam', ping: 10 }],
   },
 ];
+let serverList = baseServerList;
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string, params?: Record<string, unknown>) => params ? `${key}:${JSON.stringify(params)}` : key }),
@@ -49,6 +50,7 @@ const { default: PlayerListPage } = await import('@/pages/PlayerListPage');
 describe('player list page', () => {
   beforeEach(() => {
     state.isAuthenticated = false;
+    serverList = baseServerList;
   });
 
   it('lists online players by descending server capacity and links their server', () => {
@@ -71,5 +73,26 @@ describe('player list page', () => {
     rerender(<MemoryRouter><PlayerListPage /></MemoryRouter>);
     expect(screen.getByRole('link', { name: '76561198000000000' })).toHaveAttribute('href', 'https://steamcommunity.com/profiles/76561198000000000');
     expect(screen.getByText('standalone-player-uid')).toBeInTheDocument();
+  });
+
+  it('shows one player for two server addresses and follows a master-list address change', () => {
+    const active = { ...baseServerList[1], lastSeen: '2026-10-19T04:00:00.000Z' };
+    const oldAddress = {
+      ...active,
+      id: 'old-address',
+      queryUrl: 'https://old.example',
+      lastSeen: '2026-10-15T04:00:00.000Z',
+    };
+    serverList = [baseServerList[0], oldAddress, active];
+
+    const { container, rerender } = render(<MemoryRouter><PlayerListPage /></MemoryRouter>);
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(screen.getByText('playerListSummary:{"count":2}')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Busy Server' })).toHaveAttribute('href', '/server/busy-server');
+
+    serverList = [baseServerList[0], { ...oldAddress, lastSeen: '2026-10-20T04:00:00.000Z' }, active];
+    rerender(<MemoryRouter><PlayerListPage /></MemoryRouter>);
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'Busy Server' })).toHaveAttribute('href', '/server/old-address');
   });
 });
