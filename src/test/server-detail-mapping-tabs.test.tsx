@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServerWithStatus } from '@/types/server';
@@ -233,6 +233,32 @@ describe('server detail mapping tabs', () => {
 
     expect(screen.getAllByText('7656*********0001')).toHaveLength(2);
     expect(screen.queryByRole('link', { name: '76561198000000001' })).not.toBeInTheDocument();
+  });
+
+  it('shows stored group, playtime, and health for the matching online UID', () => {
+    state.dbPlayers = [
+      { uid: 'other-player', name: 'Online Steam', permissiongroup: 'Wrong Group', playtime: 36000, health: 10 },
+      { uid: '76561198000000001', name: 'Stored Name', permissiongroup: 'Builders', playtime: 7200, health: 80, hunger: 60, thirst: 0 },
+    ];
+    const target = server();
+    target.onlinePlayers = [
+      ...target.onlinePlayers!,
+      { id: 2, uid: 'not-in-database', name: 'New Player', platform: 'Steam', ping: 15 },
+    ];
+    render(<TooltipProvider><ServerDetail server={target} onRefresh={vi.fn()} /></TooltipProvider>);
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /^players/ }), { button: 0, ctrlKey: false });
+
+    const matchedRow = screen.getAllByText('Online Steam')[0].closest('tr')!;
+    expect(within(matchedRow).getByText('Builders')).toBeInTheDocument();
+    expect(within(matchedRow).getByText('2h')).toBeInTheDocument();
+    expect(within(matchedRow).getByText('80')).toBeInTheDocument();
+    expect(within(matchedRow).getByText('60')).toBeInTheDocument();
+    expect(within(matchedRow).getByText('0')).toBeInTheDocument();
+    expect(within(matchedRow).queryByText('Wrong Group')).not.toBeInTheDocument();
+
+    const missingRow = screen.getByText('New Player').closest('tr')!;
+    expect(within(missingRow).getAllByText('—')).toHaveLength(2);
+    expect(within(missingRow).getByText('-')).toBeInTheDocument();
   });
 });
 

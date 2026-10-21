@@ -166,9 +166,11 @@ function sortString(value: string | number | undefined): string {
 function OnlinePlayersSection({
   players,
   authenticated,
+  databasePlayers,
 }: {
   players: ServerPlayerListPlayer[];
   authenticated: boolean;
+  databasePlayers: Map<string, DbPlayer>;
 }) {
   const { t } = useTranslation();
   if (players.length === 0) {
@@ -188,17 +190,41 @@ function OnlinePlayersSection({
             <TableHead>{t('uid')}</TableHead>
             <TableHead>{t('platform')}</TableHead>
             <TableHead>{t('ping')}</TableHead>
+            <TableHead>{t('group')}</TableHead>
+            <TableHead>{t('playtime')}</TableHead>
+            <TableHead>{t('health')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {players.map(p => (
-            <TableRow key={p.uid ?? p.id} className="hover:bg-muted/20">
-              <TableCell className="font-medium"><PlayerNameLink uid={p.uid} name={p.name} /></TableCell>
-              <TableCell><PlayerUid uid={p.uid} platform={p.platform} authenticated={authenticated} /></TableCell>
-              <TableCell className="text-muted-foreground text-sm">{p.platform || '-'}</TableCell>
-              <TableCell className="text-muted-foreground text-sm">{displayNumber(p.ping, ' ms')}</TableCell>
-            </TableRow>
-          ))}
+          {players.map(p => {
+            const stored = databasePlayers.get(p.uid);
+            const hasHealth = stored && [stored.health, stored.hunger, stored.thirst].some(value => typeof value === 'number');
+            return (
+              <TableRow key={p.uid ?? p.id} className="hover:bg-muted/20">
+                <TableCell className="font-medium"><PlayerNameLink uid={p.uid} name={p.name} /></TableCell>
+                <TableCell><PlayerUid uid={p.uid} platform={p.platform} authenticated={authenticated} /></TableCell>
+                <TableCell className="text-muted-foreground text-sm">{p.platform || '-'}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{displayNumber(p.ping, ' ms')}</TableCell>
+                <TableCell>
+                  {stored?.permissiongroup ? (
+                    <Badge variant="secondary" className="text-xs py-0 h-5">{stored.permissiongroup}</Badge>
+                  ) : '—'}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {typeof stored?.playtime === 'number' ? formatPlaytime(stored.playtime) : '-'}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {hasHealth ? (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <HealthMetric icon={Heart} label={t('health')} value={stored.health} />
+                      <HealthMetric icon={Drumstick} label={t('hunger')} value={stored.hunger} />
+                      <HealthMetric icon={Droplets} label={t('thirst')} value={stored.thirst} />
+                    </div>
+                  ) : '—'}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
@@ -341,6 +367,10 @@ function PlayersTab({
   const { players: dbPlayers, loading: dbLoading, error: dbError } = databasePlayers;
   const hasDbAccess = !!apiBaseUrl;
   const onlinePlayers = server.onlinePlayers ?? [];
+  const databasePlayersByUid = useMemo(
+    () => new Map(dbPlayers.map(player => [player.uid, player])),
+    [dbPlayers],
+  );
 
   // Sort state
   const [sortField, setSortField] = useState<PlayerSortField>('name');
@@ -401,7 +431,11 @@ function PlayersTab({
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <OnlinePlayersSection players={onlinePlayers} authenticated={isAuthenticated} />
+          <OnlinePlayersSection
+            players={onlinePlayers}
+            authenticated={isAuthenticated}
+            databasePlayers={hasDbAccess && !dbLoading && !dbError ? databasePlayersByUid : new Map()}
+          />
         </CardContent>
       </Card>
 
