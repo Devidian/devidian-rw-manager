@@ -562,25 +562,42 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
   const [buckets, setBuckets] = useState<ServerStatisticsBucket[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const serverId = server.id;
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    adapter.getServerStatistics(server, statisticsRange(view, dateValue))
-      .then((payload) => {
-        if (!cancelled) setBuckets(payload.buckets);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'UNKNOWN_ERROR');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    let inFlight = false;
+    let snapshot = '';
+    const refresh = () => {
+      if (inFlight) return;
+      inFlight = true;
+      adapter.getServerStatistics({ id: serverId }, statisticsRange(view, dateValue))
+        .then((payload) => {
+          if (cancelled) return;
+          const nextSnapshot = JSON.stringify(buildServerStatisticsPoints(payload.buckets, view, dateValue, 'en'));
+          if (nextSnapshot !== snapshot) {
+            snapshot = nextSnapshot;
+            setBuckets(payload.buckets);
+          }
+          setError(null);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) setError(err instanceof Error ? err.message : 'UNKNOWN_ERROR');
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!cancelled) setLoading(false);
+        });
+    };
+    refresh();
+    const interval = window.setInterval(refresh, 30_000);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
-  }, [adapter, dateValue, server, view]);
+  }, [adapter, dateValue, serverId, view]);
 
   const points = useMemo(
     () => buildServerStatisticsPoints(buckets, view, dateValue, i18n.language || 'en'),
@@ -617,7 +634,7 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
         </div>
       </CardHeader>
       <CardContent>
-        {loading && (
+        {loading && !hasData && (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-6">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('loadingStatistics')}
@@ -634,7 +651,7 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
             <p className="font-medium">{t('noStatistics')}</p>
           </div>
         )}
-        {!loading && !error && hasData && (
+        {hasData && (
           <div className="space-y-5">
             <ChartContainer
               config={{
@@ -648,8 +665,8 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
                 <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
                 <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="averagePlayers" fill="var(--color-averagePlayers)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="maxPlayers" fill="var(--color-maxPlayers)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="averagePlayers" fill="var(--color-averagePlayers)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                <Bar dataKey="maxPlayers" fill="var(--color-maxPlayers)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </ChartContainer>
             <ChartContainer
@@ -663,7 +680,7 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
                 <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
                 <YAxis tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="availability" stroke="var(--color-availability)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="availability" stroke="var(--color-availability)" strokeWidth={2} dot={false} isAnimationActive={false} />
               </LineChart>
             </ChartContainer>
           </div>

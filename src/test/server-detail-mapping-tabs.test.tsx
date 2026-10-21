@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServerWithStatus } from '@/types/server';
@@ -8,12 +8,14 @@ const state = vi.hoisted(() => ({
   mapAvailable: true,
   fixedBackendUrl: 'https://manager.example' as string | null,
   getServerStatistics: vi.fn(),
+  adapter: null as unknown as { getServerStatistics: ReturnType<typeof vi.fn> },
   isAuthenticated: true,
   userSteamId: 'steam-admin',
   dbPlayers: [] as Array<{ uid: string; name?: string; platform?: string }>,
   fetchPlayers: vi.fn(),
   useMapLayers: vi.fn(),
 }));
+state.adapter = { getServerStatistics: state.getServerStatistics };
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
@@ -30,7 +32,7 @@ vi.mock('@/context/StorageModeContext', () => ({
     mode: 'fixed',
     fixedBackendUrl: state.fixedBackendUrl,
     backendUrl: null,
-    adapter: { getServerStatistics: state.getServerStatistics },
+    adapter: state.adapter,
   }),
 }));
 vi.mock('@/context/AuthContext', () => ({
@@ -160,6 +162,42 @@ describe('server detail mapping tabs', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'statistics' }), { button: 0, ctrlKey: false });
 
     await waitFor(() => expect(state.getServerStatistics).toHaveBeenCalled());
+  });
+
+  it('keeps server charts mounted through live status updates and statistics refreshes', async () => {
+    const currentBucket = {
+      id: 'bucket-today', serverId: 'server-1', hourStart: new Date().toISOString(),
+      sampleCount: 2, onlineSampleCount: 2, playerSampleTotal: 6,
+      maxPlayers: 4, averagePlayers: 3, availability: 100, updatedAt: new Date().toISOString(),
+    };
+    state.getServerStatistics.mockResolvedValue({ serverId: 'server-1', buckets: [currentBucket] });
+    let refresh: (() => void) | undefined;
+    const setInterval = vi.spyOn(window, 'setInterval').mockImplementation((callback) => {
+      refresh = callback as () => void;
+      return 1;
+    });
+    try {
+      const initialServer = server();
+      const { container, rerender } = render(<ServerDetail server={initialServer} onRefresh={vi.fn()} />);
+      fireEvent.mouseDown(screen.getByRole('tab', { name: 'statistics' }), { button: 0, ctrlKey: false });
+      await waitFor(() => expect(container.querySelectorAll('[data-chart]')).toHaveLength(2));
+      const charts = [...container.querySelectorAll('[data-chart]')];
+      const requestCount = state.getServerStatistics.mock.calls.length;
+
+      rerender(<ServerDetail server={{ ...initialServer, lastChecked: new Date(), status: 'loading' }} onRefresh={vi.fn()} />);
+      expect(state.getServerStatistics).toHaveBeenCalledTimes(requestCount);
+      expect([...container.querySelectorAll('[data-chart]')]).toEqual(charts);
+
+      let resolveRefresh: (value: { serverId: string; buckets: typeof currentBucket[] }) => void = () => {};
+      state.getServerStatistics.mockImplementationOnce(() => new Promise((resolve) => { resolveRefresh = resolve; }));
+      act(() => { refresh?.(); });
+      expect(container.querySelectorAll('[data-chart]')).toHaveLength(2);
+      expect([...container.querySelectorAll('[data-chart]')]).toEqual(charts);
+      await act(async () => { resolveRefresh({ serverId: 'server-1', buckets: [{ ...currentBucket, averagePlayers: 5 }] }); });
+      expect([...container.querySelectorAll('[data-chart]')]).toEqual(charts);
+    } finally {
+      setInterval.mockRestore();
+    }
   });
 
   it('starts player baselines for the detail and keeps them across tab changes', async () => {
