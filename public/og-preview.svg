@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="OZ Server Manager — Rising World servers at a glance">
+  <defs>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop stop-color="#2b2119"/>
+      <stop offset="1" stop-color="#141713"/>
+    </linearGradient>
+    <linearGradient id="panel" x2="0" y2="1">
+      <stop stop-color="#342a20"/>
+      <stop offset="1" stop-color="#201d18"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <path d="M0 490 Q300 385 600 515 T1200 470 V630 H0Z" fill="#294032" opacity=".26"/>
+  <path d="M0 545 Q370 465 670 555 T1200 520 V630 H0Z" fill="#1e3529" opacity=".48"/>
+  <rect x="52" y="52" width="1096" height="526" rx="28" fill="none" stroke="#99733a" stroke-width="2" opacity=".55"/>
+  <rect x="98" y="101" width="88" height="88" rx="20" fill="#b88a3f"/>
+  <rect x="118" y="122" width="48" height="14" rx="4" fill="#211a16"/>
+  <rect x="118" y="142" width="48" height="14" rx="4" fill="#211a16"/>
+  <circle cx="156" cy="129" r="3" fill="#b88a3f"/>
+  <circle cx="156" cy="149" r="3" fill="#b88a3f"/>
+  <text x="211" y="138" fill="#c89b54" font-family="DejaVu Sans, sans-serif" font-size="26" font-weight="bold" letter-spacing="5">OMEGA ZIRKEL</text>
+  <text x="98" y="300" fill="#f4ede2" font-family="DejaVu Sans, sans-serif" font-size="71" font-weight="bold">OZ Server Manager</text>
+  <text x="101" y="359" fill="#c9ae82" font-family="DejaVu Sans, sans-serif" font-size="32">Rising World servers at a glance</text>
+  <rect x="98" y="430" width="570" height="91" rx="15" fill="url(#panel)" stroke="#79603e"/>
+  <circle cx="136" cy="475" r="10" fill="#62b477"/>
+  <text x="162" y="483" fill="#f4ede2" font-family="DejaVu Sans, sans-serif" font-size="25">Live status  ·  Players  ·  Maps  ·  Statistics</text>
+  <g opacity=".9">
+    <rect x="820" y="166" width="276" height="290" rx="22" fill="url(#panel)" stroke="#80633c" stroke-width="2"/>
+    <text x="853" y="217" fill="#c89b54" font-family="DejaVu Sans, sans-serif" font-size="19" font-weight="bold">SERVER OVERVIEW</text>
+    <rect x="851" y="247" width="214" height="53" rx="10" fill="#3b3328"/>
+    <circle cx="876" cy="273" r="7" fill="#62b477"/>
+    <rect x="895" y="264" width="135" height="8" rx="4" fill="#d0b98f"/>
+    <rect x="895" y="279" width="93" height="5" rx="2.5" fill="#796c59"/>
+    <rect x="851" y="313" width="214" height="53" rx="10" fill="#3b3328"/>
+    <circle cx="876" cy="339" r="7" fill="#62b477"/>
+    <rect x="895" y="330" width="115" height="8" rx="4" fill="#d0b98f"/>
+    <rect x="895" y="345" width="79" height="5" rx="2.5" fill="#796c59"/>
+    <rect x="851" y="379" width="214" height="53" rx="10" fill="#3b3328"/>
+    <circle cx="876" cy="405" r="7" fill="#b88a3f"/>
+    <rect x="895" y="396" width="127" height="8" rx="4" fill="#d0b98f"/>
+    <rect x="895" y="411" width="101" height="5" rx="2.5" fill="#796c59"/>
+  </g>
+</svg>
