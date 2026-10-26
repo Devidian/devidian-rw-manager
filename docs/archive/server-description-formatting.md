@@ -21,7 +21,7 @@ not decoded. Existing safe RichText rendering handles tags without HTML injectio
 - [x] Add regression cases for real/escaped newlines, literal escapes and HTML safety.
 - [x] Render safe `<align=left|center|right|justify>` and `<br>` description tags.
 - [x] Run tests (84 passed), lint (0 errors, 32 warnings), build and diff checks.
-- [ ] Verify published website after rollout.
+- [x] Verify published website after rollout on 2026-09-23.
 
 ## Validation and rollback
 Use existing component tests for multiline whitespace and safe markup rendering.

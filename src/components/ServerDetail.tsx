@@ -20,6 +20,7 @@ import {
   Map as MapIcon, Plug, BarChart3, Drumstick, Droplets, Store,
 } from 'lucide-react';
 import { useDatabasePlayers } from '@/hooks/useDatabasePlayers';
+import { PlayerNameLink } from '@/components/PlayerNameLink';
 import type { UseDatabasePlayersResult } from '@/hooks/useDatabasePlayers';
 import { useServerConfig } from '@/hooks/useServerConfig';
 import { useServerContext } from '@/context/ServerContext';
@@ -165,9 +166,11 @@ function sortString(value: string | number | undefined): string {
 function OnlinePlayersSection({
   players,
   authenticated,
+  databasePlayers,
 }: {
   players: ServerPlayerListPlayer[];
   authenticated: boolean;
+  databasePlayers: Map<string, DbPlayer>;
 }) {
   const { t } = useTranslation();
   if (players.length === 0) {
@@ -187,17 +190,41 @@ function OnlinePlayersSection({
             <TableHead>{t('uid')}</TableHead>
             <TableHead>{t('platform')}</TableHead>
             <TableHead>{t('ping')}</TableHead>
+            <TableHead>{t('group')}</TableHead>
+            <TableHead>{t('playtime')}</TableHead>
+            <TableHead>{t('health')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {players.map(p => (
-            <TableRow key={p.uid ?? p.id} className="hover:bg-muted/20">
-              <TableCell className="font-medium">{p.name || '-'}</TableCell>
-              <TableCell><PlayerUid uid={p.uid} platform={p.platform} authenticated={authenticated} /></TableCell>
-              <TableCell className="text-muted-foreground text-sm">{p.platform || '-'}</TableCell>
-              <TableCell className="text-muted-foreground text-sm">{displayNumber(p.ping, ' ms')}</TableCell>
-            </TableRow>
-          ))}
+          {players.map(p => {
+            const stored = databasePlayers.get(p.uid);
+            const hasHealth = stored && [stored.health, stored.hunger, stored.thirst].some(value => typeof value === 'number');
+            return (
+              <TableRow key={p.uid ?? p.id} className="hover:bg-muted/20">
+                <TableCell className="font-medium"><PlayerNameLink uid={p.uid} name={p.name} /></TableCell>
+                <TableCell><PlayerUid uid={p.uid} platform={p.platform} authenticated={authenticated} /></TableCell>
+                <TableCell className="text-muted-foreground text-sm">{p.platform || '-'}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{displayNumber(p.ping, ' ms')}</TableCell>
+                <TableCell>
+                  {stored?.permissiongroup ? (
+                    <Badge variant="secondary" className="text-xs py-0 h-5">{stored.permissiongroup}</Badge>
+                  ) : '—'}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {typeof stored?.playtime === 'number' ? formatPlaytime(stored.playtime) : '-'}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {hasHealth ? (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <HealthMetric icon={Heart} label={t('health')} value={stored.health} />
+                      <HealthMetric icon={Drumstick} label={t('hunger')} value={stored.hunger} />
+                      <HealthMetric icon={Droplets} label={t('thirst')} value={stored.thirst} />
+                    </div>
+                  ) : '—'}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
@@ -340,6 +367,10 @@ function PlayersTab({
   const { players: dbPlayers, loading: dbLoading, error: dbError } = databasePlayers;
   const hasDbAccess = !!apiBaseUrl;
   const onlinePlayers = server.onlinePlayers ?? [];
+  const databasePlayersByUid = useMemo(
+    () => new Map(dbPlayers.map(player => [player.uid, player])),
+    [dbPlayers],
+  );
 
   // Sort state
   const [sortField, setSortField] = useState<PlayerSortField>('name');
@@ -400,7 +431,11 @@ function PlayersTab({
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <OnlinePlayersSection players={onlinePlayers} authenticated={isAuthenticated} />
+          <OnlinePlayersSection
+            players={onlinePlayers}
+            authenticated={isAuthenticated}
+            databasePlayers={hasDbAccess && !dbLoading && !dbError ? databasePlayersByUid : new Map()}
+          />
         </CardContent>
       </Card>
 
@@ -474,7 +509,7 @@ function PlayersTab({
                       <TableBody>
                         {pagedDb.map(player => (
                           <TableRow key={player.uid} className="hover:bg-muted/20">
-                            <TableCell className="font-medium">{player.name || '-'}</TableCell>
+                            <TableCell className="font-medium"><PlayerNameLink uid={player.uid} name={player.name} /></TableCell>
                             <TableCell><PlayerUid uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>
                             <TableCell className="text-muted-foreground text-sm">{player.platform || '-'}</TableCell>
                             <TableCell>
@@ -561,25 +596,42 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
   const [buckets, setBuckets] = useState<ServerStatisticsBucket[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const serverId = server.id;
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    adapter.getServerStatistics(server, statisticsRange(view, dateValue))
-      .then((payload) => {
-        if (!cancelled) setBuckets(payload.buckets);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'UNKNOWN_ERROR');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    let inFlight = false;
+    let snapshot = '';
+    const refresh = () => {
+      if (inFlight) return;
+      inFlight = true;
+      adapter.getServerStatistics({ id: serverId }, statisticsRange(view, dateValue))
+        .then((payload) => {
+          if (cancelled) return;
+          const nextSnapshot = JSON.stringify(buildServerStatisticsPoints(payload.buckets, view, dateValue, 'en'));
+          if (nextSnapshot !== snapshot) {
+            snapshot = nextSnapshot;
+            setBuckets(payload.buckets);
+          }
+          setError(null);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) setError(err instanceof Error ? err.message : 'UNKNOWN_ERROR');
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!cancelled) setLoading(false);
+        });
+    };
+    refresh();
+    const interval = window.setInterval(refresh, 30_000);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
-  }, [adapter, dateValue, server, view]);
+  }, [adapter, dateValue, serverId, view]);
 
   const points = useMemo(
     () => buildServerStatisticsPoints(buckets, view, dateValue, i18n.language || 'en'),
@@ -616,7 +668,7 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
         </div>
       </CardHeader>
       <CardContent>
-        {loading && (
+        {loading && !hasData && (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-6">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('loadingStatistics')}
@@ -633,7 +685,7 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
             <p className="font-medium">{t('noStatistics')}</p>
           </div>
         )}
-        {!loading && !error && hasData && (
+        {hasData && (
           <div className="space-y-5">
             <ChartContainer
               config={{
@@ -647,8 +699,8 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
                 <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
                 <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="averagePlayers" fill="var(--color-averagePlayers)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="maxPlayers" fill="var(--color-maxPlayers)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="averagePlayers" fill="var(--color-averagePlayers)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                <Bar dataKey="maxPlayers" fill="var(--color-maxPlayers)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </ChartContainer>
             <ChartContainer
@@ -662,7 +714,7 @@ function ServerStatisticsTab({ server }: { server: ServerConfig }) {
                 <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
                 <YAxis tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="availability" stroke="var(--color-availability)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="availability" stroke="var(--color-availability)" strokeWidth={2} dot={false} isAnimationActive={false} />
               </LineChart>
             </ChartContainer>
           </div>
@@ -978,7 +1030,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
 
         {hasBackend && adminMapping.pluginsAvailable && (
           <TabsContent value="plugins" className="mt-4">
-            <PluginsTab plugins={adminMapping.plugins} latestVersions={adminMapping.latestPluginVersions} loading={adminMapping.pluginsLoading} error={adminMapping.pluginsError} />
+            <PluginsTab plugins={adminMapping.plugins} latestVersions={adminMapping.latestPluginVersions} nativeAccess={adminMapping.nativePluginAccess} loading={adminMapping.pluginsLoading} error={adminMapping.pluginsError} />
           </TabsContent>
         )}
 

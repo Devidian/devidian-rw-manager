@@ -113,6 +113,18 @@ export async function updateSelf(
   });
 }
 
+export async function updateIntercomChannels(
+  baseUrl: string,
+  token: string,
+  channels: string[],
+): Promise<{ user: AuthUser }> {
+  return authFetch(`${baseUrl}/api/auth/self/intercom-channels`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+    body: JSON.stringify({ channels }),
+  });
+}
+
 export async function deleteSelf(
   baseUrl: string,
   token: string,

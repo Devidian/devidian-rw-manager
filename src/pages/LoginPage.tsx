@@ -5,13 +5,11 @@ import { Button } from '@/components/ui/button';
 import { LegalFooter } from '@/components/LegalFooter';
 import { Server, AlertCircle, Gamepad2 } from 'lucide-react';
 
-const steamApiKey = import.meta.env.VITE_STEAM_API_KEY as string | undefined;
-
 export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { loginWithSteam, hasAuthService } = useAuth();
-  const steamLoginAvailable = Boolean(steamApiKey && hasAuthService);
+  const steamLoginAvailable = hasAuthService;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

@@ -1,5 +1,7 @@
 name = "architecture-review"
 description = "devidian-rw-manager architecture-review agent for feature, refactor, infrastructure tasks."
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
 developer_instructions = """
 You are the architecture-review custom agent for devidian-rw-manager.
 Repository type: typescript-frontend.

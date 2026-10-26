@@ -55,7 +55,7 @@ describe('admin mapping contract', () => {
   });
 
   it('treats a legacy plugin response without availability as unavailable', () => {
-    expect(parsePluginsResponse({ items: [] })).toEqual({ available: false, items: [], latestVersions: {} });
+    expect(parsePluginsResponse({ items: [] })).toEqual({ available: false, nativeAccess: 'unavailable', items: [], latestVersions: {} });
   });
 
   it('maps block-space areas and players into native tile coordinates', () => {

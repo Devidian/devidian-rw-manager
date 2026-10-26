@@ -16,7 +16,7 @@ export function startOfLocalDay(value: string): Date {
 }
 
 export function isoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
+  return localIsoDate(value);
 }
 
 function localIsoDate(value: Date): string {
@@ -64,7 +64,8 @@ export function statisticsPickerValue(view: StatisticsView, value = new Date()):
     const weekday = date.getDay() || 7;
     date.setDate(date.getDate() + 4 - weekday);
     const yearStart = new Date(date.getFullYear(), 0, 1);
-    const week = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    const dayOfYear = Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(yearStart.getFullYear(), 0, 1)) / 86400000);
+    const week = Math.ceil((dayOfYear + 1) / 7);
     return `${date.getFullYear()}-W${String(week).padStart(2, '0')}`;
   }
   return localIsoDate(value);
@@ -92,7 +93,7 @@ function groupBuckets(
   if (view === 'weekday') {
     return Array.from({ length: 7 }, (_, index) => {
       const dayBuckets = buckets.filter((bucket) => new Date(bucket.hourStart).getDay() === index);
-      const label = formatter.format(addDays(new Date('2026-06-21T00:00:00.000Z'), index));
+      const label = formatter.format(new Date(2026, 5, 21 + index));
       return aggregate(label, dayBuckets);
     });
   }
@@ -107,7 +108,7 @@ function groupBuckets(
     if (date < start || date >= end) continue;
     const key = view === 'day'
       ? date.getHours().toString().padStart(2, '0') + ':00'
-      : isoDate(date);
+      : localIsoDate(date);
     grouped.set(key, [...(grouped.get(key) ?? []), bucket]);
   }
 
@@ -118,10 +119,10 @@ function groupBuckets(
     });
   }
 
-  const days = view === 'week' ? 7 : Math.ceil((end.getTime() - start.getTime()) / 86400000);
+  const days = view === 'week' ? 7 : new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
   return Array.from({ length: days }, (_, index) => {
     const date = addDays(start, index);
-    const label = isoDate(date);
+    const label = localIsoDate(date);
     return aggregate(label, grouped.get(label) ?? []);
   });
 }

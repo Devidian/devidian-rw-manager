@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServerWithStatus } from '@/types/server';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -7,18 +8,21 @@ const state = vi.hoisted(() => ({
   mapAvailable: true,
   fixedBackendUrl: 'https://manager.example' as string | null,
   getServerStatistics: vi.fn(),
+  adapter: null as unknown as { getServerStatistics: ReturnType<typeof vi.fn> },
   isAuthenticated: true,
   userSteamId: 'steam-admin',
   dbPlayers: [] as Array<{ uid: string; name?: string; platform?: string }>,
   fetchPlayers: vi.fn(),
   useMapLayers: vi.fn(),
 }));
+state.adapter = { getServerStatistics: state.getServerStatistics };
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }));
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
 }));
 vi.mock('@/context/ServerContext', () => ({
   useServerContext: () => ({ updateServer: vi.fn(), setServerBlocked: vi.fn() }),
@@ -28,7 +32,7 @@ vi.mock('@/context/StorageModeContext', () => ({
     mode: 'fixed',
     fixedBackendUrl: state.fixedBackendUrl,
     backendUrl: null,
-    adapter: { getServerStatistics: state.getServerStatistics },
+    adapter: state.adapter,
   }),
 }));
 vi.mock('@/context/AuthContext', () => ({
@@ -160,6 +164,42 @@ describe('server detail mapping tabs', () => {
     await waitFor(() => expect(state.getServerStatistics).toHaveBeenCalled());
   });
 
+  it('keeps server charts mounted through live status updates and statistics refreshes', async () => {
+    const currentBucket = {
+      id: 'bucket-today', serverId: 'server-1', hourStart: new Date().toISOString(),
+      sampleCount: 2, onlineSampleCount: 2, playerSampleTotal: 6,
+      maxPlayers: 4, averagePlayers: 3, availability: 100, updatedAt: new Date().toISOString(),
+    };
+    state.getServerStatistics.mockResolvedValue({ serverId: 'server-1', buckets: [currentBucket] });
+    let refresh: (() => void) | undefined;
+    const setInterval = vi.spyOn(window, 'setInterval').mockImplementation((callback) => {
+      refresh = callback as () => void;
+      return 1;
+    });
+    try {
+      const initialServer = server();
+      const { container, rerender } = render(<ServerDetail server={initialServer} onRefresh={vi.fn()} />);
+      fireEvent.mouseDown(screen.getByRole('tab', { name: 'statistics' }), { button: 0, ctrlKey: false });
+      await waitFor(() => expect(container.querySelectorAll('[data-chart]')).toHaveLength(2));
+      const charts = [...container.querySelectorAll('[data-chart]')];
+      const requestCount = state.getServerStatistics.mock.calls.length;
+
+      rerender(<ServerDetail server={{ ...initialServer, lastChecked: new Date(), status: 'loading' }} onRefresh={vi.fn()} />);
+      expect(state.getServerStatistics).toHaveBeenCalledTimes(requestCount);
+      expect([...container.querySelectorAll('[data-chart]')]).toEqual(charts);
+
+      let resolveRefresh: (value: { serverId: string; buckets: typeof currentBucket[] }) => void = () => {};
+      state.getServerStatistics.mockImplementationOnce(() => new Promise((resolve) => { resolveRefresh = resolve; }));
+      act(() => { refresh?.(); });
+      expect(container.querySelectorAll('[data-chart]')).toHaveLength(2);
+      expect([...container.querySelectorAll('[data-chart]')]).toEqual(charts);
+      await act(async () => { resolveRefresh({ serverId: 'server-1', buckets: [{ ...currentBucket, averagePlayers: 5 }] }); });
+      expect([...container.querySelectorAll('[data-chart]')]).toEqual(charts);
+    } finally {
+      setInterval.mockRestore();
+    }
+  });
+
   it('starts player baselines for the detail and keeps them across tab changes', async () => {
     render(<ServerDetail server={server()} onRefresh={vi.fn()} />);
 
@@ -193,6 +233,32 @@ describe('server detail mapping tabs', () => {
 
     expect(screen.getAllByText('7656*********0001')).toHaveLength(2);
     expect(screen.queryByRole('link', { name: '76561198000000001' })).not.toBeInTheDocument();
+  });
+
+  it('shows stored group, playtime, and health for the matching online UID', () => {
+    state.dbPlayers = [
+      { uid: 'other-player', name: 'Online Steam', permissiongroup: 'Wrong Group', playtime: 36000, health: 10 },
+      { uid: '76561198000000001', name: 'Stored Name', permissiongroup: 'Builders', playtime: 7200, health: 80, hunger: 60, thirst: 0 },
+    ];
+    const target = server();
+    target.onlinePlayers = [
+      ...target.onlinePlayers!,
+      { id: 2, uid: 'not-in-database', name: 'New Player', platform: 'Steam', ping: 15 },
+    ];
+    render(<TooltipProvider><ServerDetail server={target} onRefresh={vi.fn()} /></TooltipProvider>);
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /^players/ }), { button: 0, ctrlKey: false });
+
+    const matchedRow = screen.getAllByText('Online Steam')[0].closest('tr')!;
+    expect(within(matchedRow).getByText('Builders')).toBeInTheDocument();
+    expect(within(matchedRow).getByText('2h')).toBeInTheDocument();
+    expect(within(matchedRow).getByText('80')).toBeInTheDocument();
+    expect(within(matchedRow).getByText('60')).toBeInTheDocument();
+    expect(within(matchedRow).getByText('0')).toBeInTheDocument();
+    expect(within(matchedRow).queryByText('Wrong Group')).not.toBeInTheDocument();
+
+    const missingRow = screen.getByText('New Player').closest('tr')!;
+    expect(within(missingRow).getAllByText('—')).toHaveLength(2);
+    expect(within(missingRow).getByText('-')).toBeInTheDocument();
   });
 });
 

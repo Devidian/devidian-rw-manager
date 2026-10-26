@@ -44,6 +44,7 @@ export interface AuthUser {
   email?: string;
   steamId?: string;
   pinnedServers?: string[];
+  intercomChannels?: string[];
   role: 'guest' | 'user' | 'admin';
 }
 
@@ -59,6 +60,8 @@ export interface PublicUserInterface {
   role: UserRole;
   steamId?: string;
   pinnedServers: string[];
+  intercomChannels?: string[];
+  lastSeenAt?: string;
   createdAt: string;
 }
 

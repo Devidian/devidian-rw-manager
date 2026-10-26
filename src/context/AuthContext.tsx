@@ -23,6 +23,7 @@ interface AuthContextValue {
   handleSteamCallback: (search: string) => Promise<void>;
   disconnectSteam: () => Promise<void>;
   updateProfile: (data: { name: string }) => Promise<void>;
+  updateIntercomChannels: (channels: string[]) => Promise<void>;
   deleteAccount: () => Promise<void>;
   generateApiToken: () => Promise<string>;
   applyUserUpdate: (user: AuthUser) => void;
@@ -160,6 +161,13 @@ export function AuthProvider({
     setUser(res.user);
   }, [baseUrl]);
 
+  const updateIntercomChannels = useCallback(async (channels: string[]) => {
+    const token = getToken();
+    if (!token) throw new Error('missing auth token');
+    const res = await authApi.updateIntercomChannels(baseUrl, token, channels);
+    setUser(res.user);
+  }, [baseUrl]);
+
   const deleteAccount = useCallback(async () => {
     const token = getToken();
     if (!token) return;
@@ -198,6 +206,7 @@ export function AuthProvider({
       handleSteamCallback,
       disconnectSteam,
       updateProfile,
+      updateIntercomChannels,
       deleteAccount,
       generateApiToken,
       applyUserUpdate,

@@ -37,7 +37,7 @@ export interface StorageAdapter {
   unpinServer(id: string): Promise<AuthUser | null>;
   setServerBlocked(id: string, blocked: boolean): Promise<ServerConfig>;
   getServerLiveStatus(server: ServerConfig): Promise<ServerLiveStatusPayload>;
-  getServerStatistics(server: ServerConfig, range?: { from?: string; to?: string }): Promise<ServerStatisticsPayload>;
+  getServerStatistics(server: Pick<ServerConfig, 'id'>, range?: { from?: string; to?: string }): Promise<ServerStatisticsPayload>;
   getGlobalStatistics(range?: { from?: string; to?: string }): Promise<GlobalStatisticsPayload>;
 }
 
@@ -137,7 +137,7 @@ export class LocalStorageAdapter implements StorageAdapter {
     };
   }
 
-  async getServerStatistics(server: ServerConfig): Promise<ServerStatisticsPayload> {
+  async getServerStatistics(server: Pick<ServerConfig, 'id'>): Promise<ServerStatisticsPayload> {
     return {
       serverId: server.id,
       buckets: [],
@@ -269,7 +269,7 @@ export class BackendStorageAdapter implements StorageAdapter {
     return res.json() as Promise<ServerLiveStatusPayload>;
   }
 
-  async getServerStatistics(server: ServerConfig, range: { from?: string; to?: string } = {}): Promise<ServerStatisticsPayload> {
+  async getServerStatistics(server: Pick<ServerConfig, 'id'>, range: { from?: string; to?: string } = {}): Promise<ServerStatisticsPayload> {
     const params = new URLSearchParams();
     if (range.from) params.set('from', range.from);
     if (range.to) params.set('to', range.to);

@@ -5,6 +5,7 @@ import type { AuthUser } from '@/types/server';
 
 const state = vi.hoisted(() => ({
   user: null as AuthUser | null,
+  updateIntercomChannels: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -15,6 +16,7 @@ vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: state.user,
     isAuthenticated: state.user != null,
+    updateIntercomChannels: state.updateIntercomChannels,
   }),
 }));
 
@@ -58,6 +60,9 @@ const { default: GlobalIntercomChatPage } = await import('@/pages/GlobalIntercom
 describe('global intercom chat page', () => {
   beforeEach(() => {
     state.user = null;
+    state.updateIntercomChannels.mockReset().mockImplementation(async (channels: string[]) => {
+      if (state.user) state.user = { ...state.user, intercomChannels: channels };
+    });
     MockWebSocket.instances = [];
     vi.stubEnv('VITE_GLOBAL_INTERCOM_WS_URL', 'ws://relay.example/ws');
     vi.stubGlobal('WebSocket', MockWebSocket);
@@ -92,7 +97,7 @@ describe('global intercom chat page', () => {
     fireEvent.change(screen.getByLabelText('globalIntercomMessage'), { target: { value: 'Hello global' } });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
-    await waitFor(() => expect(MockWebSocket.instances[0].sent).toHaveLength(5));
+    await waitFor(() => expect(MockWebSocket.instances[0].sent).toHaveLength(6));
     expect(JSON.parse(MockWebSocket.instances[0].sent[1])).toMatchObject({
       event: 'playerOnline',
       payload: { playerName: 'Maik', playerUID: '7656' },
@@ -102,10 +107,14 @@ describe('global intercom chat page', () => {
       payload: { playerName: 'Maik', playerUID: '7656', channel: 'global' },
     });
     expect(JSON.parse(MockWebSocket.instances[0].sent[3])).toMatchObject({
+      event: 'playerJoinChannel',
+      payload: { playerName: 'Maik', playerUID: '7656', channel: 'web' },
+    });
+    expect(JSON.parse(MockWebSocket.instances[0].sent[4])).toMatchObject({
       event: 'serverPresenceSubscribe',
       payload: { channel: 'global' },
     });
-    const payload = JSON.parse(MockWebSocket.instances[0].sent[4]);
+    const payload = JSON.parse(MockWebSocket.instances[0].sent[5]);
     expect(payload).toMatchObject({
       event: 'broadcastMessage',
       payload: {
@@ -115,6 +124,18 @@ describe('global intercom chat page', () => {
         playerUID: '7656',
       },
     });
+  });
+
+  it('restores saved channels and joins a new channel through the user preference', async () => {
+    state.user = { id: 'user-1', username: 'Maik', role: 'user', pinnedServers: [], intercomChannels: ['global', 'web', 'trade'] };
+    renderPage();
+    act(() => MockWebSocket.instances[0].open());
+    expect(MockWebSocket.instances[0].sent.map((frame) => JSON.parse(frame)).some((frame) => frame.event === 'playerJoinChannel' && frame.payload.channel === 'trade')).toBe(true);
+
+    fireEvent.change(screen.getByLabelText('globalIntercomChannelName'), { target: { value: '#Market' } });
+    fireEvent.click(screen.getByRole('button', { name: 'globalIntercomJoinChannel' }));
+    await waitFor(() => expect(state.updateIntercomChannels).toHaveBeenCalledWith(['global', 'web', 'trade', 'market']));
+    await waitFor(() => expect(MockWebSocket.instances[0].sent.map((frame) => JSON.parse(frame)).some((frame) => frame.event === 'playerJoinChannel' && frame.payload.channel === 'market')).toBe(true));
   });
 
   it('ignores the relay echo for messages sent by the current user', async () => {
@@ -132,8 +153,8 @@ describe('global intercom chat page', () => {
     fireEvent.change(screen.getByLabelText('globalIntercomMessage'), { target: { value: 'Hello global' } });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
-    await waitFor(() => expect(MockWebSocket.instances[0].sent).toHaveLength(5));
-    const sent = JSON.parse(MockWebSocket.instances[0].sent[4]);
+    await waitFor(() => expect(MockWebSocket.instances[0].sent).toHaveLength(6));
+    const sent = JSON.parse(MockWebSocket.instances[0].sent[5]);
     act(() => MockWebSocket.instances[0].receive(sent));
 
     expect(screen.getAllByText('Hello global')).toHaveLength(1);
@@ -153,7 +174,7 @@ describe('global intercom chat page', () => {
       renderPage();
       act(() => MockWebSocket.instances[0].open());
 
-      expect(MockWebSocket.instances[0].sent).toHaveLength(4);
+      expect(MockWebSocket.instances[0].sent).toHaveLength(5);
 
       act(() => MockWebSocket.instances[0].disconnect());
       expect(screen.getByText('globalIntercomStatus.disconnected')).toBeInTheDocument();
@@ -163,7 +184,7 @@ describe('global intercom chat page', () => {
       expect(MockWebSocket.instances).toHaveLength(2);
       act(() => MockWebSocket.instances[1].open());
 
-      expect(MockWebSocket.instances[1].sent).toHaveLength(4);
+      expect(MockWebSocket.instances[1].sent).toHaveLength(5);
       expect(JSON.parse(MockWebSocket.instances[1].sent[1])).toMatchObject({
         event: 'playerOnline',
         payload: { playerName: 'Maik', playerUID: '7656' },
@@ -175,6 +196,25 @@ describe('global intercom chat page', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('separates web messages and clears their unread badge when selected', async () => {
+    renderPage();
+    act(() => MockWebSocket.instances[0].open());
+
+    act(() => MockWebSocket.instances[0].receive({
+      event: 'broadcastMessage',
+      payload: {
+        createdOn: '2026-06-25T09:00:00.000Z', chatVersion: 2, chatContent: 'Web only',
+        chatChannel: 'web', playerName: 'Alice', playerUID: 'alice-uid', sourceName: 'RW Manager', sourceIP: '', sourceVersion: '1.0.0',
+      },
+    }));
+
+    expect(screen.queryByText('Web only')).not.toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /web 1/ }));
+    expect(await screen.findByText('Web only')).toBeInTheDocument();
+    expect(screen.queryByText('1')).not.toBeInTheDocument();
   });
 
   it('renders rich text colors in the message source', async () => {

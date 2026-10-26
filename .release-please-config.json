@@ -3,7 +3,7 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "release-as": "1.7.0",
+      "release-as": "1.8.0",
       "include-v-in-tag": true,
       "changelog-path": "CHANGELOG.md",
       "changelog-sections": [

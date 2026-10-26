@@ -63,6 +63,13 @@ This project is built with:
 Server detail pages include a lazy-loaded statistics tab when a manager backend
 is configured. The tab reads `/api/storage/server/:id/statistics` and renders
 hourly, weekly, monthly, and accumulated weekday availability/player charts.
+Player names in the live player list, server details, and global statistics open
+a profile showing the servers where that UID is currently online. Playtime is
+shown when the server's native player data exposes it.
+
+Signed-in users can join additional public Global Intercom channels. The
+manager backend stores their subscriptions and the browser rejoins them after
+sign-in and WebSocket reconnect. `global` and `web` remain subscribed by default.
 
 ## Runtime configuration
 
@@ -70,20 +77,24 @@ Optional deployment variables:
 
 - `VITE_FIXED_BACKEND_URL`: manager backend base URL.
 - `VITE_FIXED_BACKEND_ADMIN`: SteamID treated as frontend super admin.
-- `VITE_STEAM_API_KEY`: enables Steam login.
+- Steam login is available when the configured manager backend exposes auth.
+  Its optional persona-name lookup uses `STEAM_API_KEY` on the backend only.
 - `VITE_GLOBAL_INTERCOM_WS_URL`: Global Intercom relay WebSocket URL, for
   example `wss://example.com/ws`. When unset, the chat page stays visible in an
   unconfigured state.
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
 The repository CI validates linting, tests, the production build, and the Docker
-image. Published GitHub releases build and push versioned multi-platform images
-to `devidian/rw-manager-frontend` on Docker Hub.
+image. RC tags and published GitHub releases build and push versioned
+multi-platform images to `devidian/rw-manager-frontend` on Docker Hub.
 
 ## Embedded map
+
+When the renderer publishes `satelliteTileUrl`, both the embedded and regular
+map offer a satellite base-layer toggle. Without satellite tiles the control
+stays hidden. Player profiles read the backend's cached server history and
+display per-server playtime where available.
 
 With `VITE_FIXED_BACKEND_URL` configured, `/embedded-map/:serverId` is a public,
 standalone map route suitable for an iframe, for example

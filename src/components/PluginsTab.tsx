@@ -1,12 +1,13 @@
 import { useTranslation } from 'react-i18next';
-import type { PluginInfo } from '@/types/adminMapping';
+import type { PluginInfo, ServerPluginsResponse } from '@/types/adminMapping';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 
-export function PluginsTab({ plugins, latestVersions, loading, error }: { plugins: PluginInfo[]; latestVersions: Record<string, string>; loading: boolean; error: boolean }) {
+export function PluginsTab({ plugins, latestVersions, nativeAccess = 'available', loading, error }: { plugins: PluginInfo[]; latestVersions: Record<string, string>; nativeAccess?: ServerPluginsResponse['nativeAccess']; loading: boolean; error: boolean }) {
   const { t } = useTranslation();
   if (loading) return <p className="text-sm text-muted-foreground">{t('loadingPlugins')}</p>;
   if (error) return <p className="text-sm text-destructive">{t('backendError')}</p>;
+  if (nativeAccess === 'noAccess') return <p className="text-sm text-destructive">{t('nativeAccessDenied')}</p>;
   if (plugins.length === 0) return <p className="text-sm text-muted-foreground">{t('noPlugins')}</p>;
   return (
     <div className="grid gap-3 md:grid-cols-2">

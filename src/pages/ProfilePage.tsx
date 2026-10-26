@@ -11,18 +11,17 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { KeyRound, User, Save, Loader2, Link2, Unlink, Trash2 } from 'lucide-react';
+import { KeyRound, User, Save, Loader2, Link2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, updateProfile, loginWithSteam, disconnectSteam, deleteAccount, generateApiToken } = useAuth();
+  const { user, isAuthenticated, updateProfile, loginWithSteam, deleteAccount, generateApiToken } = useAuth();
   const { toast } = useToast();
 
   const [name, setName] = useState(user?.username || '');
   const [saving, setSaving] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
   const [generatingToken, setGeneratingToken] = useState(false);
   const [apiToken, setApiToken] = useState<string | null>(null);
 
@@ -43,18 +42,6 @@ export default function ProfilePage() {
       toast({ title: t('backendError'), variant: 'destructive' });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleDisconnectSteam = async () => {
-    setDisconnecting(true);
-    try {
-      await disconnectSteam();
-      toast({ title: t('steamDisconnected') });
-    } catch {
-      toast({ title: t('backendError'), variant: 'destructive' });
-    } finally {
-      setDisconnecting(false);
     }
   };
 
@@ -136,24 +123,6 @@ export default function ProfilePage() {
             {user.steamId ? (
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm font-mono text-foreground">{user.steamId}</span>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="outline" className="gap-1.5 text-xs" disabled={disconnecting}>
-                      {disconnecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlink className="h-3 w-3" />}
-                      {t('disconnectSteam')}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t('disconnectSteam')}</AlertDialogTitle>
-                      <AlertDialogDescription>{t('disconnectSteamConfirm')}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDisconnectSteam}>{t('disconnectSteam')}</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
             ) : (
               <div className="mt-1">

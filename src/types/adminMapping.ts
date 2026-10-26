@@ -21,6 +21,7 @@ export interface MapMetadata {
   generatedTileBounds: MapBounds;
   updatedAt: string;
   tileUrl: string;
+  satelliteTileUrl?: string;
 }
 
 export type ServerMapResponse =
@@ -35,6 +36,7 @@ export interface PluginInfo {
 
 export interface ServerPluginsResponse {
   available: boolean;
+  nativeAccess: 'available' | 'noAccess' | 'unavailable';
   items: PluginInfo[];
   latestVersions: Record<string, string>;
 }

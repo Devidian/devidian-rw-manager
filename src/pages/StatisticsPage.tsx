@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { BarChart3, Loader2, Users } from 'lucide-react';
@@ -7,8 +7,10 @@ import type { GlobalStatisticsPayload, ServerStatisticsBucket } from '@/types/se
 import {
   buildGlobalStatisticsPoints,
   isoDate,
+  statisticsPickerValue,
   statisticsRange,
   type StatisticsView,
+  type StatisticsPoint,
 } from '@/lib/statistics';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -20,6 +22,7 @@ import {
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { useAuth } from '@/context/AuthContext';
 import { StatisticsDatePicker } from '@/components/StatisticsDatePicker';
+import { PlayerNameLink } from '@/components/PlayerNameLink';
 
 const STATISTICS_PAGE_SIZE_KEY = 'risingworld_statistics_page_size';
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -56,6 +59,31 @@ function PlayerUid({ uid, authenticated }: { uid: string; authenticated: boolean
   return <span>{authenticated ? uid : maskUid(uid)}</span>;
 }
 
+const GlobalStatisticsChart = memo(function GlobalStatisticsChart({ points, averageLabel, maxLabel }: {
+  points: StatisticsPoint[];
+  averageLabel: string;
+  maxLabel: string;
+}) {
+  return (
+    <ChartContainer
+      config={{
+        averagePlayers: { label: averageLabel, color: 'hsl(var(--primary))' },
+        maxPlayers: { label: maxLabel, color: 'hsl(var(--muted-foreground))' },
+      }}
+      className="h-72 w-full"
+    >
+      <BarChart data={points}>
+        <CartesianGrid vertical={false} />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
+        <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Bar dataKey="averagePlayers" fill="var(--color-averagePlayers)" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="maxPlayers" fill="var(--color-maxPlayers)" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ChartContainer>
+  );
+});
+
 export default function StatisticsPage() {
   const { t, i18n } = useTranslation();
   const { adapter } = useStorageMode();
@@ -68,6 +96,7 @@ export default function StatisticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(readPageSize);
   const [currentPage, setCurrentPage] = useState(0);
+  const snapshotRef = useRef({ range: '', chart: '', players: '' });
 
   useEffect(() => {
     let cancelled = false;
@@ -76,8 +105,17 @@ export default function StatisticsPage() {
     adapter.getGlobalStatistics(statisticsRange(view, dateValue))
       .then((payload) => {
         if (cancelled) return;
-        setBuckets(payload.buckets);
-        setPlayers([...payload.players].sort((a, b) => a.uid.localeCompare(b.uid)));
+        const range = `${view}:${dateValue}`;
+        const chart = JSON.stringify(buildGlobalStatisticsPoints(payload.buckets, view, dateValue, 'en').map((point) => [
+          point.label, point.averagePlayers, point.maxPlayers, point.samples > 0,
+        ]));
+        const nextPlayers = [...payload.players].sort((a, b) => a.uid.localeCompare(b.uid));
+        const playersSnapshot = JSON.stringify(nextPlayers);
+        if (range !== snapshotRef.current.range || chart !== snapshotRef.current.chart) {
+          setBuckets(payload.buckets);
+        }
+        if (range !== snapshotRef.current.range || playersSnapshot !== snapshotRef.current.players) setPlayers(nextPlayers);
+        snapshotRef.current = { range, chart, players: playersSnapshot };
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'UNKNOWN_ERROR');
@@ -161,22 +199,7 @@ export default function StatisticsPage() {
             </div>
           )}
           {!loading && !error && hasData && (
-            <ChartContainer
-              config={{
-                averagePlayers: { label: t('averagePlayers'), color: 'hsl(var(--primary))' },
-                maxPlayers: { label: t('maxPlayers'), color: 'hsl(var(--muted-foreground))' },
-              }}
-              className="h-72 w-full"
-            >
-              <BarChart data={points}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
-                <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="averagePlayers" fill="var(--color-averagePlayers)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="maxPlayers" fill="var(--color-maxPlayers)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ChartContainer>
+            <GlobalStatisticsChart points={points} averageLabel={t('averagePlayers')} maxLabel={t('maxPlayers')} />
           )}
         </CardContent>
       </Card>
@@ -204,7 +227,7 @@ export default function StatisticsPage() {
                 <TableBody>
                   {pagedPlayers.map((player) => (
                     <TableRow key={player.uid} className="hover:bg-muted/20">
-                      <TableCell className="font-medium">{player.name || '-'}</TableCell>
+                      <TableCell className="font-medium"><PlayerNameLink uid={player.uid} name={player.name} /></TableCell>
                       <TableCell className="font-mono text-xs">
                         <PlayerUid uid={player.uid} authenticated={isAuthenticated} />
                       </TableCell>
