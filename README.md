@@ -77,18 +77,17 @@ Optional deployment variables:
 
 - `VITE_FIXED_BACKEND_URL`: manager backend base URL.
 - `VITE_FIXED_BACKEND_ADMIN`: SteamID treated as frontend super admin.
-- `VITE_STEAM_API_KEY`: enables Steam login.
+- Steam login is available when the configured manager backend exposes auth.
+  Its optional persona-name lookup uses `STEAM_API_KEY` on the backend only.
 - `VITE_GLOBAL_INTERCOM_WS_URL`: Global Intercom relay WebSocket URL, for
   example `wss://example.com/ws`. When unset, the chat page stays visible in an
   unconfigured state.
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
 The repository CI validates linting, tests, the production build, and the Docker
-image. Published GitHub releases build and push versioned multi-platform images
-to `devidian/rw-manager-frontend` on Docker Hub.
+image. RC tags and published GitHub releases build and push versioned
+multi-platform images to `devidian/rw-manager-frontend` on Docker Hub.
 
 ## Embedded map
 

@@ -3,7 +3,6 @@ import { AuthUser } from '@/types/server';
 import * as authApi from '@/lib/authApi';
 import { TOKEN_KEY } from '@/lib/authApi';
 import { steamProvider, extractOpenIdParams } from '@/lib/steamAuth';
-import { resolveSteamPersonaName } from '@/lib/steamProfile';
 import { useStorageMode } from '@/context/StorageModeContext';
 
 interface AuthContextValue {
@@ -126,11 +125,6 @@ export function AuthProvider({
 
   const handleSteamCallback = useCallback(async (search: string) => {
     const params = extractOpenIdParams(search);
-    const steamUsername = await resolveSteamPersonaName(
-      params,
-      import.meta.env.VITE_STEAM_API_KEY as string | undefined,
-    );
-    if (steamUsername) params.steamUsername = steamUsername;
     const res = await authApi.steamCallback(baseUrl, params);
     saveToken(res.token);
     setUser(res.user);
