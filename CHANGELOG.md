@@ -25,6 +25,38 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.8.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.7.0...rw-manager-v1.8.0) (2026-10-26)
+
+
+### Added
+
+* add manager web chat channel ([08bcc37](https://github.com/Devidian/devidian-rw-manager/commit/08bcc37e6fb5cb6024b446f3b1e2bafbf3f40a33))
+* prepare manager frontend RC 1.8.0-rc.1 ([3d3930d](https://github.com/Devidian/devidian-rw-manager/commit/3d3930d51cda1d20afb2fca1d813d961afe02f41))
+* prepare manager frontend RC 1.8.0-rc.2 ([b376384](https://github.com/Devidian/devidian-rw-manager/commit/b3763840963e3f628120348122f2ee94ca790a44))
+* show native plugin access state ([ca0e0e0](https://github.com/Devidian/devidian-rw-manager/commit/ca0e0e06333c8f5d104f67fdc0c975a055fca8f3))
+* show stored player metrics in server details rc.5 ([61b8ca9](https://github.com/Devidian/devidian-rw-manager/commit/61b8ca9be9ebcf7c4c911aa7b721bea6b5501651))
+
+
+### Fixed
+
+* deduplicate online players across server addresses for rc.3 ([402cd8f](https://github.com/Devidian/devidian-rw-manager/commit/402cd8f3a086b237acb02c4860854921609d622a))
+* keep server statistics charts mounted in rc.4 ([3d31213](https://github.com/Devidian/devidian-rw-manager/commit/3d312139b20c564543b6144515bdaf4bbf3450ad))
+* remove browser Steam API lookup for frontend rc.7 ([35617d9](https://github.com/Devidian/devidian-rw-manager/commit/35617d91848eef50a2212996e57a99f62288edc8))
+* replace Lovable social metadata for frontend rc.6 ([3653826](https://github.com/Devidian/devidian-rw-manager/commit/3653826298eb924c665013b107b22b5bb3796ccd))
+* start Steam login without click event ([9f41934](https://github.com/Devidian/devidian-rw-manager/commit/9f419343028bb6d0b9b3832deef31c938335981b))
+* use Steam persona names for sign-in ([abef736](https://github.com/Devidian/devidian-rw-manager/commit/abef736cea0f48d2018f71da8c7b0ebe576afd4b))
+
+
+### Documentation
+
+* prepare accepted frontend 1.8.0 stable release ([a273d59](https://github.com/Devidian/devidian-rw-manager/commit/a273d59cd9b51ab469e055ff1240ebe895d65baf))
+* reconcile active manager frontend plans ([96c2af1](https://github.com/Devidian/devidian-rw-manager/commit/96c2af130620133d89bad82a55565d84a10d08ae))
+
+
+### Maintenance
+
+* prepare frontend rc.3 ([a44074b](https://github.com/Devidian/devidian-rw-manager/commit/a44074b2ffc1692f74a6a8b02c1f65735d0f3ee1))
+
 ## [1.7.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.6.1...rw-manager-v1.7.0) (2026-09-11)
 
 
