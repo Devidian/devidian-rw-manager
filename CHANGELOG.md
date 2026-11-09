@@ -25,6 +25,19 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.8.1](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.8.0...rw-manager-v1.8.1) (2026-11-09)
+
+
+### Fixed
+
+* show live server names in pinned sidebar ([a7ddbd2](https://github.com/Devidian/devidian-rw-manager/commit/a7ddbd2dbe8199feaf2801c432f8243876a80a4a))
+
+
+### Build
+
+* publish frontend images from stable v tags ([b0a423f](https://github.com/Devidian/devidian-rw-manager/commit/b0a423fc9c9a25bd67ee9db51d3dfd18aa604c40))
+* publish stable Manager frontend Docker tags ([0787067](https://github.com/Devidian/devidian-rw-manager/commit/0787067c637fc9f08506a479f8fa745c99c4bf14))
+
 ## [1.8.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.7.0...rw-manager-v1.8.0) (2026-10-26)
 
 
