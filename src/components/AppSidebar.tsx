@@ -175,6 +175,7 @@ export function AppSidebar({ servers, onlinePlayerCount }: AppSidebarProps) {
               <SidebarMenu>
                 {servers.map(server => {
                   const players = getPlayerCount(server);
+                  const serverName = server.queryData?.name || server.name || server.label;
                   return (
                     <SidebarMenuItem key={server.id}>
                       <SidebarMenuButton asChild>
@@ -185,7 +186,7 @@ export function AppSidebar({ servers, onlinePlayerCount }: AppSidebarProps) {
                         >
                           <StatusIcon status={server.status} />
                           <span className="min-w-0 flex-1 truncate text-sm">
-                            <RichText text={server.label} />
+                            <RichText text={serverName} />
                           </span>
                           <span className="shrink-0 rounded border border-sidebar-border bg-sidebar-accent/40 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
                             {players.current}/{players.max}

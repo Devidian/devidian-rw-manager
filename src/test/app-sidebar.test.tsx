@@ -53,6 +53,31 @@ describe('app sidebar', () => {
     expect(screen.getByText('3/12')).toBeInTheDocument();
   });
 
+  it('shows the live server name instead of an imported server ID', () => {
+    render(
+      <MemoryRouter>
+        <SidebarProvider>
+          <AppSidebar servers={[{ ...server(), label: 'server-a' }]} onlinePlayerCount={0} />
+        </SidebarProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Pinned Server')).toBeInTheDocument();
+    expect(screen.queryByText('server-a')).not.toBeInTheDocument();
+  });
+
+  it('uses the stored name while live query data is unavailable', () => {
+    render(
+      <MemoryRouter>
+        <SidebarProvider>
+          <AppSidebar servers={[{ ...server(), label: 'server-a', name: 'Development Server', queryData: undefined }]} onlinePlayerCount={0} />
+        </SidebarProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Development Server')).toBeInTheDocument();
+  });
+
   it('renders the unread Global Intercom badge', () => {
     intercomState.unreadCount = 7;
 
