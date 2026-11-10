@@ -4,6 +4,9 @@
 
 ### Added
 
+* add super-admin review of possible server duplicates with preview and confirmed multi-entry merge
+* follow former server links and anonymous favorites to the canonical server after a merge
+
 * let signed-in users save additional public Global Intercom channels and restore them on reconnect
 * open player profiles from player names with current servers and available playtime
 * split Global Intercom into `#GLOBAL` and `#WEB` tabs with per-channel and aggregate unread badges

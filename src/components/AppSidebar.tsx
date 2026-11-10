@@ -8,7 +8,7 @@ import {
 import { ServerWithStatus } from '@/types/server';
 import { useAuth } from '@/context/AuthContext';
 import { useGlobalIntercom } from '@/context/GlobalIntercomContext';
-import { BarChart3, LayoutDashboard, Server, Loader2, LogOut, LogIn, User, Users, List, MessageSquare } from 'lucide-react';
+import { BarChart3, LayoutDashboard, Server, Loader2, LogOut, LogIn, User, Users, List, MessageSquare, GitMerge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RichText } from '@/components/RichText';
@@ -149,6 +149,7 @@ export function AppSidebar({ servers, onlinePlayerCount }: AppSidebarProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               {isSuperAdmin && (
+                <>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -161,6 +162,14 @@ export function AppSidebar({ servers, onlinePlayerCount }: AppSidebarProps) {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink to="/admin/server-duplicates" className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors" activeClassName="bg-sidebar-accent text-primary font-medium">
+                      <GitMerge className="h-4 w-4 shrink-0" /><span>{t('serverDuplicates')}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                </>
               )}
             </SidebarMenu>
           </SidebarGroupContent>

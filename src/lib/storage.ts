@@ -23,6 +23,15 @@ export function clearLocalPinnedServers(): void {
   localStorage.removeItem(LOCAL_PINNED_SERVERS_KEY);
 }
 
+export function replaceLocalPinnedServerIds(replacements: Map<string, string>): string[] {
+  const current = readLocalPinnedServers();
+  const next = [...new Set(current.map((id) => replacements.get(id) ?? id))];
+  if (next.some((id, index) => id !== current[index]) || next.length !== current.length) {
+    writeLocalPinnedServers(next);
+  }
+  return next;
+}
+
 
 // ─── Interface ──────────────────────────────────────────────────────────────
 

@@ -25,6 +25,7 @@ import PlayerProfilePage from './pages/PlayerProfilePage';
 import StatisticsPage from './pages/StatisticsPage';
 import GlobalIntercomChatPage from './pages/GlobalIntercomChatPage';
 import UserManagementPage from './pages/UserManagementPage';
+import ServerDuplicatesPage from './pages/ServerDuplicatesPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
@@ -94,6 +95,7 @@ function Layout() {
                 <Route path="/global-intercom" element={<GlobalIntercomChatPage />} />
                 <Route path="/server/:id" element={<ServerDetailPage />} />
                 <Route path="/admin/users" element={<UserManagementPage />} />
+                <Route path="/admin/server-duplicates" element={<ServerDuplicatesPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

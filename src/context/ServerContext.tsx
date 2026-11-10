@@ -5,6 +5,8 @@ import { useStorageMode } from '@/context/StorageModeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useBackendInfo } from '@/context/BackendInfoContext';
 import { ServerConfig, ServerWithStatus } from '@/types/server';
+import { resolveServerId } from '@/lib/serverDuplicateApi';
+import { replaceLocalPinnedServerIds } from '@/lib/storage';
 
 interface ServerContextValue {
   servers: ServerConfig[];
@@ -55,6 +57,25 @@ export function ServerProvider({ children }: { children: ReactNode }) {
     }
     adapter.getPinnedServers().then(setLocalPinnedServers).catch(() => setLocalPinnedServers([]));
   }, [adapter, user]);
+
+  useEffect(() => {
+    if (user || !fixedBackendUrl || servers.length === 0 || localPinnedServers.length === 0) return;
+    const visible = new Set(servers.map((server) => server.id));
+    const missing = localPinnedServers.filter((id) => !visible.has(id));
+    if (!missing.length) return;
+    let active = true;
+    void Promise.all(missing.map(async (id) => {
+      try {
+        const { canonicalId } = await resolveServerId(fixedBackendUrl, id);
+        return visible.has(canonicalId) ? [id, canonicalId] as const : undefined;
+      } catch { return undefined; }
+    })).then((pairs) => {
+      if (!active) return;
+      const replacements = new Map(pairs.filter((pair): pair is readonly [string, string] => pair !== undefined));
+      if (replacements.size) setLocalPinnedServers(replaceLocalPinnedServerIds(replacements));
+    });
+    return () => { active = false; };
+  }, [user, fixedBackendUrl, servers, localPinnedServers]);
 
   const serverList: ServerWithStatus[] = servers.map(s => {
     const status = statusMap[s.id];
