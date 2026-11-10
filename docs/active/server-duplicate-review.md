@@ -21,10 +21,24 @@ React review page; the Manager backend owns matching and persistence.
 - [x] Refresh server list and signed-in user after a merge.
 - [x] Resolve anonymous browser favorites that still reference former IDs.
 - [x] Add German and English labels and old-link navigation.
-- [ ] Accept the flow with real Development data and both match strengths.
+- [x] Pass TypeScript, lint, 107 tests, build and GitHub CI; publish
+  `v1.9.0-rc.1` and deploy it after the backend RC.
+- [ ] Accept real candidate groups and the confirmation flow in an admin
+  browser session on the public RC instance.
 
 ## Validation and rollback
 
 Run TypeScript, lint, tests, and the production build. The frontend can be
 rolled back independently; database merges require the backend backup described
 by its API deployment procedure.
+
+## RC deployment evidence (2026-11-10)
+
+- Commit `8fc6341ccc2505e0dcac3313e6d14256ea4e2635`; CI run `42784989396`
+  and Docker Publish run `42785598551` succeeded.
+- Public Manager frontend image `devidian/rw-manager-frontend:1.9.0-rc.1`
+  resolved to `sha256:d3f83ac8a9ccc3effcf16ef9570c002f774f6b6d9bb48e6e5b6f0b981f414198`.
+- `rw-manager-frontend-prod` on `strato.V80` is healthy with zero restarts.
+  The public `/admin/server-duplicates` route returned 200 and the delivered
+  bundle contains the duplicate-review labels. The unauthenticated API
+  returned 401, as expected.
