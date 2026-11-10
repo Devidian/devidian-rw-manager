@@ -46,3 +46,11 @@ by its API deployment procedure.
   The public `/admin/server-duplicates` route returned 200 and the delivered
   bundle contains the duplicate-review labels. The unauthenticated API
   returned 401, as expected.
+
+## RC.2 follow-up (2026-11-10)
+
+- `v1.9.0-rc.2` (`f0541e3`) passed 109 frontend tests, TypeScript, build,
+  lint without errors, GitHub CI and Docker Publish. Public digest:
+  `sha256:8607025a8109d6c415bf0cb8de5517cddfccb3bb773f22f640afe94975ee4313`.
+- Public `rw-manager-frontend-prod` runs RC.2 healthy with zero restarts;
+  `/admin/server-duplicates` returned 200 after deployment.
