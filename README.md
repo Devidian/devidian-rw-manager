@@ -80,6 +80,8 @@ Optional deployment variables:
 - The super-admin sidebar includes **Server duplicates** when the backend exposes
   the duplicate review and merge API. Matches are suggestions only; merging
   selected entries requires a confirmation and retains the oldest server ID.
+  Groups support selecting all sources; the compact detail table renders
+  formatted server names and highlights online and offline status.
 - Steam login is available when the configured manager backend exposes auth.
   Its optional persona-name lookup uses `STEAM_API_KEY` on the backend only.
 - `VITE_GLOBAL_INTERCOM_WS_URL`: Global Intercom relay WebSocket URL, for

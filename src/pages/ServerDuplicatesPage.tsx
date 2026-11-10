@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { RichText } from '@/components/RichText';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -46,6 +47,13 @@ export default function ServerDuplicatesPage() {
   const choose = (id: string, value: boolean) => {
     setChecked((current) => value ? [...current, id] : current.filter((item) => item !== id));
   };
+  const chooseAll = (group: DuplicateGroup) => {
+    const ids = group.entries.filter((item) => item.id !== group.targetId).map((item) => item.id);
+    setChecked((current) => ids.every((id) => current.includes(id))
+      ? current.filter((id) => !ids.includes(id))
+      : [...new Set([...current, ...ids])]);
+    setExpanded(group.targetId);
+  };
   const requestPreview = async (group: DuplicateGroup) => {
     const selection: MergeSelection = { targetId: group.targetId, sourceIds: checked.filter((id) => group.entries.some((item) => item.id === id)) };
     if (!selection.sourceIds.length) return;
@@ -73,28 +81,31 @@ export default function ServerDuplicatesPage() {
     <div><h1 className="text-2xl font-bold flex items-center gap-3"><GitMerge className="h-6 w-6 text-primary" />{t('serverDuplicates')}</h1>
       <p className="text-sm text-muted-foreground mt-1">{t('serverDuplicatesDescription')}</p></div>
     {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : groups.length === 0 ? <p className="text-muted-foreground">{t('serverDuplicatesEmpty')}</p> :
-      <div className="rounded-lg border border-border overflow-x-auto"><Table><TableHeader><TableRow>
-        <TableHead>{t('server')}</TableHead><TableHead>{t('duplicateFirstSeen')}</TableHead><TableHead>{t('duplicateCandidates')}</TableHead><TableHead />
+      <div className="rounded-lg border border-border overflow-x-auto"><Table className="w-full table-fixed"><TableHeader><TableRow>
+        <TableHead className="w-[38%]">{t('server')}</TableHead><TableHead className="w-[20%]">{t('duplicateFirstSeen')}</TableHead><TableHead className="w-[10%]">{t('duplicateCandidates')}</TableHead><TableHead className="w-[32%]" />
       </TableRow></TableHeader><TableBody>{groups.map((group) => {
         const target = group.entries[0];
         const open = expanded === group.targetId;
         const count = checked.filter((id) => group.entries.some((item) => item.id === id)).length;
+        const allSelected = count === group.entries.length - 1;
         return <Fragment key={group.targetId}>
-          <TableRow><TableCell><Button variant="ghost" className="gap-2" onClick={() => setExpanded(open ? null : group.targetId)}>
-            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}{target.name}</Button></TableCell>
+          <TableRow><TableCell><Button variant="ghost" className="gap-2 max-w-full" onClick={() => setExpanded(open ? null : group.targetId)}>
+            {open ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}<RichText text={target.name} className="min-w-0 truncate" /></Button></TableCell>
             <TableCell>{new Date(target.firstSeen).toLocaleString()}</TableCell><TableCell>{group.entries.length - 1}</TableCell>
-            <TableCell><Button size="sm" disabled={!count || busy} onClick={() => void requestPreview(group)}>{t('duplicateMergeSelected')} ({count})</Button></TableCell></TableRow>
-          {open && <TableRow key={`${group.targetId}-details`}><TableCell colSpan={4} className="bg-muted/20"><Table><TableHeader><TableRow>
-            <TableHead /><TableHead>{t('server')}</TableHead><TableHead>{t('duplicateShortname')}</TableHead><TableHead>{t('duplicateMap')}</TableHead>
-            <TableHead>{t('duplicateMode')}</TableHead><TableHead>{t('duplicateOs')}</TableHead><TableHead>IP:Port</TableHead>
-            <TableHead>{t('duplicateFirstSeen')}</TableHead><TableHead>{t('duplicateLastSeen')}</TableHead><TableHead>Status</TableHead><TableHead>{t('duplicateMatch')}</TableHead>
+            <TableCell><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => chooseAll(group)}>{t(allSelected ? 'duplicateClearSelection' : 'duplicateSelectAll')}</Button><Button size="sm" disabled={!count || busy} onClick={() => void requestPreview(group)}>{t('duplicateMergeSelected')} ({count})</Button></div></TableCell></TableRow>
+          {open && <TableRow key={`${group.targetId}-details`}><TableCell colSpan={4} className="bg-muted/20 p-2"><Table className="w-full table-fixed text-xs"><TableHeader><TableRow>
+            <TableHead className="w-9 px-2" /><TableHead className="w-[18%] px-2">{t('server')}</TableHead><TableHead className="w-[11%] px-2">{t('duplicateShortname')}</TableHead><TableHead className="w-[11%] px-2">{t('duplicateMap')}</TableHead>
+            <TableHead className="w-[12%] px-2">{t('duplicateModeOs')}</TableHead><TableHead className="w-[15%] px-2">IP:Port</TableHead>
+            <TableHead className="w-[17%] px-2">{t('duplicateSeen')}</TableHead><TableHead className="w-[8%] px-2">{t('status')}</TableHead><TableHead className="w-[8%] px-2">{t('duplicateMatch')}</TableHead>
           </TableRow></TableHeader><TableBody>{group.entries.map((item) => <TableRow key={item.id}>
-            <TableCell>{item.id !== group.targetId && <Checkbox aria-label={`${t('duplicateSelect')} ${item.name}`} checked={checked.includes(item.id)} onCheckedChange={(value) => choose(item.id, value === true)} />}</TableCell>
-            <TableCell>{item.name}<span className="block text-xs text-muted-foreground">{item.id}</span></TableCell>
-            <TableCell>{item.shortname}</TableCell><TableCell>{item.map}</TableCell><TableCell>{item.gamemode === 0 ? t('duplicateSurvival') : item.gamemode === 1 ? t('duplicateCreative') : item.gamemode}</TableCell><TableCell>{item.os}</TableCell>
-            <TableCell>{item.ip}:{item.port}</TableCell><TableCell>{new Date(item.firstSeen).toLocaleString()}</TableCell>
-            <TableCell>{new Date(item.lastSeen).toLocaleString()}</TableCell><TableCell>{item.status}</TableCell>
-            <TableCell><Badge variant={item.strength === 'strong' ? 'default' : 'secondary'}>{t(item.strength === 'strong' ? 'duplicateStrong' : 'duplicatePossible')}</Badge></TableCell>
+            <TableCell className="px-2">{item.id !== group.targetId && <Checkbox aria-label={`${t('duplicateSelect')} ${item.name}`} checked={checked.includes(item.id)} onCheckedChange={(value) => choose(item.id, value === true)} />}</TableCell>
+            <TableCell className="px-2 overflow-hidden"><RichText text={item.name} className="block truncate" /><span className="block text-xs text-muted-foreground break-all">{item.id}</span></TableCell>
+            <TableCell className="px-2 break-words">{item.shortname}</TableCell><TableCell className="px-2 break-words">{item.map}</TableCell>
+            <TableCell className="px-2 break-words">{item.gamemode === 0 ? t('duplicateSurvival') : item.gamemode === 1 ? t('duplicateCreative') : item.gamemode}<span className="block text-muted-foreground">{item.os}</span></TableCell>
+            <TableCell className="px-2 break-all">{item.ip}:{item.port}</TableCell>
+            <TableCell className="px-2"><span className="block">{t('duplicateSeenFrom')}: {new Date(item.firstSeen).toLocaleString()}</span><span className="block">{t('duplicateSeenTo')}: {new Date(item.lastSeen).toLocaleString()}</span></TableCell>
+            <TableCell className="px-2"><Badge variant="outline" className={item.status === 'online' ? 'border-green-500/50 bg-green-500/15 text-green-400' : item.status === 'offline' ? 'border-red-500/50 bg-red-500/15 text-red-400' : 'text-muted-foreground'}>{t(item.status === 'online' ? 'online' : item.status === 'offline' ? 'offline' : 'unknown')}</Badge></TableCell>
+            <TableCell className="px-2"><Badge variant={item.strength === 'strong' ? 'default' : 'secondary'}>{t(item.strength === 'strong' ? 'duplicateStrong' : 'duplicatePossible')}</Badge></TableCell>
           </TableRow>)}</TableBody></Table></TableCell></TableRow>}
         </Fragment>;
       })}</TableBody></Table></div>}

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* compact the duplicate detail table, color status, render formatted server names, and select all group sources
 ### Added
 
 * add super-admin review of possible server duplicates with preview and confirmed multi-entry merge

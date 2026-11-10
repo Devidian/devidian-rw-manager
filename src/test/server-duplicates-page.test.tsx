@@ -32,6 +32,10 @@ describe('server duplicate review', () => {
   it('previews only the selected source and merges after confirmation', async () => {
     render(<MemoryRouter><ServerDuplicatesPage /></MemoryRouter>);
     fireEvent.click(await screen.findByRole('button', { name: 'Server' }));
+    expect(screen.getByText('duplicateModeOs')).toBeInTheDocument();
+    expect(screen.getByText('duplicateSeen')).toBeInTheDocument();
+    expect(screen.getByText('online')).toHaveClass('border-green-500/50');
+    expect(screen.getByText('offline')).toHaveClass('border-red-500/50');
     fireEvent.click(screen.getByRole('checkbox', { name: 'duplicateSelect Renamed' }));
     fireEvent.click(screen.getByRole('button', { name: 'duplicateMergeSelected (1)' }));
     await waitFor(() => expect(state.preview).toHaveBeenCalledWith('https://backend.example', 'admin-token', { targetId: 'old', sourceIds: ['new'] }));
@@ -40,5 +44,23 @@ describe('server duplicate review', () => {
     fireEvent.click(screen.getByRole('button', { name: 'duplicateConfirm' }));
     await waitFor(() => expect(state.merge).toHaveBeenCalled());
     expect(state.refresh).toHaveBeenCalled();
+  });
+
+  it('selects and clears every source in a group', async () => {
+    render(<MemoryRouter><ServerDuplicatesPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'duplicateSelectAll' }));
+    expect(screen.getByRole('checkbox', { name: 'duplicateSelect Renamed' })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'duplicateMergeSelected (1)' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'duplicateClearSelection' }));
+    expect(screen.getByRole('checkbox', { name: 'duplicateSelect Renamed' })).not.toBeChecked();
+  });
+
+  it('renders Rising World color tags in server names', async () => {
+    const groups = await state.groups();
+    groups[0].entries[0].name = '<color=#00FFFF>Server</color>';
+    state.groups.mockResolvedValue(groups);
+    render(<MemoryRouter><ServerDuplicatesPage /></MemoryRouter>);
+    const colored = await screen.findByText('Server');
+    expect(colored).toHaveStyle({ color: '#00FFFF' });
   });
 });

@@ -25,6 +25,10 @@ React review page; the Manager backend owns matching and persistence.
   `v1.9.0-rc.1` and deploy it after the backend RC.
 - [ ] Accept real candidate groups and the confirmation flow in an admin
   browser session on the public RC instance.
+- [x] Color online/offline status and compact the subtable by combining
+  game mode with OS and first/last seen timestamps.
+- [x] Add per-group select all and render server name formatting tags while
+  constraining their visible table width.
 
 ## Validation and rollback
 
