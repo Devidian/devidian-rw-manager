@@ -29,6 +29,25 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.9.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.8.1...rw-manager-v1.9.0) (2026-11-11)
+
+
+### Added
+
+* add server duplicate review panel ([8fc6341](https://github.com/Devidian/devidian-rw-manager/commit/8fc6341ccc2505e0dcac3313e6d14256ea4e2635))
+
+
+### Fixed
+
+* improve duplicate review table and selection ([f0541e3](https://github.com/Devidian/devidian-rw-manager/commit/f0541e328bb44fbcb8e95be50b74de860b29fbda))
+
+
+### Documentation
+
+* prepare Manager frontend 1.9.0 stable release ([5e9475e](https://github.com/Devidian/devidian-rw-manager/commit/5e9475efc06f715bba1c136e1c1cb4f3dda649e0))
+* record frontend duplicate review RC acceptance ([00cbb9a](https://github.com/Devidian/devidian-rw-manager/commit/00cbb9aafbe39e9a8a22ecfd48566857667d5485))
+* record frontend RC rollout evidence ([2dafba7](https://github.com/Devidian/devidian-rw-manager/commit/2dafba76895925aabbb8f2eb027493484a59d88f))
+
 ## [1.8.1](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.8.0...rw-manager-v1.8.1) (2026-11-09)
 
 
