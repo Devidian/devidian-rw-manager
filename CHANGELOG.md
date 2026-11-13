@@ -30,6 +30,18 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.9.1](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.9.0...rw-manager-v1.9.1) (2026-11-13)
+
+
+### Fixed
+
+* require login for player profiles and mask guest Steam IDs ([6b3209e](https://github.com/Devidian/devidian-rw-manager/commit/6b3209ea9a4793a58d0497a5da5dfcc27139971b))
+
+
+### Documentation
+
+* prepare Manager frontend 1.9.1 stable release ([637553c](https://github.com/Devidian/devidian-rw-manager/commit/637553c6b8a9310799af3fd03bcd4985bf940ee7))
+
 ## [1.9.0](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.8.1...rw-manager-v1.9.0) (2026-11-11)
 
 
