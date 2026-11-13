@@ -231,7 +231,7 @@ describe('server detail mapping tabs', () => {
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: /^players/ }), { button: 0, ctrlKey: false });
 
-    expect(screen.getAllByText('7656*********0001')).toHaveLength(2);
+    expect(screen.getAllByText('7***************1')).toHaveLength(2);
     expect(screen.queryByRole('link', { name: '76561198000000001' })).not.toBeInTheDocument();
   });
 

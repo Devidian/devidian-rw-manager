@@ -70,7 +70,7 @@ export interface RisingWorldQueryData {
   legacy: boolean;
   ip: string;
   port: number;
-  steamid: number;
+  steamid: number | string;
   contact: string;
   name: string;
   map: string;

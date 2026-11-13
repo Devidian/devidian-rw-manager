@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { DbPlayer, DataPlayerListResponse } from '@/types/server';
+import { authHeaders } from '@/lib/authApi';
 
 export interface UseDatabasePlayersResult {
   players: DbPlayer[];
@@ -19,6 +20,7 @@ export function useDatabasePlayers(): UseDatabasePlayersResult {
     try {
       const base = backendUrl.replace(/\/$/, '');
       const response = await fetch(`${base}/api/storage/server/${encodeURIComponent(serverId)}/player`, {
+        headers: authHeaders(),
         signal: AbortSignal.timeout(10_000),
       });
       if (!response.ok) {

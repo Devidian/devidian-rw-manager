@@ -66,13 +66,24 @@ describe('player list page', () => {
 
   it('masks UIDs for guests and exposes Steam profile links to authenticated users', () => {
     const { rerender } = render(<MemoryRouter><PlayerListPage /></MemoryRouter>);
-    expect(screen.getByText('7656*********0000')).toBeInTheDocument();
+    expect(screen.getByText('7***************0')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Steam Player' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '76561198000000000' })).not.toBeInTheDocument();
 
     state.isAuthenticated = true;
     rerender(<MemoryRouter><PlayerListPage /></MemoryRouter>);
     expect(screen.getByRole('link', { name: '76561198000000000' })).toHaveAttribute('href', 'https://steamcommunity.com/profiles/76561198000000000');
     expect(screen.getByText('standalone-player-uid')).toBeInTheDocument();
+  });
+
+  it('keeps players with different names separate when their masked Steam IDs match', () => {
+    serverList = [{ ...baseServerList[1], onlinePlayers: [
+      { id: 2, name: 'Steam Player', uid: '7***************0', platform: 'Steam', ping: 10 },
+      { id: 3, name: 'Other Player', uid: '7***************0', platform: 'Steam', ping: 10 },
+    ] }];
+    render(<MemoryRouter><PlayerListPage /></MemoryRouter>);
+    expect(screen.getByText('playerListSummary:{"count":2}')).toBeInTheDocument();
+    expect(screen.getAllByText('7***************0')).toHaveLength(2);
   });
 
   it('shows one player for two server addresses and follows a master-list address change', () => {

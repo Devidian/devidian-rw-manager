@@ -54,6 +54,7 @@ import {
 import { StatisticsDatePicker } from '@/components/StatisticsDatePicker';
 import { serverConnectUrl } from '@/lib/serverConnect';
 import { PlayerUid } from '@/components/PlayerUid';
+import { maskPlayerUid } from '@/lib/maskPlayerUid';
 import {
   Bar,
   BarChart,
@@ -978,7 +979,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
                   <InfoRow icon={Clock} label={t('uptime')} value={data?.uptime != null ? formatUptime(data.uptime) : undefined} />
                   <InfoRow icon={Monitor} label={t('os')} value={data?.os} />
                   <InfoRow icon={Globe} label={t('ipPort')} value={data?.ip && data?.port ? `${data.ip}:${data.port}` : undefined} />
-                  <InfoRow icon={Tag} label={t('steamId')} value={data?.steamid != null ? BigInt(data.steamid)+'' : undefined} />
+                  <InfoRow icon={Tag} label={t('steamId')} value={data?.steamid != null ? (isAuthenticated ? String(data.steamid) : maskPlayerUid(String(data.steamid))) : undefined} />
                   <InfoRow icon={Tag} label={t('contact')} value={info?.contact ?? data?.contact} />
                   <InfoRow icon={Lock} label={t('locked')} value={data?.locked} />
                   <InfoRow icon={Shield} label={t('whitelist')} value={data?.whitelist} />

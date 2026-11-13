@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* restrict player profiles to signed-in users and show guests only the first and last Steam-ID digit
 * compact the duplicate detail table, color status, render formatted server names, and select all group sources
 ### Added
 

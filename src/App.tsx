@@ -21,7 +21,7 @@ import ServerDetailPage from './pages/ServerDetailPage';
 import ServerListPage from './pages/ServerListPage';
 import PlayerListPage from './pages/PlayerListPage';
 import { uniqueOnlinePlayers } from '@/lib/onlinePlayers';
-import PlayerProfilePage from './pages/PlayerProfilePage';
+import { PlayerProfileGuard } from '@/components/PlayerProfileGuard';
 import StatisticsPage from './pages/StatisticsPage';
 import GlobalIntercomChatPage from './pages/GlobalIntercomChatPage';
 import UserManagementPage from './pages/UserManagementPage';
@@ -90,7 +90,7 @@ function Layout() {
                 <Route path="/" element={<Index />} />
                 <Route path="/serverliste" element={<ServerListPage />} />
                 <Route path="/spielerliste" element={<PlayerListPage />} />
-                <Route path="/player/:uid" element={<PlayerProfilePage />} />
+                <Route path="/player/:uid" element={<PlayerProfileGuard />} />
                 <Route path="/statistiken" element={<StatisticsPage />} />
                 <Route path="/global-intercom" element={<GlobalIntercomChatPage />} />
                 <Route path="/server/:id" element={<ServerDetailPage />} />

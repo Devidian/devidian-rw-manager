@@ -23,6 +23,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { useAuth } from '@/context/AuthContext';
 import { StatisticsDatePicker } from '@/components/StatisticsDatePicker';
 import { PlayerNameLink } from '@/components/PlayerNameLink';
+import { maskPlayerUid } from '@/lib/maskPlayerUid';
 
 const STATISTICS_PAGE_SIZE_KEY = 'risingworld_statistics_page_size';
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -38,11 +39,6 @@ function isSteamId(uid: string): boolean {
   return STEAM_ID_PATTERN.test(uid);
 }
 
-function maskUid(uid: string): string {
-  if (uid.length <= 8) return uid;
-  return `${uid.slice(0, 4)}${'*'.repeat(uid.length - 8)}${uid.slice(-4)}`;
-}
-
 function PlayerUid({ uid, authenticated }: { uid: string; authenticated: boolean }) {
   if (authenticated && isSteamId(uid)) {
     return (
@@ -56,7 +52,7 @@ function PlayerUid({ uid, authenticated }: { uid: string; authenticated: boolean
       </a>
     );
   }
-  return <span>{authenticated ? uid : maskUid(uid)}</span>;
+  return <span>{authenticated ? uid : maskPlayerUid(uid)}</span>;
 }
 
 const GlobalStatisticsChart = memo(function GlobalStatisticsChart({ points, averageLabel, maxLabel }: {

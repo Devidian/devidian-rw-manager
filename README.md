@@ -94,6 +94,10 @@ The repository CI validates linting, tests, the production build, and the Docker
 image. RC tags and published GitHub releases build and push versioned
 multi-platform images to `devidian/rw-manager-frontend` on Docker Hub.
 
+Player profiles require sign-in. Guests see only the first and last digit of
+Steam IDs in player lists, statistics and server details. Backend 0.9.1-rc.1
+or newer is required to apply the same masking to public API and live data.
+
 ## Embedded map
 
 When the renderer publishes `satelliteTileUrl`, both the embedded and regular

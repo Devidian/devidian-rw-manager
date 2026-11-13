@@ -12,6 +12,7 @@ import { getServerCapacity, getServerDisplayName, getServerSecondaryName } from 
 import { uniqueOnlinePlayers } from '@/lib/onlinePlayers';
 
 interface OnlinePlayerRow {
+  playerId: number;
   serverId: string;
   serverName: string;
   serverSecondaryName?: string;
@@ -33,6 +34,7 @@ export default function PlayerListPage() {
       serverName: getServerDisplayName(server),
       serverSecondaryName: getServerSecondaryName(server),
       playerName: player.name || '-',
+      playerId: player.id,
       uid: player.uid,
       platform: player.platform,
       capacity,
@@ -73,7 +75,7 @@ export default function PlayerListPage() {
             </TableHeader>
             <TableBody>
               {players.map(player => (
-                <TableRow key={`${player.serverId}:${player.uid}`}>
+                <TableRow key={`${player.serverId}:${player.playerId}`}>
                   <TableCell className="font-medium"><PlayerNameLink uid={player.uid} name={player.playerName} /></TableCell>
                   <TableCell><PlayerUid uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>
                   <TableCell className="min-w-[16rem]">

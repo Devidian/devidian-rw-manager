@@ -1,9 +1,5 @@
 import { ExternalLink } from 'lucide-react';
-
-function maskUid(uid: string): string {
-  if (uid.length <= 8) return uid;
-  return `${uid.slice(0, 4)}${'*'.repeat(uid.length - 8)}${uid.slice(-4)}`;
-}
+import { maskPlayerUid } from '@/lib/maskPlayerUid';
 
 interface PlayerUidProps {
   uid: string;
@@ -28,5 +24,5 @@ export function PlayerUid({ uid, platform, authenticated }: PlayerUidProps) {
     );
   }
 
-  return <span className="text-muted-foreground font-mono text-xs">{authenticated ? uid : maskUid(uid)}</span>;
+  return <span className="text-muted-foreground font-mono text-xs">{authenticated ? uid : maskPlayerUid(uid)}</span>;
 }

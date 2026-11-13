@@ -66,7 +66,8 @@ describe('StatisticsPage', () => {
   it('masks player UIDs for guests and does not render Steam links', async () => {
     render(<MemoryRouter><StatisticsPage /></MemoryRouter>);
 
-    expect(await screen.findByText('7656*********0000')).toBeInTheDocument();
+    expect(await screen.findByText('7***************0')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Steam Player' })).not.toBeInTheDocument();
     expect(screen.getByText('stan*************-uid')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '76561198000000000' })).not.toBeInTheDocument();
   });
