@@ -3,49 +3,49 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useServerContext } from '@/context/ServerContext';
 import { PlayerUid } from '@/components/PlayerUid';
 import { PlayerNameLink } from '@/components/PlayerNameLink';
 import { RichText } from '@/components/RichText';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getServerCapacity, getServerDisplayName, getServerSecondaryName } from '@/lib/serverDisplay';
-import { uniqueOnlinePlayers } from '@/lib/onlinePlayers';
+import type { ListedOnlinePlayer } from '@/lib/onlinePlayers';
 
 interface OnlinePlayerRow {
-  playerId: number;
+  key: string;
+  playerId?: string | number;
   serverId: string;
   serverName: string;
   serverSecondaryName?: string;
   playerName: string;
-  uid: string;
-  platform: string;
+  uid?: string;
+  platform?: string;
   capacity: ReturnType<typeof getServerCapacity>;
 }
 
-export default function PlayerListPage() {
+export default function PlayerListPage({ onlinePlayers }: { onlinePlayers: ListedOnlinePlayer[] }) {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  const { serverList } = useServerContext();
-
-  const players = useMemo(() => uniqueOnlinePlayers(serverList).map(({ server, player }) => {
-    const capacity = getServerCapacity(server);
-    return {
+  const players = useMemo(() => {
+    const rows: OnlinePlayerRow[] = onlinePlayers.map(({ key, server, player }) => ({
+      key,
       serverId: server.id,
       serverName: getServerDisplayName(server),
       serverSecondaryName: getServerSecondaryName(server),
+      capacity: getServerCapacity(server),
       playerName: player.name || '-',
       playerId: player.id,
       uid: player.uid,
       platform: player.platform,
-      capacity,
-    };
-  }).sort((left, right) => {
-    const capacity = right.capacity.current - left.capacity.current;
-    if (capacity !== 0) return capacity;
-    const server = left.serverName.localeCompare(right.serverName, undefined, { numeric: true, sensitivity: 'base' });
-    if (server !== 0) return server;
-    return left.playerName.localeCompare(right.playerName, undefined, { numeric: true, sensitivity: 'base' });
-  }), [serverList]);
+    }));
+
+    return rows.sort((left, right) => {
+      const capacity = right.capacity.current - left.capacity.current;
+      if (capacity !== 0) return capacity;
+      const server = left.serverName.localeCompare(right.serverName, undefined, { numeric: true, sensitivity: 'base' });
+      if (server !== 0) return server;
+      return left.playerName.localeCompare(right.playerName, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [onlinePlayers]);
 
   return (
     <div className="space-y-6">
@@ -68,16 +68,17 @@ export default function PlayerListPage() {
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t('name')}</TableHead>
-                <TableHead>{t('uid')}</TableHead>
+                {isAuthenticated && <TableHead>{t('uid')}</TableHead>}
                 <TableHead>{t('server')}</TableHead>
                 <TableHead>{t('serverCapacity')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {players.map(player => (
-                <TableRow key={`${player.serverId}:${player.playerId}`}>
-                  <TableCell className="font-medium"><PlayerNameLink uid={player.uid} name={player.playerName} /></TableCell>
-                  <TableCell><PlayerUid uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>
+                <TableRow key={player.key}>
+                  <TableCell className="font-medium">{player.playerId === undefined ? player.playerName
+                    : <PlayerNameLink id={player.playerId} uid={player.uid} name={player.playerName} />}</TableCell>
+                  {isAuthenticated && <TableCell><PlayerUid uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>}
                   <TableCell className="min-w-[16rem]">
                     <Link to={`/server/${player.serverId}`} className="font-medium text-foreground hover:text-primary">
                       <RichText text={player.serverName} />

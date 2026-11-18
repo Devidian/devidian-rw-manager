@@ -14,13 +14,15 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     user: null,
-    isAuthenticated: false,
+    isAuthenticated: authState.signedIn,
     isAdmin: false,
-    isSuperAdmin: false,
+    isSuperAdmin: authState.superAdmin,
     hasAuthService: true,
     logout: vi.fn(),
   }),
 }));
+
+const authState = vi.hoisted(() => ({ signedIn: true, superAdmin: false }));
 
 const intercomState = vi.hoisted(() => ({
   unreadCount: 0,
@@ -37,6 +39,33 @@ const { AppSidebar } = await import('@/components/AppSidebar');
 describe('app sidebar', () => {
   beforeEach(() => {
     intercomState.unreadCount = 0;
+    authState.signedIn = true;
+    authState.superAdmin = false;
+  });
+
+  it('orders guest navigation and keeps login-only destinations disabled', () => {
+    authState.signedIn = false;
+    render(<MemoryRouter><SidebarProvider><AppSidebar servers={[]} onlinePlayerCount={0} /></SidebarProvider></MemoryRouter>);
+    expect(screen.getAllByRole('link').map(link => link.textContent)).toEqual([
+      'dashboard', 'serverList', 'statistics', 'playerList', 'globalIntercomChat', 'participation.title',
+    ]);
+    for (const name of ['dashboard', 'playerList', 'globalIntercomChat']) {
+      const entry = screen.getByRole('link', { name });
+      expect(entry).toHaveAttribute('aria-disabled', 'true');
+      expect(entry).not.toHaveAttribute('href');
+    }
+    expect(screen.getAllByRole('separator')).toHaveLength(1);
+  });
+
+  it('adds separated administration links for signed-in superadmins', () => {
+    authState.superAdmin = true;
+    render(<MemoryRouter><SidebarProvider><AppSidebar servers={[]} onlinePlayerCount={0} /></SidebarProvider></MemoryRouter>);
+    expect(screen.getAllByRole('link').map(link => link.textContent)).toEqual([
+      'dashboard', 'serverList', 'statistics', 'playerList', 'globalIntercomChat', 'participation.title',
+      'userManagement', 'serverDuplicates',
+    ]);
+    expect(screen.getByRole('link', { name: 'dashboard' })).toHaveAttribute('href', '/');
+    expect(screen.getAllByRole('separator')).toHaveLength(2);
   });
 
   it('renders the Global Intercom navigation item and player counts for pinned servers', () => {

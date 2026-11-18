@@ -1,9 +1,9 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
-import { BarChart3, Loader2, Users } from 'lucide-react';
+import { BarChart3, Loader2 } from 'lucide-react';
 import { useStorageMode } from '@/context/StorageModeContext';
-import type { GlobalStatisticsPayload, ServerStatisticsBucket } from '@/types/server';
+import type { ServerStatisticsBucket } from '@/types/server';
 import {
   buildGlobalStatisticsPoints,
   isoDate,
@@ -16,44 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { useAuth } from '@/context/AuthContext';
 import { StatisticsDatePicker } from '@/components/StatisticsDatePicker';
-import { PlayerNameLink } from '@/components/PlayerNameLink';
-import { maskPlayerUid } from '@/lib/maskPlayerUid';
-
-const STATISTICS_PAGE_SIZE_KEY = 'risingworld_statistics_page_size';
-const PAGE_SIZES = [10, 25, 50, 100];
-
-function readPageSize(): number {
-  const value = Number(localStorage.getItem(STATISTICS_PAGE_SIZE_KEY));
-  return PAGE_SIZES.includes(value) ? value : 25;
-}
-
-const STEAM_ID_PATTERN = /^\d{17}$/;
-
-function isSteamId(uid: string): boolean {
-  return STEAM_ID_PATTERN.test(uid);
-}
-
-function PlayerUid({ uid, authenticated }: { uid: string; authenticated: boolean }) {
-  if (authenticated && isSteamId(uid)) {
-    return (
-      <a
-        href={`https://steamcommunity.com/profiles/${uid}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-primary underline underline-offset-2 hover:text-primary/80"
-      >
-        {uid}
-      </a>
-    );
-  }
-  return <span>{authenticated ? uid : maskPlayerUid(uid)}</span>;
-}
 
 const GlobalStatisticsChart = memo(function GlobalStatisticsChart({ points, averageLabel, maxLabel }: {
   points: StatisticsPoint[];
@@ -83,16 +47,12 @@ const GlobalStatisticsChart = memo(function GlobalStatisticsChart({ points, aver
 export default function StatisticsPage() {
   const { t, i18n } = useTranslation();
   const { adapter } = useStorageMode();
-  const { isAuthenticated } = useAuth();
   const [view, setView] = useState<StatisticsView>('day');
   const [dateValue, setDateValue] = useState(() => isoDate(new Date()));
   const [buckets, setBuckets] = useState<ServerStatisticsBucket[]>([]);
-  const [players, setPlayers] = useState<GlobalStatisticsPayload['players']>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pageSize, setPageSize] = useState(readPageSize);
-  const [currentPage, setCurrentPage] = useState(0);
-  const snapshotRef = useRef({ range: '', chart: '', players: '' });
+  const snapshotRef = useRef({ range: '', chart: '' });
 
   useEffect(() => {
     let cancelled = false;
@@ -105,13 +65,10 @@ export default function StatisticsPage() {
         const chart = JSON.stringify(buildGlobalStatisticsPoints(payload.buckets, view, dateValue, 'en').map((point) => [
           point.label, point.averagePlayers, point.maxPlayers, point.samples > 0,
         ]));
-        const nextPlayers = [...payload.players].sort((a, b) => a.uid.localeCompare(b.uid));
-        const playersSnapshot = JSON.stringify(nextPlayers);
         if (range !== snapshotRef.current.range || chart !== snapshotRef.current.chart) {
           setBuckets(payload.buckets);
         }
-        if (range !== snapshotRef.current.range || playersSnapshot !== snapshotRef.current.players) setPlayers(nextPlayers);
-        snapshotRef.current = { range, chart, players: playersSnapshot };
+        snapshotRef.current = { range, chart };
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'UNKNOWN_ERROR');
@@ -129,21 +86,9 @@ export default function StatisticsPage() {
     [buckets, dateValue, i18n.language, view],
   );
   const hasData = points.some((point) => point.samples > 0);
-  const totalPages = Math.max(1, Math.ceil(players.length / pageSize));
-  const pagedPlayers = players.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
-
-  useEffect(() => { setCurrentPage(0); }, [players, pageSize]);
-
   const changeView = (nextView: StatisticsView) => {
     setView(nextView);
     setDateValue(statisticsPickerValue(nextView));
-  };
-
-  const changePageSize = (value: string) => {
-    const nextSize = Number(value);
-    if (!PAGE_SIZES.includes(nextSize)) return;
-    localStorage.setItem(STATISTICS_PAGE_SIZE_KEY, String(nextSize));
-    setPageSize(nextSize);
   };
 
   return (
@@ -200,58 +145,7 @@ export default function StatisticsPage() {
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            {t('uniquePlayers')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {players.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">{t('noPlayersFound')}</div>
-          ) : (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-border overflow-hidden">
-                <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableHead>{t('name')}</TableHead>
-                    <TableHead>{t('uid')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pagedPlayers.map((player) => (
-                    <TableRow key={player.uid} className="hover:bg-muted/20">
-                      <TableCell className="font-medium"><PlayerNameLink uid={player.uid} name={player.name} /></TableCell>
-                      <TableCell className="font-mono text-xs">
-                        <PlayerUid uid={player.uid} authenticated={isAuthenticated} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-                </Table>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <span>{t('pageSize')}:</span>
-                <Select value={String(pageSize)} onValueChange={changePageSize}>
-                  <SelectTrigger className="h-8 w-20 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PAGE_SIZES.map((size) => <SelectItem key={size} value={String(size)}>{size}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" className="rounded border border-border px-2 py-1 disabled:opacity-50" disabled={currentPage === 0} onClick={() => setCurrentPage((page) => page - 1)}>‹</button>
-                <span>{t('page')} {currentPage + 1} {t('of')} {totalPages}</span>
-                <button type="button" className="rounded border border-border px-2 py-1 disabled:opacity-50" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage((page) => page + 1)}>›</button>
-              </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
     </div>
   );
 }

@@ -53,7 +53,7 @@ export default function EmbeddedMapPage() {
     [],
     [],
     DATA_API_PATH,
-    false,
+    isAuthenticated,
   );
 
   if (loading) {

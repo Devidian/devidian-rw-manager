@@ -11,7 +11,7 @@ export default function ServerDetailPage() {
   const { fixedBackendUrl } = useStorageMode();
   const { serverList, refreshOne } = useServerContext();
 
-  const server = id ? serverList.find(s => s.id === id) : undefined;
+  const server = id ? serverList.find(s => s.id === id && !s.masterOnly) : undefined;
 
   useEffect(() => {
     if (server || !id || !fixedBackendUrl) return;

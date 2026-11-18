@@ -1,5 +1,9 @@
 export interface ServerConfig {
   id: string;
+  masterOnly?: boolean;
+  canApprove?: boolean;
+  canDelete?: boolean;
+  dashboardVisible?: boolean;
   label: string;
   steamId?: string;
   addr?: string;
@@ -22,6 +26,7 @@ export interface ServerConfig {
   queryData?: RisingWorldQueryData;
   infoData?: ServerInfoResponse;
   onlinePlayers?: ServerPlayerListPlayer[];
+  publicPlayerCount?: number;
   blocked?: boolean;
   blockedAt?: string;
   lastChecked?: string | Date;
@@ -100,9 +105,10 @@ export interface ServerInfoResponse {
 
 // GET {queryUrl}/playerlist
 export interface ServerPlayerListPlayer {
-  id: number;
+  id: string | number;
+  slotId?: number;
   name: string;
-  uid: string;
+  uid?: string;
   platform: string;
   ping: number;
 }
@@ -130,8 +136,8 @@ export interface SpawnPoint {
 }
 
 export interface DbPlayer {
-  id?: number;
-  uid: string;
+  id?: string | number;
+  uid?: string;
   name?: string;
   posx?: number;
   posy?: number;
@@ -179,6 +185,7 @@ export interface ServerLiveStatusPayload {
   queryData?: RisingWorldQueryData;
   infoData?: ServerInfoResponse;
   onlinePlayers?: ServerPlayerListPlayer[];
+  publicPlayerCount?: number;
   lastChecked: string;
   errorMessage?: string;
 }
@@ -193,7 +200,8 @@ export interface ServerStatisticsBucket {
   maxPlayers: number;
   averagePlayers: number;
   availability: number;
-  onlinePlayerUids: string[];
+  onlinePlayerUids?: string[];
+  onlinePlayerIds?: string[];
   updatedAt: string;
 }
 
@@ -208,8 +216,4 @@ export interface GlobalStatisticsPayload {
   from?: string;
   to?: string;
   buckets: ServerStatisticsBucket[];
-  players: Array<{
-    uid: string;
-    name?: string;
-  }>;
 }

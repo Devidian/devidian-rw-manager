@@ -1,3 +1,4 @@
+import { TOKEN_KEY } from '@/lib/authApi';
 import {
   getMapLiveWebSocketUrl,
   parseMapLayersChangedMessage,
@@ -174,6 +175,7 @@ describe('map live subscription lifecycle', () => {
     });
     Object.defineProperty(globalThis, 'fetch', { configurable: true, value: fetchMock });
 
+    localStorage.setItem(TOKEN_KEY, 'map-viewer-token');
     const { result, unmount } = renderHook(() => useMapLayers(
       'https://manager.example',
       'server-a',
@@ -184,6 +186,12 @@ describe('map live subscription lifecycle', () => {
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) =>
       String(url).endsWith('/map/layers/players'))).toBe(true));
+    const token = localStorage.getItem(TOKEN_KEY);
+    expect(token).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://manager.example/api/storage/server/server-a/map/layers',
+      expect.objectContaining({ headers: { Authorization: `Bearer ${token}` } }),
+    );
     act(() => FakeWebSocket.instances[0].emit('message', new MessageEvent('message', {
       data: JSON.stringify({ type: 'subscribed', schemaVersion: 1, serverId: 'server-a' }),
     })));
@@ -230,6 +238,7 @@ describe('map live subscription lifecycle', () => {
     expect(fetchMock.mock.calls.filter(([url]) =>
       String(url).endsWith('/map/layers/players'))).toHaveLength(1);
     unmount();
+    localStorage.removeItem(TOKEN_KEY);
   });
 });
 

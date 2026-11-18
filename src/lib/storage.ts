@@ -1,49 +1,24 @@
-import { AuthUser, GlobalStatisticsPayload, ServerConfig, ServerLiveStatusPayload, ServerStatisticsPayload } from '@/types/server';
+import { GlobalStatisticsPayload, ServerConfig, ServerLiveStatusPayload, ServerStatisticsPayload } from '@/types/server';
 import { authHeaders, TOKEN_KEY } from './authApi';
 
 const LOCAL_STORAGE_KEY = 'risingworld_servers';
-const LOCAL_PINNED_SERVERS_KEY = 'risingworld_pinned_servers';
-
-function readLocalPinnedServers(): string[] {
-  try {
-    const raw = localStorage.getItem(LOCAL_PINNED_SERVERS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeLocalPinnedServers(ids: string[]): void {
-  localStorage.setItem(LOCAL_PINNED_SERVERS_KEY, JSON.stringify(ids));
-}
-
-export function clearLocalPinnedServers(): void {
-  localStorage.removeItem(LOCAL_PINNED_SERVERS_KEY);
-}
-
-export function replaceLocalPinnedServerIds(replacements: Map<string, string>): string[] {
-  const current = readLocalPinnedServers();
-  const next = [...new Set(current.map((id) => replacements.get(id) ?? id))];
-  if (next.some((id, index) => id !== current[index]) || next.length !== current.length) {
-    writeLocalPinnedServers(next);
-  }
-  return next;
-}
 
 
 // ─── Interface ──────────────────────────────────────────────────────────────
 
+export class ServerApprovalError extends Error {
+  constructor(readonly code: string, readonly status?: number) {
+    super(code);
+  }
+}
+
 export interface StorageAdapter {
   getServers(): Promise<ServerConfig[]>;
   refreshServers(): Promise<ServerConfig[]>;
+  approveServer?(id: string): Promise<ServerConfig>;
   addServer(data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig>;
   updateServer(id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl' | 'public'>>): Promise<ServerConfig>;
   deleteServer(id: string): Promise<void>;
-  getPinnedServers(): Promise<string[]>;
-  pinServer(id: string): Promise<AuthUser | null>;
-  unpinServer(id: string): Promise<AuthUser | null>;
   setServerBlocked(id: string, blocked: boolean): Promise<ServerConfig>;
   getServerLiveStatus(server: ServerConfig): Promise<ServerLiveStatusPayload>;
   getServerStatistics(server: Pick<ServerConfig, 'id'>, range?: { from?: string; to?: string }): Promise<ServerStatisticsPayload>;
@@ -93,23 +68,6 @@ export class LocalStorageAdapter implements StorageAdapter {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(servers.filter(s => s.id !== id)));
   }
 
-  async getPinnedServers(): Promise<string[]> {
-    return readLocalPinnedServers();
-  }
-
-  async pinServer(id: string): Promise<AuthUser | null> {
-    const pinned = new Set(await this.getPinnedServers());
-    pinned.add(id);
-    writeLocalPinnedServers([...pinned]);
-    return null;
-  }
-
-  async unpinServer(id: string): Promise<AuthUser | null> {
-    const pinned = new Set(await this.getPinnedServers());
-    pinned.delete(id);
-    writeLocalPinnedServers([...pinned]);
-    return null;
-  }
 
   async setServerBlocked(id: string, blocked: boolean): Promise<ServerConfig> {
     const servers = await this.getServers();
@@ -156,7 +114,6 @@ export class LocalStorageAdapter implements StorageAdapter {
   async getGlobalStatistics(): Promise<GlobalStatisticsPayload> {
     return {
       buckets: [],
-      players: [],
     };
   }
 }
@@ -188,6 +145,21 @@ export class BackendStorageAdapter implements StorageAdapter {
     });
     if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
     return res.json().then(json => json.server as ServerConfig);
+  }
+
+  async approveServer(id: string): Promise<ServerConfig> {
+    const response = await fetch(`${this.base}/api/storage/server/${encodeURIComponent(id)}/approve`, {
+      method: 'POST',
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(35_000),
+    });
+    if (!response.ok) {
+      const body: { error?: unknown } | null = await response.json().catch(() => null);
+      const code = response.status === 401 ? 'VERIFIED_STEAM_REQUIRED'
+        : typeof body?.error === 'string' ? body.error : 'SERVER_APPROVAL_FAILED';
+      throw new ServerApprovalError(code, response.status);
+    }
+    return (await response.json()).server as ServerConfig;
   }
 
   async refreshServers(): Promise<ServerConfig[]> {
@@ -222,41 +194,6 @@ export class BackendStorageAdapter implements StorageAdapter {
     if (!res.ok && res.status !== 204) throw new Error(`Backend returned HTTP ${res.status}`);
   }
 
-  async getPinnedServers(): Promise<string[]> {
-    return readLocalPinnedServers();
-  }
-
-  async pinServer(id: string): Promise<AuthUser | null> {
-    if (!localStorage.getItem(TOKEN_KEY)) {
-      const pinned = new Set(readLocalPinnedServers());
-      pinned.add(id);
-      writeLocalPinnedServers([...pinned]);
-      return null;
-    }
-    const res = await fetch(`${this.base}/api/storage/server/${id}/pin`, {
-      method: 'POST',
-      headers: authHeaders(),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
-    return res.json().then(json => json.user as AuthUser);
-  }
-
-  async unpinServer(id: string): Promise<AuthUser | null> {
-    if (!localStorage.getItem(TOKEN_KEY)) {
-      const pinned = new Set(readLocalPinnedServers());
-      pinned.delete(id);
-      writeLocalPinnedServers([...pinned]);
-      return null;
-    }
-    const res = await fetch(`${this.base}/api/storage/server/${id}/pin`, {
-      method: 'DELETE',
-      headers: authHeaders(),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) throw new Error(`Backend returned HTTP ${res.status}`);
-    return res.json().then(json => json.user as AuthUser);
-  }
 
   async setServerBlocked(id: string, blocked: boolean): Promise<ServerConfig> {
     const res = await fetch(`${this.base}/api/storage/server/${id}/blocked`, {
@@ -369,5 +306,16 @@ async function fetchLocalJson(url: string): Promise<{ ok: true; data: unknown } 
 function playersFromPayload(payload: unknown): ServerLiveStatusPayload['onlinePlayers'] {
   if (!payload || typeof payload !== 'object') return undefined;
   const players = (payload as { players?: unknown }).players;
-  return Array.isArray(players) ? players as ServerLiveStatusPayload['onlinePlayers'] : undefined;
+  if (!Array.isArray(players)) return undefined;
+  return players.flatMap((value, index) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+    const player = value as Record<string, unknown>;
+    return [{
+      id: typeof player.id === 'number' && Number.isSafeInteger(player.id) ? player.id : index,
+      name: '**PRIVATE**',
+      uid: '**PRIVATE**',
+      platform: typeof player.platform === 'string' ? player.platform : 'Unknown',
+      ping: typeof player.ping === 'number' && Number.isFinite(player.ping) ? player.ping : 0,
+    }];
+  });
 }

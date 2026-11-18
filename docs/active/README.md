@@ -7,3 +7,4 @@ Each task must include objective, ownership, dependencies, risks, validation str
 ## Current Tasks
 
 - [Server Access and Capability Presentation](server-access-and-capability-badges.md)
+- [Player ObjectId navigation](player-identity-steam-privacy.md)

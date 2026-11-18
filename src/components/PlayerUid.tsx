@@ -2,12 +2,13 @@ import { ExternalLink } from 'lucide-react';
 import { maskPlayerUid } from '@/lib/maskPlayerUid';
 
 interface PlayerUidProps {
-  uid: string;
+  uid?: string;
   platform?: string | number;
   authenticated: boolean;
 }
 
 export function PlayerUid({ uid, platform, authenticated }: PlayerUidProps) {
+  if (!uid) return <span className="text-muted-foreground">-</span>;
   const platformText = platform === undefined ? '' : String(platform);
   if (authenticated && platformText.toLowerCase() === 'steam' && /^\d+$/.test(uid)) {
     return (

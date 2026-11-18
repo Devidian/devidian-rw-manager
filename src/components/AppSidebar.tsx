@@ -1,3 +1,4 @@
+import { getServerPlayerCount } from '@/lib/serverDisplay';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
@@ -8,9 +9,11 @@ import {
 import { ServerWithStatus } from '@/types/server';
 import { useAuth } from '@/context/AuthContext';
 import { useGlobalIntercom } from '@/context/GlobalIntercomContext';
-import { BarChart3, LayoutDashboard, Server, Loader2, LogOut, LogIn, User, Users, List, MessageSquare, GitMerge } from 'lucide-react';
+import { BarChart3, LayoutDashboard, Server, Loader2, LogOut, LogIn, User, Users, List, MessageSquare, GitMerge, Handshake, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import type { ReactNode } from 'react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { RichText } from '@/components/RichText';
 
 interface AppSidebarProps {
@@ -27,7 +30,7 @@ function StatusIcon({ status }: { status: ServerWithStatus['status'] }) {
 
 function getPlayerCount(server: ServerWithStatus): { current: number | string; max: number | string } {
   return {
-    current: server.onlinePlayers?.length ?? server.queryData?.playercount ?? 0,
+    current: getServerPlayerCount(server),
     max: server.queryData?.maxplayers ?? '?',
   };
 }
@@ -46,6 +49,48 @@ function LanguageToggle() {
     >
       {current === 'de' ? '🇩🇪 DE' : '🇬🇧 EN'}
     </Button>
+  );
+}
+
+function NavigationItem({ to, label, icon, badge, locked, admin }: {
+  to: string;
+  label: string;
+  icon: ReactNode;
+  badge?: number;
+  locked?: boolean;
+  admin?: boolean;
+}) {
+  const { t } = useTranslation();
+  const content = <>{icon}<span className="min-w-0 flex-1 truncate">{label}</span></>;
+
+  return (
+    <SidebarMenuItem>
+      {locked ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span role="link" aria-disabled="true" tabIndex={0}
+              className="flex h-8 cursor-default items-center gap-3 rounded px-3 text-sm text-sidebar-foreground/50 focus-visible:outline focus-visible:outline-1 focus-visible:outline-sidebar-ring">
+              {content}
+              <Lock className="size-3.5 shrink-0" aria-hidden="true" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="right">{t('navigationLoginRequired')}</TooltipContent>
+        </Tooltip>
+      ) : (
+        <SidebarMenuButton asChild>
+          <NavLink to={to} end={to === '/'}
+            className={`flex items-center gap-3 rounded px-3 py-2 transition-colors hover:bg-sidebar-accent ${admin ? 'text-amber-300 hover:text-amber-200' : 'text-sidebar-foreground'}`}
+            activeClassName={admin ? 'bg-sidebar-accent text-amber-200 font-medium' : 'bg-sidebar-accent text-primary font-medium'}>
+            {content}
+            {badge !== undefined && badge > 0 && (
+              <Badge className="h-5 min-w-5 shrink-0 justify-center px-1.5 text-[10px] tabular-nums">
+                {badge > 99 ? '99+' : badge}
+              </Badge>
+            )}
+          </NavLink>
+        </SidebarMenuButton>
+      )}
+    </SidebarMenuItem>
   );
 }
 
@@ -77,98 +122,18 @@ export function AppSidebar({ servers, onlinePlayerCount }: AppSidebarProps) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/"
-                    end
-                    className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                    activeClassName="bg-sidebar-accent text-primary font-medium"
-                  >
-                    <LayoutDashboard className="h-4 w-4 shrink-0" />
-                    <span>{t('dashboard')}</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/serverliste"
-                    className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                    activeClassName="bg-sidebar-accent text-primary font-medium"
-                  >
-                    <List className="h-4 w-4 shrink-0" />
-                    <span>{t('serverList')}</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/spielerliste"
-                    className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                    activeClassName="bg-sidebar-accent text-primary font-medium"
-                  >
-                    <Users className="h-4 w-4 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">{t('playerList')}</span>
-                    {onlinePlayerCount > 0 && (
-                      <Badge className="h-5 min-w-5 shrink-0 justify-center px-1.5 text-[10px] tabular-nums">
-                        {onlinePlayerCount > 99 ? '99+' : onlinePlayerCount}
-                      </Badge>
-                    )}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/statistiken"
-                    className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                    activeClassName="bg-sidebar-accent text-primary font-medium"
-                  >
-                    <BarChart3 className="h-4 w-4 shrink-0" />
-                    <span>{t('statistics')}</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink
-                    to="/global-intercom"
-                    className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                    activeClassName="bg-sidebar-accent text-primary font-medium"
-                  >
-                    <MessageSquare className="h-4 w-4 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">{t('globalIntercomChat')}</span>
-                    {unreadCount > 0 && (
-                      <Badge className="h-5 min-w-5 shrink-0 justify-center px-1.5 text-[10px] tabular-nums">
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </Badge>
-                    )}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {isSuperAdmin && (
+              <NavigationItem to="/" label={t('dashboard')} icon={<LayoutDashboard className="size-4 shrink-0" />} locked={!isAuthenticated} />
+              <NavigationItem to="/serverliste" label={t('serverList')} icon={<List className="size-4 shrink-0" />} />
+              <NavigationItem to="/statistiken" label={t('statistics')} icon={<BarChart3 className="size-4 shrink-0" />} />
+              <NavigationItem to="/spielerliste" label={t('playerList')} icon={<Users className="size-4 shrink-0" />} locked={!isAuthenticated} badge={onlinePlayerCount} />
+              <NavigationItem to="/global-intercom" label={t('globalIntercomChat')} icon={<MessageSquare className="size-4 shrink-0" />} locked={!isAuthenticated} badge={unreadCount} />
+              <li role="separator" className="mx-3 my-1 border-t border-sidebar-border" />
+              <NavigationItem to="/teilnehmen" label={t('participation.title')} icon={<Handshake className="size-4 shrink-0" />} />
+              {isAuthenticated && isSuperAdmin && (
                 <>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/admin/users"
-                      className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                      activeClassName="bg-sidebar-accent text-primary font-medium"
-                    >
-                      <Users className="h-4 w-4 shrink-0" />
-                      <span>{t('userManagement')}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink to="/admin/server-duplicates" className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground hover:bg-sidebar-accent transition-colors" activeClassName="bg-sidebar-accent text-primary font-medium">
-                      <GitMerge className="h-4 w-4 shrink-0" /><span>{t('serverDuplicates')}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                  <li role="separator" className="mx-3 my-1 border-t border-sidebar-border" />
+                  <NavigationItem to="/admin/users" label={t('userManagement')} icon={<Users className="size-4 shrink-0" />} admin />
+                  <NavigationItem to="/admin/server-duplicates" label={t('serverDuplicates')} icon={<GitMerge className="size-4 shrink-0" />} admin />
                 </>
               )}
             </SidebarMenu>
@@ -178,7 +143,7 @@ export function AppSidebar({ servers, onlinePlayerCount }: AppSidebarProps) {
         {servers.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-xs uppercase tracking-widest text-muted-foreground px-4 py-2">
-              {t('server')}
+              {t('myServers')}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>

@@ -7,22 +7,26 @@ export function PluginsTab({ plugins, latestVersions, nativeAccess = 'available'
   const { t } = useTranslation();
   if (loading) return <p className="text-sm text-muted-foreground">{t('loadingPlugins')}</p>;
   if (error) return <p className="text-sm text-destructive">{t('backendError')}</p>;
-  if (nativeAccess === 'noAccess') return <p className="text-sm text-destructive">{t('nativeAccessDenied')}</p>;
   if (plugins.length === 0) return <p className="text-sm text-muted-foreground">{t('noPlugins')}</p>;
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {plugins.map((plugin, index) => (
-        <Card key={`${plugin.name ?? 'plugin'}-${plugin.version ?? 'unknown'}-${index}`}>
-          <CardContent className="flex items-center justify-between gap-4 p-4">
-            <div>
-              <p className="font-medium">{plugin.name ?? t('unknown')}</p>
-            </div>
-            <Badge title={plugin.name ? latestVersions[plugin.name] : undefined} className={versionBadgeClass(plugin, latestVersions)} variant={plugin.valid ? 'secondary' : 'destructive'}>
-              {plugin.valid ? plugin.version ?? t('unknown') : t('invalidPlugin')}
-            </Badge>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-3">
+      {nativeAccess === 'noAccess' && (
+        <p className="text-sm text-muted-foreground">{t('nativeAccessDenied')}</p>
+      )}
+      <div className="grid gap-3 md:grid-cols-2">
+        {plugins.map((plugin, index) => (
+          <Card key={`${plugin.name ?? 'plugin'}-${plugin.version ?? 'unknown'}-${index}`}>
+            <CardContent className="flex items-center justify-between gap-4 p-4">
+              <div>
+                <p className="font-medium">{plugin.name ?? t('unknown')}</p>
+              </div>
+              <Badge title={plugin.name ? latestVersions[plugin.name] : undefined} className={versionBadgeClass(plugin, latestVersions)} variant={plugin.valid ? 'secondary' : 'destructive'}>
+                {plugin.valid ? plugin.version ?? t('unknown') : t('invalidPlugin')}
+              </Badge>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

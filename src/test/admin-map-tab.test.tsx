@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { vi } from 'vitest';
 import { AdminMapTab } from '@/components/AdminMapTab';
 import type { MapClaim } from '@/types/adminMapping';
@@ -13,9 +13,12 @@ const mapContainerProps = vi.hoisted(() => ({
 }));
 
 const tileLayerUrls = vi.hoisted(() => [] as string[]);
+const tileLayerOptions = vi.hoisted(() => [] as Array<{ zIndex?: number; errorTileUrl?: string }>);
+const removedTileLayerUrls = vi.hoisted(() => [] as string[]);
 const rectanglePathOptions = vi.hoisted(() => [] as Array<Record<string, unknown>>);
 const mapLayerState = vi.hoisted(() => ({
   claims: [] as MapClaim[],
+  npcMarkets: false,
 }));
 const fetchMarketplaceOffersMock = vi.hoisted(() => vi.fn());
 const refreshClaimsMock = vi.hoisted(() => vi.fn());
@@ -26,15 +29,16 @@ vi.mock('leaflet', async (importOriginal) => {
   return {
     ...actual,
     TileLayer: class {
-      constructor(public url: string) {
+      constructor(public url: string, options: { zIndex?: number; errorTileUrl?: string }) {
         tileLayerUrls.push(url);
+        tileLayerOptions.push(options);
       }
 
       addTo() {
         return this;
       }
 
-      remove() {}
+      remove() { removedTileLayerUrls.push(this.url); }
 
       getTileUrl() {
         return this.url;
@@ -55,24 +59,27 @@ vi.mock('react-leaflet', () => ({
     return <div>{props.children}</div>;
   },
   CircleMarker: () => null,
-  Marker: () => null,
+  Marker: ({ icon }: { icon?: { options: { html?: string | HTMLElement } } }) => {
+    const html = icon?.options.html;
+    return html instanceof HTMLElement ? <div ref={(element) => { if (element) element.append(html); }} /> : null;
+  },
   Popup: (props: ComponentProps<'div'>) => <div>{props.children}</div>,
   Rectangle: (props: ComponentProps<'div'> & Record<string, unknown>) => {
     rectanglePathOptions.push(props.pathOptions as Record<string, unknown>);
     return <div data-testid="map-rectangle">{props.children}</div>;
   },
   Tooltip: () => null,
-  useMap: () => ({
+  useMap: () => useMemo(() => ({
     addLayer: vi.fn(),
     removeLayer: vi.fn(),
     invalidateSize: () => {
       mapContainerProps.invalidations += 1;
     },
     getContainer: () => document.createElement('div'),
-  }),
+  }), []),
   useMapEvents: (handlers: Record<string, (event: never) => void>) => {
-    mapEventHandlers.current = handlers;
-    return { getBounds: vi.fn() };
+    Object.assign(mapEventHandlers.current, handlers);
+    return { project: () => ({ x: 0, y: 0 }), getBounds: () => ({ getWest: () => 0, getEast: () => 0, getSouth: () => 0, getNorth: () => 0 }) };
   },
 }));
 
@@ -89,11 +96,14 @@ function TestAdminMapTab(props: Omit<ComponentProps<typeof AdminMapTab>, 'mapLay
   return (
     <AdminMapTab
       {...props}
+      isAuthenticated={props.isAuthenticated ?? true}
       mapLayers={{
         capabilities: {
           claims: true,
           players: true,
           gpsGlobalMarkers: true,
+          marketCriers: mapLayerState.npcMarkets,
+          shopTraders: mapLayerState.npcMarkets,
         } as never,
         claims: mapLayerState.claims,
         players: [],
@@ -112,11 +122,47 @@ describe('AdminMapTab', () => {
     mapContainerProps.unmounts = 0;
     mapContainerProps.invalidations = 0;
     tileLayerUrls.length = 0;
+    tileLayerOptions.length = 0;
+    removedTileLayerUrls.length = 0;
     rectanglePathOptions.length = 0;
     mapLayerState.claims = [];
+    mapLayerState.npcMarkets = false;
     fetchMarketplaceOffersMock.mockReset();
     refreshClaimsMock.mockReset();
     mapEventHandlers.current = {};
+  });
+
+  it('limits guests to the surface map and sector control', () => {
+    render(<TestAdminMapTab apiBaseUrl="https://manager.example.com/" serverId="server-1"
+      isAuthenticated={false} metadata={{
+        schemaVersion: 5, worldKey: 'world', worldName: 'World', tileSize: 256,
+        chunkSize: 32, pixelsPerBlock: 4, nativeTileSizeChunks: 2, minZoom: 0,
+        nativeZoom: 8, generatedChunkBounds: { minX: 0, minZ: 0, maxX: 1, maxZ: 1 },
+        generatedTileBounds: { minX: 0, minZ: 0, maxX: 1, maxZ: 1 },
+        updatedAt: '2026-11-16T00:00:00Z', tileUrl: '/tiles/{z}/{x}/{y}.png',
+        satelliteTileUrl: '/satellite/{z}/{x}/{y}.png',
+      }} />);
+    expect(screen.getByText('mapLayerSectors')).toBeInTheDocument();
+    expect(screen.queryByText('mapLayerSatellite')).not.toBeInTheDocument();
+    expect(screen.queryByText('mapLayerAutoRefresh')).not.toBeInTheDocument();
+    expect(screen.queryByText('mapLayerClaims')).not.toBeInTheDocument();
+  });
+
+  it('keeps the surface tiles mounted below the optional satellite tiles', () => {
+    const surface = metadata('world-a', 'World A');
+    const satelliteTileUrl = 'https://map.example.com/satellite/{z}/{x}/{y}.png';
+    render(<TestAdminMapTab apiBaseUrl="https://manager.example.com" serverId="server-1"
+      metadata={{ ...surface, satelliteTileUrl }} />);
+
+    const toggle = screen.getByRole('checkbox', { name: 'mapLayerSatellite' });
+    fireEvent.click(toggle);
+    expect(tileLayerUrls).toEqual([surface.tileUrl, satelliteTileUrl]);
+    expect(tileLayerOptions[0].zIndex).toBeLessThan(tileLayerOptions[1].zIndex ?? 0);
+    expect(tileLayerOptions[1].errorTileUrl).toMatch(/^data:image\/gif/);
+    expect(removedTileLayerUrls).not.toContain(surface.tileUrl);
+
+    fireEvent.click(toggle);
+    expect(removedTileLayerUrls).toEqual([satelliteTileUrl]);
   });
 
   it('initially fits generated tiles without locking map panning to them', () => {
@@ -305,6 +351,43 @@ describe('AdminMapTab', () => {
 
     await waitFor(() => expect(requestFullscreen).toHaveBeenCalledTimes(1));
     expect(await screen.findByRole('button', { name: 'mapExitFullscreen' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['market-criers', 'mapLayerMarketCriers', 'Market Crier'],
+    ['shop-traders', 'mapLayerShopTraders', 'Shop Trader'],
+  ])('opens %s offers within the browser fullscreen element', async (path, layer, name) => {
+    mapLayerState.npcMarkets = true;
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => Response.json({
+      items: String(input).endsWith(path) ? [{
+        id: 1, name, x: 256, y: 0, z: 256, balances: [{ balance: 10, currency: 'coins' }],
+        offers: [{ id: 1, itemName: 'Iron Ingot', itemVariant: 0, amount: 1, price: 5, currency: 'coins' }],
+      }] : [],
+    }));
+    const previousFullscreen = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'requestFullscreen');
+    const fullscreenElements: HTMLElement[] = [];
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
+      configurable: true,
+      value: async function (this: HTMLElement) { fullscreenElements.push(this); },
+    });
+
+    try {
+      render(<TestAdminMapTab apiBaseUrl="https://manager.example.com" serverId="server-1"
+        metadata={metadata('world-a', 'World A')} />);
+      fireEvent.click(screen.getByRole('button', { name: 'mapExpandWindow' }));
+      fireEvent.click(screen.getByRole('button', { name: 'mapBrowserFullscreen' }));
+      await screen.findByRole('button', { name: 'mapExitFullscreen' });
+      fireEvent.click(screen.getByRole('checkbox', { name: layer }));
+      fireEvent.click(await screen.findByRole('button', { name }));
+      const dialog = await screen.findByRole('dialog', { name: 'mapNpcOffersTitle' });
+      expect(fullscreenElements[0]).toContainElement(dialog);
+      expect(dialog).toHaveTextContent('Iron Ingot');
+      expect(dialog).toHaveTextContent('10 coins');
+    } finally {
+      fetchMock.mockRestore();
+      if (previousFullscreen) Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', previousFullscreen);
+      else Reflect.deleteProperty(HTMLElement.prototype, 'requestFullscreen');
+    }
   });
 
   it('opens marketplace offers from marketplace claim indicators only', async () => {

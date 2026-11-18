@@ -15,6 +15,11 @@ export const LEGAL_UPDATED = {
   de: 'Stand: 1. Juli 2026',
 } as const;
 
+const PRIVACY_UPDATED = {
+  en: 'Last updated: November 16, 2026',
+  de: 'Stand: 16. November 2026',
+} as const;
+
 const legalAddressDe = ['Hebeckenkamp 49', '45731 Waltrop', 'Deutschland'];
 
 export const LEGAL_LINKS: Record<LegalLocale, { label: string; path: string }[]> = {
@@ -94,7 +99,7 @@ export const LEGAL_PAGES: Record<LegalLocale, Record<LegalPageKey, LegalPageCont
     },
     privacy: {
       title: 'Privacy Policy',
-      updated: LEGAL_UPDATED.en,
+      updated: PRIVACY_UPDATED.en,
       intro: [
         'This policy explains how Rising World Manager processes data for the public server list, Steam sign-in, admin-only views and global chat.',
       ],
@@ -116,14 +121,29 @@ export const LEGAL_PAGES: Record<LegalLocale, Record<LegalPageKey, LegalPageCont
         {
           heading: 'Rising World Master List Data',
           body: [
-            'The service collects and displays public Rising World server list data from the Rising World master list. This can include server identifiers, address and port data, server status, player counts, version information and other public metadata supplied through the master list.',
+            'The service displays public Rising World server list data from the Rising World master list. This can include server identifiers, address and port data, server status, player counts, version information and other public metadata. Master-list-only entries are held temporarily in memory and have no detail page.',
+          ],
+        },
+        {
+          heading: 'Stored Servers and Operator Control',
+          body: [
+            'A server is stored with statistics if it connects through the OZ Tools WebSocket, uses [rw-servers] in its description, or is approved by a Steam-signed-in operator whose identity matches the server contact field. Any one of these conditions is sufficient.',
+            'A verified contact operator can remove their stored server from the manager. The manager then removes its statistics and prevents automatic re-import of that endpoint until a new verified approval.',
           ],
         },
         {
           heading: 'Data Fetched from Listed Game Servers',
           body: [
-            'The service fetches additional public data from listed Rising World servers. Depending on what a server exposes, this can include server name, short name, description, contact field, map name, game mode, version, operating system, public configuration flags, uptime, public player list data, plugin/status information and query URLs.',
+            'For stored servers, the service fetches additional server metadata such as name, description, contact field, map name, game mode, version, public configuration flags, uptime and plugin/status information. Player records are accepted only from a consent-filtered OZ Admin Utils plugin export; the game server player-list endpoint is not used to populate them.',
             'Server operators are responsible for server names, descriptions, logos, public player names and other public content supplied by their servers.',
+          ],
+        },
+        {
+          heading: 'Player Consent and Visibility',
+          body: [
+            'The game server asks players separately before OZ plugins send player activity to this manager, map positions, Discord, Stargate or Global Intercom. Declining a purpose stops the corresponding export from that server.',
+            'Player lists on a stored server are available only to signed-in players recorded on that server. Public server statistics do not include a player list. Other visitors do not receive Steam IDs; a verified server administrator may see Steam IDs for players also known on their own server.',
+            'A player can change their choice in the OZ Tools player settings. After a Manager revocation, the connected server reports the removal to the manager; disconnected servers are reconciled when a valid plugin export is available again. Privacy requests can also be sent to the contact address above.',
           ],
         },
         {
@@ -169,7 +189,7 @@ export const LEGAL_PAGES: Record<LegalLocale, Record<LegalPageKey, LegalPageCont
         {
           heading: 'Retention Periods',
           body: [
-            'Server cache data is refreshed and replaced as part of normal operation. Session/login data is kept while needed to maintain authentication and protect the service. Steam account data and admin verification data are kept while the account or admin access is active, unless deletion is required earlier.',
+            'Master-list-only entries are kept in a temporary memory cache. Stored server data is refreshed as part of normal operation. Player records and statistics are removed from this manager after the server reports a revocation or a valid consent-filtered export no longer includes the player. Session/login data is kept while needed to maintain authentication and protect the service. Steam account data and admin verification data are kept while the account or admin access is active, unless deletion is required earlier.',
             'Global chat messages are retained as long as needed to provide chat history, bridge messages across endpoints, investigate abuse and protect the service. Abuse reports and related moderation records may be retained for as long as needed to process the report and defend against repeated abuse.',
           ],
         },
@@ -327,7 +347,7 @@ export const LEGAL_PAGES: Record<LegalLocale, Record<LegalPageKey, LegalPageCont
     },
     privacy: {
       title: 'Datenschutzerklärung',
-      updated: LEGAL_UPDATED.de,
+      updated: PRIVACY_UPDATED.de,
       intro: [
         'Diese Datenschutzerklärung beschreibt, wie Rising World Manager Daten für die öffentliche Serverliste, Steam-Anmeldung, Admin-Ansichten und den globalen Chat verarbeitet.',
       ],
@@ -349,14 +369,29 @@ export const LEGAL_PAGES: Record<LegalLocale, Record<LegalPageKey, LegalPageCont
         {
           heading: 'Daten aus der Rising World Masterliste',
           body: [
-            'Der Dienst verarbeitet und zeigt öffentliche Serverlistendaten aus der Rising World Masterliste an. Dazu können Serverkennungen, Adresse und Port, Serverstatus, Spielerzahlen, Versionsinformationen und weitere öffentliche Metadaten gehören.',
+            'Der Dienst zeigt öffentliche Serverlistendaten aus der Rising World Masterliste an. Dazu können Serverkennungen, Adresse und Port, Serverstatus, Spielerzahlen, Versionsinformationen und weitere öffentliche Metadaten gehören. Einträge, die nur aus der Masterliste stammen, werden vorübergehend im Arbeitsspeicher gehalten und haben keine Detailseite.',
+          ],
+        },
+        {
+          heading: 'Gespeicherte Server und Betreiberrechte',
+          body: [
+            'Ein Server wird mit Statistiken gespeichert, wenn er über den OZ-Tools-WebSocket verbunden ist, [rw-servers] in seiner Beschreibung verwendet oder von einem über Steam angemeldeten Betreiber freigegeben wurde, dessen Identität zum Kontaktfeld des Servers passt. Eine dieser Bedingungen genügt.',
+            'Ein verifizierter Kontaktbetreiber kann seinen gespeicherten Server aus dem Manager entfernen. Dabei werden dessen Statistiken gelöscht und der automatische Neuimport dieses Endpunkts bis zu einer erneuten verifizierten Freigabe unterdrückt.',
           ],
         },
         {
           heading: 'Daten von gelisteten Spielservern',
           body: [
-            'Der Dienst ruft zusätzliche öffentliche Daten von gelisteten Rising-World-Servern ab. Je nach Server können dazu Servername, Kurzname, Beschreibung, Kontaktfeld, Kartenname, Spielmodus, Version, Betriebssystem, öffentliche Konfigurationsflags, Laufzeit, öffentliche Spielerliste, Plugin-/Statusinformationen und Query-URLs gehören.',
+            'Für gespeicherte Server ruft der Dienst zusätzliche Servermetadaten ab, etwa Name, Beschreibung, Kontaktfeld, Kartenname, Spielmodus, Version, öffentliche Konfigurationsflags, Laufzeit und Plugin-/Statusinformationen. Spielerdatensätze stammen ausschließlich aus einem nach Einwilligung gefilterten Export von OZ Admin Utils; der Spielserver-Endpunkt für die Spielerliste füllt diese Datensätze nicht.',
             'Serverbetreiber sind für Servernamen, Beschreibungen, Logos, öffentliche Spielernamen und sonstige öffentliche Inhalte verantwortlich, die ihre Server bereitstellen.',
+          ],
+        },
+        {
+          heading: 'Spielerfreigabe und Sichtbarkeit',
+          body: [
+            'Der Spielserver fragt Spieler für die Übertragung von Spielaktivität an diesen Manager, Kartenpositionen, Discord, Stargate und Global Intercom getrennt um Freigabe. Bei Ablehnung unterbleibt der entsprechende Export dieses Servers.',
+            'Spielerlisten gespeicherter Server sehen nur angemeldete Spieler, die auf dem jeweiligen Server erfasst sind. Öffentliche globale Serverstatistiken enthalten keine Spielerliste. Andere Besucher erhalten keine Steam-IDs; ein verifizierter Serveradministrator kann Steam-IDs von Spielern sehen, die auch auf seinem eigenen Server bekannt sind.',
+            'Spieler können ihre Entscheidung in den OZ-Tools-Spielereinstellungen ändern. Bei einem Manager-Widerruf meldet ein verbundener Server die Entfernung an den Manager; bei getrennter Verbindung erfolgt der Abgleich nach dem nächsten gültigen Plugin-Export. Anfragen zum Datenschutz können zusätzlich an die oben genannte Kontaktadresse gesendet werden.',
           ],
         },
         {
@@ -402,7 +437,7 @@ export const LEGAL_PAGES: Record<LegalLocale, Record<LegalPageKey, LegalPageCont
         {
           heading: 'Speicherdauer',
           body: [
-            'Server-Cache-Daten werden im normalen Betrieb aktualisiert und ersetzt. Session-/Login-Daten werden gespeichert, solange sie für Authentifizierung und Schutz des Dienstes benötigt werden. Steam-Kontodaten und Admin-Verifikationsdaten werden gespeichert, solange Konto oder Admin-Zugriff aktiv sind, sofern keine frühere Löschung erforderlich ist.',
+            'Einträge ausschließlich aus der Masterliste bleiben in einem vorübergehenden Arbeitsspeicher-Cache. Daten gespeicherter Server werden im normalen Betrieb aktualisiert. Spielerdatensätze und Statistiken werden aus diesem Manager entfernt, nachdem der Server einen Widerruf gemeldet hat oder ein gültiger, nach Einwilligung gefilterter Export den Spieler nicht mehr enthält. Session-/Login-Daten werden gespeichert, solange sie für Authentifizierung und Schutz des Dienstes benötigt werden. Steam-Kontodaten und Admin-Verifikationsdaten werden gespeichert, solange Konto oder Admin-Zugriff aktiv sind, sofern keine frühere Löschung erforderlich ist.',
             'Globale Chat-Nachrichten werden gespeichert, solange dies für Chat-Verlauf, Weiterleitung zwischen Endpunkten, Missbrauchsprüfung und Schutz des Dienstes erforderlich ist. Missbrauchsmeldungen und zugehörige Moderationsdaten können so lange gespeichert werden, wie dies zur Bearbeitung der Meldung und zur Abwehr wiederholten Missbrauchs erforderlich ist.',
           ],
         },

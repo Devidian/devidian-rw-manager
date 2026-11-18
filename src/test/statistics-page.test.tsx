@@ -25,10 +25,6 @@ const payload: GlobalStatisticsPayload = {
       updatedAt: '2026-07-02T10:00:00.000Z',
     },
   ],
-  players: [
-    { uid: '76561198000000000', name: 'Steam Player' },
-    { uid: 'standalone-player-uid', name: 'Standalone Player' },
-  ],
 };
 
 vi.mock('react-i18next', () => ({
@@ -63,30 +59,20 @@ describe('StatisticsPage', () => {
     localStorage.removeItem('risingworld_statistics_page_size');
   });
 
-  it('masks player UIDs for guests and does not render Steam links', async () => {
+  it('renders aggregates without a player list for guests', async () => {
     render(<MemoryRouter><StatisticsPage /></MemoryRouter>);
 
-    expect(await screen.findByText('7***************0')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Steam Player' })).not.toBeInTheDocument();
-    expect(screen.getByText('stan*************-uid')).toBeInTheDocument();
+    await screen.findByText('noStatistics');
+    expect(screen.queryByText('Steam Player')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '76561198000000000' })).not.toBeInTheDocument();
   });
 
-  it('renders Steam IDs as profile links for authenticated users', async () => {
+  it('does not render player lists for authenticated users either', async () => {
     state.isAuthenticated = true;
     render(<MemoryRouter><StatisticsPage /></MemoryRouter>);
 
-    const link = await screen.findByRole('link', { name: '76561198000000000' });
-    expect(link).toHaveAttribute('href', 'https://steamcommunity.com/profiles/76561198000000000');
-    await waitFor(() => expect(screen.getByText('standalone-player-uid')).toBeInTheDocument());
-  });
-
-  it('restores the saved player page size', async () => {
-    localStorage.setItem('risingworld_statistics_page_size', '10');
-    render(<MemoryRouter><StatisticsPage /></MemoryRouter>);
-    await screen.findByText('Steam Player');
-
-    expect(screen.getByText('10').closest('button')).toBeInTheDocument();
+    await screen.findByText('noStatistics');
+    expect(screen.queryByText('Steam Player')).not.toBeInTheDocument();
   });
 
   it('keeps the chart mounted across unrelated parent renders', async () => {

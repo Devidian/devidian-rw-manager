@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -19,8 +19,10 @@ import { useTranslation } from 'react-i18next';
 import Index from './pages/Index';
 import ServerDetailPage from './pages/ServerDetailPage';
 import ServerListPage from './pages/ServerListPage';
+import ParticipationPage from './pages/ParticipationPage';
 import PlayerListPage from './pages/PlayerListPage';
-import { uniqueOnlinePlayers } from '@/lib/onlinePlayers';
+import { listOnlinePlayers } from '@/lib/onlinePlayers';
+import { usePublicOnlinePlayers } from '@/hooks/usePublicOnlinePlayers';
 import { PlayerProfileGuard } from '@/components/PlayerProfileGuard';
 import StatisticsPage from './pages/StatisticsPage';
 import GlobalIntercomChatPage from './pages/GlobalIntercomChatPage';
@@ -31,7 +33,6 @@ import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SteamCallbackPage from './pages/SteamCallbackPage';
-import { LocalPinSyncDialog } from './components/LocalPinSyncDialog';
 import { LegalFooter } from './components/LegalFooter';
 import LegalPage from './pages/LegalPage';
 import EmbeddedMapPage from './pages/EmbeddedMapPage';
@@ -67,6 +68,10 @@ function SessionExpiredDialog() {
 
 function Layout() {
   const { pinnedServerList, serverList } = useServerContext();
+  const { isAuthenticated } = useAuth();
+  const { fixedBackendUrl, backendUrl } = useStorageMode();
+  const publicNames = usePublicOnlinePlayers(fixedBackendUrl ?? backendUrl, serverList, isAuthenticated);
+  const onlinePlayers = useMemo(() => listOnlinePlayers(serverList, publicNames), [serverList, publicNames]);
 
   return (
     <GlobalIntercomProvider>
@@ -74,7 +79,7 @@ function Layout() {
         <div className="min-h-screen flex w-full">
           <AppSidebar
             servers={pinnedServerList}
-            onlinePlayerCount={uniqueOnlinePlayers(serverList).length}
+            onlinePlayerCount={onlinePlayers.length}
           />
 
           <div className="flex flex-col flex-1 min-w-0">
@@ -87,12 +92,13 @@ function Layout() {
 
             <main className="flex-1 p-6 overflow-auto">
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<DashboardRoute />} />
                 <Route path="/serverliste" element={<ServerListPage />} />
-                <Route path="/spielerliste" element={<PlayerListPage />} />
-                <Route path="/player/:uid" element={<PlayerProfileGuard />} />
+                <Route path="/teilnehmen" element={<ParticipationPage />} />
+                <Route path="/spielerliste" element={<ProtectedRoute><PlayerListPage onlinePlayers={onlinePlayers} /></ProtectedRoute>} />
+                <Route path="/player/:id" element={<PlayerProfileGuard />} />
                 <Route path="/statistiken" element={<StatisticsPage />} />
-                <Route path="/global-intercom" element={<GlobalIntercomChatPage />} />
+                <Route path="/global-intercom" element={<ProtectedRoute><GlobalIntercomChatPage /></ProtectedRoute>} />
                 <Route path="/server/:id" element={<ServerDetailPage />} />
                 <Route path="/admin/users" element={<UserManagementPage />} />
                 <Route path="/admin/server-duplicates" element={<ServerDuplicatesPage />} />
@@ -104,27 +110,22 @@ function Layout() {
           </div>
         </div>
 
-        <LocalPinSyncDialog />
         <SessionExpiredDialog />
       </SidebarProvider>
     </GlobalIntercomProvider>
   );
 }
 
-/** Auth guard: redirects to login if forceAuth is active */
-function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { requiresAuth, isAuthenticated, isLoading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!isLoading && requiresAuth && !isAuthenticated) {
-      navigate('/auth/login', { replace: true });
-    }
-  }, [isLoading, requiresAuth, isAuthenticated, navigate]);
-
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return null;
-  if (requiresAuth && !isAuthenticated) return null;
-  return <>{children}</>;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/serverliste" replace />;
+}
+
+function DashboardRoute() {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return null;
+  return isAuthenticated ? <Index /> : <Navigate to="/serverliste" replace />;
 }
 
 /** Resolves backend services for auth context */
@@ -160,9 +161,7 @@ function AppRoutes() {
             path="*"
             element={
               <ServerProvider>
-                <AuthGuard>
-                  <Layout />
-                </AuthGuard>
+                <Layout />
               </ServerProvider>
             }
           />

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+* add a bilingual three-path server participation page, dashboard approval for verified contact owners, and the local DBID column in database players
+
+* show the complete public server list, including offline servers, with guest server details and a name-only online list
+* restrict personal navigation and dashboard to signed-in users, remove pin controls and local pin synchronization, and limit guest maps to the surface and sectors
+
+* use backend player ObjectIds for profile links, list deduplication, statistics, and server-detail joins; keep direct local player queries anonymous
+
 * restrict player profiles to signed-in users and show guests only the first and last Steam-ID digit
 * compact the duplicate detail table, color status, render formatted server names, and select all group sources
 ### Added

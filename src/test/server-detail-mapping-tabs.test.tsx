@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ServerWithStatus } from '@/types/server';
+import type { DbPlayer, ServerWithStatus } from '@/types/server';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 const state = vi.hoisted(() => ({
@@ -11,7 +11,7 @@ const state = vi.hoisted(() => ({
   adapter: null as unknown as { getServerStatistics: ReturnType<typeof vi.fn> },
   isAuthenticated: true,
   userSteamId: 'steam-admin',
-  dbPlayers: [] as Array<{ uid: string; name?: string; platform?: string }>,
+  dbPlayers: [] as DbPlayer[],
   fetchPlayers: vi.fn(),
   useMapLayers: vi.fn(),
 }));
@@ -132,6 +132,50 @@ describe('server detail mapping tabs', () => {
     ]);
   });
 
+  it('uses the public count and shows public names for an online server without a Tools export', async () => {
+    const target = { ...server(), publicPlayerCount: 2, onlinePlayers: [] };
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ names: ['One', 'Two'], count: 2 }));
+    try {
+      render(<ServerDetail server={target} onRefresh={vi.fn()} />);
+      const tab = screen.getByRole('tab', { name: /^players/ });
+      expect(tab).toHaveTextContent('players2');
+      fireEvent.mouseDown(tab, { button: 0, ctrlKey: false });
+      for (const name of ['One', 'Two']) {
+        const row = await screen.findByRole('row', { name: new RegExp(`^${name} `) });
+        expect(within(row).getAllByRole('cell').map(cell => cell.textContent))
+          .toEqual([name, '-', '-', '-', '-', '-', '-']);
+        expect(within(row).queryByRole('link')).not.toBeInTheDocument();
+      }
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://manager.example/api/storage/server/server-1/guest-online-players',
+        expect.any(Object),
+      );
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it('adds a public name-only row beside a consented export on the same server', async () => {
+    const target = server();
+    target.queryData = { ...target.queryData!, playercount: 2 };
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ names: ['Online Steam', 'Declined Player'] }),
+    );
+    try {
+      render(<ServerDetail server={target} onRefresh={vi.fn()} />);
+      const tab = screen.getByRole('tab', { name: /^players/ });
+      expect(tab).toHaveTextContent('players2');
+      fireEvent.mouseDown(tab, { button: 0, ctrlKey: false });
+      const row = await screen.findByRole('row', { name: /^Declined Player / });
+      expect(within(row).getAllByRole('cell').map(cell => cell.textContent))
+        .toEqual(['Declined Player', '-', '-', '-', '-', '-', '-']);
+      expect(screen.getAllByText('Online Steam')).toHaveLength(1);
+      expect(screen.getByText('onlinePlayers').parentElement).toHaveTextContent('onlinePlayers2');
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
   it('hides only the map tab when no rendered map is available', () => {
     state.mapAvailable = false;
     render(<ServerDetail server={server()} onRefresh={vi.fn()} />);
@@ -162,6 +206,16 @@ describe('server detail mapping tabs', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'statistics' }), { button: 0, ctrlKey: false });
 
     await waitFor(() => expect(state.getServerStatistics).toHaveBeenCalled());
+  });
+
+  it('shows aggregate server statistics to guests', async () => {
+    state.isAuthenticated = false;
+    render(<ServerDetail server={server()} onRefresh={vi.fn()} />);
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'statistics' }), { button: 0, ctrlKey: false });
+
+    await waitFor(() => expect(state.getServerStatistics).toHaveBeenCalled());
+    expect(screen.queryByRole('tab', { name: 'configuration' })).not.toBeInTheDocument();
   });
 
   it('keeps server charts mounted through live status updates and statistics refreshes', async () => {
@@ -211,6 +265,8 @@ describe('server detail mapping tabs', () => {
       'world-1',
       expect.any(Array),
       state.dbPlayers,
+      '/api/storage',
+      true,
     );
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: /^players/ }), { button: 0, ctrlKey: false });
@@ -220,7 +276,7 @@ describe('server detail mapping tabs', () => {
     expect(state.fetchPlayers).toHaveBeenCalledTimes(1);
   });
 
-  it('masks player UIDs and hides Steam profile links for guests', () => {
+  it('omits UID columns and database players for guests', () => {
     state.isAuthenticated = false;
     state.dbPlayers = [{ uid: '76561198000000001', name: 'Db Steam', platform: 'Steam' }];
     render(
@@ -231,7 +287,8 @@ describe('server detail mapping tabs', () => {
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: /^players/ }), { button: 0, ctrlKey: false });
 
-    expect(screen.getAllByText('7***************1')).toHaveLength(2);
+    expect(screen.queryByRole('columnheader', { name: 'uid' })).not.toBeInTheDocument();
+    expect(screen.queryByText('dbPlayers')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '76561198000000001' })).not.toBeInTheDocument();
   });
 
@@ -257,8 +314,8 @@ describe('server detail mapping tabs', () => {
     expect(within(matchedRow).queryByText('Wrong Group')).not.toBeInTheDocument();
 
     const missingRow = screen.getByText('New Player').closest('tr')!;
-    expect(within(missingRow).getAllByText('—')).toHaveLength(2);
-    expect(within(missingRow).getByText('-')).toBeInTheDocument();
+    expect(within(missingRow).getAllByRole('cell').map(cell => cell.textContent))
+      .toEqual(['New Player', 'not-in-database', 'Steam', '15 ms', '-', '-', '-']);
   });
 });
 

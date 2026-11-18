@@ -1,6 +1,8 @@
+import { getServerPlayerCount } from '@/lib/serverDisplay';
+import { unexportedOnlineNames, type ListedOnlinePlayer } from '@/lib/onlinePlayers';
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ServerWithStatus, DbPlayer, ServerPlayerListPlayer, ServerConfig, ServerStatisticsBucket } from '@/types/server';
+import { ServerWithStatus, DbPlayer, ServerConfig, ServerStatisticsBucket } from '@/types/server';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -169,7 +171,7 @@ function OnlinePlayersSection({
   authenticated,
   databasePlayers,
 }: {
-  players: ServerPlayerListPlayer[];
+  players: ListedOnlinePlayer['player'][];
   authenticated: boolean;
   databasePlayers: Map<string, DbPlayer>;
 }) {
@@ -188,7 +190,7 @@ function OnlinePlayersSection({
         <TableHeader>
           <TableRow className="bg-muted/30 hover:bg-muted/30">
             <TableHead>{t('name')}</TableHead>
-            <TableHead>{t('uid')}</TableHead>
+            {authenticated && <TableHead>{t('uid')}</TableHead>}
             <TableHead>{t('platform')}</TableHead>
             <TableHead>{t('ping')}</TableHead>
             <TableHead>{t('group')}</TableHead>
@@ -197,19 +199,20 @@ function OnlinePlayersSection({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {players.map(p => {
-            const stored = databasePlayers.get(p.uid);
+          {players.map((p, index) => {
+            const identity = typeof p.id === 'string' ? p.id : p.uid;
+            const stored = identity ? databasePlayers.get(identity) : undefined;
             const hasHealth = stored && [stored.health, stored.hunger, stored.thirst].some(value => typeof value === 'number');
             return (
-              <TableRow key={p.uid ?? p.id} className="hover:bg-muted/20">
-                <TableCell className="font-medium"><PlayerNameLink uid={p.uid} name={p.name} /></TableCell>
-                <TableCell><PlayerUid uid={p.uid} platform={p.platform} authenticated={authenticated} /></TableCell>
-                <TableCell className="text-muted-foreground text-sm">{p.platform || '-'}</TableCell>
+              <TableRow key={p.id ?? index} className="hover:bg-muted/20">
+                <TableCell className="font-medium"><PlayerNameLink id={p.id} uid={p.uid} name={p.name} /></TableCell>
+                {authenticated && <TableCell><PlayerUid uid={p.uid} platform={p.platform} authenticated={authenticated} /></TableCell>}
+                <TableCell className="text-muted-foreground text-sm">{typeof p.platform === 'string' && p.platform ? p.platform : '-'}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{displayNumber(p.ping, ' ms')}</TableCell>
                 <TableCell>
                   {stored?.permissiongroup ? (
                     <Badge variant="secondary" className="text-xs py-0 h-5">{stored.permissiongroup}</Badge>
-                  ) : '—'}
+                  ) : '-'}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {typeof stored?.playtime === 'number' ? formatPlaytime(stored.playtime) : '-'}
@@ -221,7 +224,7 @@ function OnlinePlayersSection({
                       <HealthMetric icon={Drumstick} label={t('hunger')} value={stored.hunger} />
                       <HealthMetric icon={Droplets} label={t('thirst')} value={stored.thirst} />
                     </div>
-                  ) : '—'}
+                  ) : '-'}
                 </TableCell>
               </TableRow>
             );
@@ -366,10 +369,33 @@ function PlayersTab({
   const dateLocale = useDateLocale();
   const [search, setSearch] = useState('');
   const { players: dbPlayers, loading: dbLoading, error: dbError } = databasePlayers;
-  const hasDbAccess = !!apiBaseUrl;
-  const onlinePlayers = server.onlinePlayers ?? [];
+  const hasDbAccess = isAuthenticated && !!apiBaseUrl;
+  const [publicNames, setPublicNames] = useState<string[] | null>(null);
+  const online = server.status !== 'offline';
+  const exported = online && isAuthenticated && server.publicPlayerCount === undefined ? server.onlinePlayers ?? [] : [];
+  const names = online ? publicNames : null;
+  const onlinePlayers = [...exported, ...unexportedOnlineNames(names ?? [], exported).map(name => ({ name }))];
+  useEffect(() => {
+    setPublicNames(null);
+    if (!apiBaseUrl || !online) return;
+    const controller = new AbortController();
+    const url = `${apiBaseUrl.replace(/\/+$/, '')}/api/storage/server/${encodeURIComponent(server.id)}/guest-online-players`;
+    const load = async () => {
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        const payload: { names?: unknown } | null = response.ok && response.status !== 204 ? await response.json() : null;
+        if (!controller.signal.aborted) setPublicNames(Array.isArray(payload?.names)
+          ? payload.names.filter((name): name is string => typeof name === 'string') : null);
+      } catch {
+        if (!controller.signal.aborted) setPublicNames(null);
+      }
+    };
+    void load();
+    const interval = window.setInterval(load, 30_000);
+    return () => { controller.abort(); window.clearInterval(interval); };
+  }, [apiBaseUrl, isAuthenticated, online, server.id]);
   const databasePlayersByUid = useMemo(
-    () => new Map(dbPlayers.map(player => [player.uid, player])),
+    () => new Map(dbPlayers.map(player => [typeof player.id === 'string' ? player.id : player.uid ?? '', player])),
     [dbPlayers],
   );
 
@@ -398,7 +424,7 @@ function PlayersTab({
 
   const filteredDb = dbPlayers.filter(p =>
     (p.name ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    p.uid.toLowerCase().includes(search.toLowerCase())
+    (p.uid ?? '').toLowerCase().includes(search.toLowerCase())
   );
 
   const sortedDb = useMemo(() => {
@@ -428,7 +454,7 @@ function PlayersTab({
           <CardTitle className="text-base flex items-center gap-2">
             <Globe className="h-4 w-4" />
             {t('onlinePlayers')}
-            <Badge variant="secondary" className="text-xs">{onlinePlayers.length}</Badge>
+            <Badge variant="secondary" className="text-xs">{names !== null ? onlinePlayers.length : getServerPlayerCount(server)}</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -440,7 +466,7 @@ function PlayersTab({
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border">
+      {isAuthenticated && <Card className="bg-card border-border">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <HardDrive className="h-4 w-4" />
@@ -488,7 +514,7 @@ function PlayersTab({
               {!dbLoading && !dbError && filteredDb.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
                   <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">{t('noPlayersFound')}</p>
+                  <p className="font-medium">{t(dbPlayers.length === 0 ? 'noExportParticipants' : 'noPlayersFound')}</p>
                 </div>
               )}
 
@@ -498,6 +524,7 @@ function PlayersTab({
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
+                          <TableHead>DBID</TableHead>
                           <SortablePlayerHeader field="name" label={t('name')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                           <TableHead>{t('uid')}</TableHead>
                           <SortablePlayerHeader field="platform" label={t('platform')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
@@ -509,8 +536,10 @@ function PlayersTab({
                       </TableHeader>
                       <TableBody>
                         {pagedDb.map(player => (
-                          <TableRow key={player.uid} className="hover:bg-muted/20">
-                            <TableCell className="font-medium"><PlayerNameLink uid={player.uid} name={player.name} /></TableCell>
+                          <TableRow key={player.id ?? player.uid} className="hover:bg-muted/20">
+                            <TableCell className="font-mono text-xs">{typeof player.id === 'number'
+                              ? player.id : typeof player.id === 'string' ? player.id.match(/:(\d+)$/)?.[1] ?? '—' : '—'}</TableCell>
+                            <TableCell className="font-medium"><PlayerNameLink id={player.id} uid={player.uid} name={player.name} /></TableCell>
                             <TableCell><PlayerUid uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>
                             <TableCell className="text-muted-foreground text-sm">{player.platform || '-'}</TableCell>
                             <TableCell>
@@ -584,7 +613,7 @@ function PlayersTab({
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }
@@ -741,17 +770,20 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const databasePlayers = useDatabasePlayers();
   const fetchDatabasePlayers = databasePlayers.fetchPlayers;
   const mapMetadata = adminMapping.map.available ? adminMapping.map.metadata : undefined;
+  const mapServerId = mapMetadata?.serverId || server?.id;
   const mapLayers = useMapLayers(
     mapMetadata && managerApiUrl ? managerApiUrl : '',
-    mapMetadata && server ? server.id : '',
+    mapMetadata ? mapServerId : undefined,
     mapMetadata?.worldKey ?? '',
     server?.onlinePlayers ?? [],
     databasePlayers.players,
+    '/api/storage',
+    isAuthenticated,
   );
 
   useEffect(() => {
-    if (managerApiUrl && server?.id) void fetchDatabasePlayers(managerApiUrl, server.id);
-  }, [fetchDatabasePlayers, managerApiUrl, server?.id]);
+    if (isAuthenticated && managerApiUrl && server?.id) void fetchDatabasePlayers(managerApiUrl, server.id);
+  }, [fetchDatabasePlayers, managerApiUrl, server?.id, isAuthenticated]);
 
   if (!server) {
     return (
@@ -769,7 +801,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
   const data = server.queryData;
   const info = server.infoData;
   const serverName = data?.name ?? server.label;
-  const playercount = server.onlinePlayers?.length ?? data?.playercount ?? 0;
+  const playercount = getServerPlayerCount(server);
   const maxplayers = data?.maxplayers ?? '?';
   const gamemodeLabel = data?.gamemode === 0 ? t('survival') : data?.gamemode === 1 ? t('creative') : '—';
   const headerImageUrl = info?.headerimage && managerApiUrl
@@ -836,7 +868,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
               <Pencil className="h-4 w-4" />
             </Button>
           )}
-          <Button
+          {isAuthenticated && <Button
             size="sm"
             variant="outline"
             className="gap-2"
@@ -845,7 +877,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           >
             <RefreshCw className={cn('h-4 w-4', server.status === 'loading' && 'animate-spin')} />
             {t('refresh')}
-          </Button>
+          </Button>}
           {connectUrl && (
             <Button asChild size="sm" variant="outline" className="gap-2">
               <a href={connectUrl}>
@@ -925,7 +957,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
               {t('map')}
             </TabsTrigger>
           )}
-          {hasBackend && adminMapping.map.available && (
+          {isAuthenticated && hasBackend && adminMapping.map.available && (
             <TabsTrigger value="global-marketplace" className="gap-2 data-[state=active]:bg-muted">
               <Store className="h-4 w-4" />
               {t('globalMarketplace')}
@@ -1013,7 +1045,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           <TabsContent value="admin-map" className="mt-4">
             <AdminMapTab
               apiBaseUrl={managerApiUrl!}
-              serverId={server.id}
+              serverId={mapServerId}
               metadata={adminMapping.map.metadata}
               mapLayers={mapLayers}
               isAdmin={isAdmin}
@@ -1023,7 +1055,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
           </TabsContent>
         )}
 
-        {hasBackend && adminMapping.map.available && (
+        {isAuthenticated && hasBackend && adminMapping.map.available && (
           <TabsContent value="global-marketplace" className="mt-4">
             <GlobalMarketplaceTab apiBaseUrl={managerApiUrl!} serverId={server.id} />
           </TabsContent>

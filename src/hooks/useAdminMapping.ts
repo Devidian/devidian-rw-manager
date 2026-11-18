@@ -33,7 +33,7 @@ export function useAdminMapping(backendUrl?: string, serverId?: string) {
     setPluginsLoading(true);
     setMapError(false);
     setPluginsError(false);
-    fetch(`${serverBase}/map`, { signal: controller.signal })
+    fetch(`${serverBase}/map`, { headers: authHeaders(), signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Map request failed');
         setMap(parseMapResponse(await response.json()));
@@ -85,14 +85,20 @@ export function parseMapResponse(value: unknown): ServerMapResponse {
 }
 
 export function parsePluginsResponse(value: unknown): ServerPluginsResponse {
-  if (!isRecord(value) || (value.available !== undefined && typeof value.available !== 'boolean') || !Array.isArray(value.items) || !value.items.every(isPluginInfo) || (value.latestVersions !== undefined && !isVersionMap(value.latestVersions)) || (value.nativeAccess !== undefined && value.nativeAccess !== 'available' && value.nativeAccess !== 'noAccess' && value.nativeAccess !== 'unavailable')) {
+  if (!isRecord(value) || (value.available !== undefined && typeof value.available !== 'boolean') || !Array.isArray(value.items) || !value.items.every(isPluginInfo)) {
+    throw new Error('Invalid plugin response');
+  }
+  const { nativeAccess, latestVersions } = value;
+  if ((latestVersions !== undefined && !isVersionMap(latestVersions)) ||
+    (nativeAccess !== undefined && nativeAccess !== 'available' && nativeAccess !== 'noAccess' && nativeAccess !== 'unavailable')) {
     throw new Error('Invalid plugin response');
   }
   return {
     available: value.available === true,
-    nativeAccess: value.nativeAccess === undefined ? (value.available === true ? 'available' : 'unavailable') : value.nativeAccess,
+    nativeAccess: nativeAccess === 'available' || nativeAccess === 'noAccess' || nativeAccess === 'unavailable'
+      ? nativeAccess : (value.available === true ? 'available' : 'unavailable'),
     items: value.items,
-    latestVersions: value.latestVersions === undefined ? {} : value.latestVersions,
+    latestVersions: isVersionMap(latestVersions) ? latestVersions : {},
   };
 }
 

@@ -1,5 +1,9 @@
 # Welcome to your Lovable project
 
+The public “Join as a server” page explains the three independent participation routes: authenticated OZ Tools WebSocket, `[rw-servers]` description marker, or a Steam-verified `/info.contact` owner approval. Contact-owned master-list servers can be approved from the signed-in dashboard. The database-player table shows the local DBID before the player name.
+
+The bilingual privacy policy in `src/content/legal.ts` describes consent-filtered player exports, transient master-list entries, stored-server conditions and verified operator removal. Review the text against the deployed data flows before publication.
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
@@ -64,7 +68,7 @@ Server detail pages include a lazy-loaded statistics tab when a manager backend
 is configured. The tab reads `/api/storage/server/:id/statistics` and renders
 hourly, weekly, monthly, and accumulated weekday availability/player charts.
 Player names in the live player list, server details, and global statistics open
-a profile showing the servers where that UID is currently online. Playtime is
+a profile by the backend's player mapping ObjectId. Playtime is
 shown when the server's native player data exposes it.
 
 Signed-in users can join additional public Global Intercom channels. The
@@ -82,7 +86,7 @@ Optional deployment variables:
   selected entries requires a confirmation and retains the oldest server ID.
   Groups support selecting all sources; the compact detail table renders
   formatted server names and highlights online and offline status.
-- Steam login is available when the configured manager backend exposes auth.
+- Steam login is available for players in a consent-filtered export, verified server contacts, and the configured superadmin. Guests can browse saved server details and the public list.
   Its optional persona-name lookup uses `STEAM_API_KEY` on the backend only.
 - `VITE_GLOBAL_INTERCOM_WS_URL`: Global Intercom relay WebSocket URL, for
   example `wss://example.com/ws`. When unset, the chat page stays visible in an
@@ -94,9 +98,12 @@ The repository CI validates linting, tests, the production build, and the Docker
 image. RC tags and published GitHub releases build and push versioned
 multi-platform images to `devidian/rw-manager-frontend` on Docker Hub.
 
-Player profiles require sign-in. Guests see only the first and last digit of
-Steam IDs in player lists, statistics and server details. Backend 0.9.1-rc.1
-or newer is required to apply the same masking to public API and live data.
+Player profiles require sign-in. The backend exposes stable mapping IDs and
+masks private or unchecked player names and UIDs as `**PRIVATE**`; private
+history is readable only by the same player after verified Steam login.
+Guests see only the first and last digit of public Steam IDs. This frontend
+requires the matching player identity backend contract.
+Direct local game queries display anonymous live rows without profile links.
 
 ## Embedded map
 

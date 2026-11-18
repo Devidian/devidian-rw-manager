@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 export default function PlayerProfilePage() {
   const { t } = useTranslation();
-  const { uid } = useParams<{ uid: string }>();
+  const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const { serverList } = useServerContext();
   const { fixedBackendUrl, backendUrl } = useStorageMode();
@@ -20,25 +20,25 @@ export default function PlayerProfilePage() {
   const [loading, setLoading] = useState(true);
   const activeServers = useMemo(() => serverList.filter((server) =>
     server.public === true && !server.blocked && !server.userId &&
-    server.status === 'online' && server.onlinePlayers?.some((player) => player.uid === uid)), [serverList, uid]);
-  const profileServers = useMemo(() => [
+    server.status === 'online' && server.onlinePlayers?.some((player) => player.id === id)), [serverList, id]);
+  const profileServers = useMemo<typeof history>(() => [
     ...history,
     ...activeServers.filter((server) => !history.some((item) => item.serverId === server.id))
       .map((server) => ({ serverId: server.id, label: getServerDisplayName(server), status: 'online' })),
   ], [activeServers, history]);
   const linkedName = (location.state as { playerName?: unknown } | null)?.playerName;
-  const name = activeServers.flatMap((server) => server.onlinePlayers ?? []).find((player) => player.uid === uid)?.name
+  const name = activeServers.flatMap((server) => server.onlinePlayers ?? []).find((player) => player.id === id)?.name
     ?? history.find((item) => item.name)?.name
-    ?? (typeof linkedName === 'string' ? linkedName : uid);
+    ?? (typeof linkedName === 'string' ? linkedName : id);
 
   useEffect(() => {
     setHistory([]);
     setLoading(true);
-    if (!uid || !baseUrl) { setLoading(false); return; }
+    if (!id || !baseUrl) { setLoading(false); return; }
     const controller = new AbortController();
     void (async () => {
       try {
-        const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/storage/player/${encodeURIComponent(uid)}/history`, { headers: authHeaders(), signal: controller.signal });
+        const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/storage/player/${encodeURIComponent(id)}/history`, { headers: authHeaders(), signal: controller.signal });
         if (!response.ok) return;
         const data = await response.json() as { items?: typeof history };
         if (!controller.signal.aborted && Array.isArray(data.items)) setHistory(data.items);
@@ -48,7 +48,7 @@ export default function PlayerProfilePage() {
       finally { if (!controller.signal.aborted) setLoading(false); }
     })();
     return () => controller.abort();
-  }, [baseUrl, uid]);
+  }, [baseUrl, id]);
 
   return (
     <div className="space-y-6">

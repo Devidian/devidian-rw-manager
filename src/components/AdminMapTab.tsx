@@ -9,12 +9,15 @@ import {
 import {
   CRS,
   DivIcon,
+  DomEvent,
   TileLayer,
+  Util,
   latLngBounds,
   type Coords,
   type LatLngBounds,
   type Map as LeafletMap,
 } from 'leaflet';
+import { createPortal } from 'react-dom';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleMarker,
@@ -96,7 +99,6 @@ export function AdminMapTab({
   tileBaseUrl,
   metadata,
   mapLayers,
-  isAdmin = false,
   isAuthenticated = false,
   apiPath = '/api/storage',
   mapControls,
@@ -140,16 +142,15 @@ export function AdminMapTab({
   const [playerHistory, setPlayerHistory] = useState<PlayerMapHistorySector[]>([]);
   const [displayMode, setDisplayMode] = useState<MapDisplayMode>('normal');
   const [layersOpen, setLayersOpen] = useState(true);
-  const [baseLayer, setBaseLayer] = useState<'surface' | 'satellite'>('surface');
+  const [showSatellite, setShowSatellite] = useState(false);
   const [offersClaim, setOffersClaim] = useState<MapClaim | null>(null);
   const [marketCriers, setMarketCriers] = useState<MapNpcMarket[]>([]);
   const [shopTraders, setShopTraders] = useState<MapNpcMarket[]>([]);
-  const [npcMarket, setNpcMarket] = useState<MapNpcMarket | null>(null);
+  const [selectedMarkets, setSelectedMarkets] = useState<MapNpcMarket[]>([]);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const tileUrl = resolveTileUrl(metadata.tileUrl, tileBaseUrl);
-  const satelliteTileUrl = metadata.satelliteTileUrl
+  const satelliteTileUrl = isAuthenticated && metadata.satelliteTileUrl
     ? resolveTileUrl(metadata.satelliteTileUrl, tileBaseUrl) : undefined;
-  const selectedTileUrl = baseLayer === 'satellite' && satelliteTileUrl ? satelliteTileUrl : tileUrl;
   const nativeTileSizeBlocks = metadata.chunkSize * metadata.nativeTileSizeChunks;
   const initialSectorSize = 8192 / nativeTileSizeBlocks;
   const initialBounds = latLngBounds([[0, 0], [initialSectorSize, initialSectorSize]]);
@@ -168,10 +169,10 @@ export function AdminMapTab({
 
   useEffect(() => {
     setVisible({
-      autoRefresh: true,
-      sectors: false,
+      autoRefresh: isAuthenticated,
+      sectors: !isAuthenticated,
       claims: false,
-      online: true,
+      online: isAuthenticated,
       recent: false,
       longTerm: false,
       gpsGlobalMarkers: false,
@@ -179,8 +180,11 @@ export function AdminMapTab({
       marketCriers: false,
       shopTraders: false,
     });
-  }, [mapIdentity]);
+    setSelectedMarkets([]);
+  }, [mapIdentity, isAuthenticated]);
 
+  const showMarketCriers = isAuthenticated && !!capabilities?.marketCriers && visible.marketCriers;
+  const showShopTraders = isAuthenticated && !!capabilities?.shopTraders && visible.shopTraders;
   useEffect(() => {
     const controller = new AbortController();
     const load = async (kind: 'market-criers' | 'shop-traders', setter: (items: MapNpcMarket[]) => void) => {
@@ -188,18 +192,24 @@ export function AdminMapTab({
         headers: authHeaders(),
         signal: controller.signal,
       });
-      const payload: unknown = response.ok ? await response.json() : null;
-      const items = payload && typeof payload === 'object' && Array.isArray((payload as { items?: unknown }).items)
-        ? (payload as { items: MapNpcMarket[] }).items : [];
-      if (!controller.signal.aborted) setter(items);
+      if (!response.ok) throw new Error(`NPC layer request failed: ${response.status}`);
+      const payload: { items?: MapNpcMarket[] } = await response.json();
+      if (!controller.signal.aborted) setter(Array.isArray(payload.items) ? payload.items : []);
     };
-    void load('market-criers', setMarketCriers).catch(() => setMarketCriers([]));
-    void load('shop-traders', setShopTraders).catch(() => setShopTraders([]));
+    const clearOnError = (setter: (items: MapNpcMarket[]) => void) => {
+      if (!controller.signal.aborted) setter([]);
+    };
+    if (showMarketCriers) {
+      void load('market-criers', setMarketCriers).catch(() => clearOnError(setMarketCriers));
+    } else setMarketCriers([]);
+    if (showShopTraders) {
+      void load('shop-traders', setShopTraders).catch(() => clearOnError(setShopTraders));
+    } else setShopTraders([]);
     return () => controller.abort();
-  }, [apiBaseUrl, apiPath, serverId]);
+  }, [apiBaseUrl, apiPath, serverId, showMarketCriers, showShopTraders]);
 
   useEffect(() => {
-    if (!visible.playerHistory || !isAuthenticated) return undefined;
+    if (!visible.playerHistory || !isAuthenticated || !capabilities?.playerHistory) return undefined;
     const controller = new AbortController();
     void fetch(`${mapServerBase(apiBaseUrl, apiPath, serverId)}/map/layers/player-history`, {
       headers: authHeaders(),
@@ -214,14 +224,14 @@ export function AdminMapTab({
         if (!controller.signal.aborted) setPlayerHistory([]);
       });
     return () => controller.abort();
-  }, [apiBaseUrl, apiPath, isAuthenticated, serverId, visible.playerHistory]);
+  }, [apiBaseUrl, apiPath, isAuthenticated, serverId, visible.playerHistory, capabilities?.playerHistory]);
 
   useEffect(() => {
-    if (!visible.autoRefresh || !onlinePlayerTileSignature) return undefined;
+    if (!isAuthenticated || !visible.autoRefresh || !onlinePlayerTileSignature) return undefined;
     setTileRefreshRevision(Date.now());
     const timer = window.setInterval(() => setTileRefreshRevision(Date.now()), 30_000);
     return () => window.clearInterval(timer);
-  }, [onlinePlayerTileSignature, visible.autoRefresh]);
+  }, [isAuthenticated, onlinePlayerTileSignature, visible.autoRefresh]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -257,74 +267,9 @@ export function AdminMapTab({
 
   const expanded = displayMode !== 'normal';
 
-  return (
-    <div
-      ref={containerRef}
-      className={cn(
-        'space-y-3',
-        fullViewport && 'h-[100dvh] w-full space-y-0',
-        expanded && 'fixed inset-0 z-50 flex h-[100dvh] w-screen flex-col space-y-0 bg-background',
-      )}
-    >
-      {!expanded && !fullViewport && <p className="text-sm text-muted-foreground">{t('mapCaptureHint')}</p>}
-      <div className={cn(
-        'relative h-[65vh] min-h-[420px] overflow-hidden rounded-lg border border-border',
-        (expanded || fullViewport) && 'h-[100dvh] min-h-0 flex-1 rounded-none border-0',
-      )}>
-        <MapContainer
-          key={mapIdentity}
-          crs={CRS.Simple}
-          bounds={initialBounds}
-          minZoom={metadata.minZoom}
-          maxZoom={metadata.nativeZoom}
-          zoom={metadata.nativeZoom}
-          className="h-full min-h-0 w-full bg-muted"
-        >
-          <InvalidateMapSize active={displayMode} />
-          <SignedZTileLayer
-            url={selectedTileUrl}
-            tileSize={metadata.tileSize}
-            minZoom={metadata.minZoom}
-            maxZoom={metadata.nativeZoom}
-            onlinePlayerTiles={onlinePlayerTiles}
-            refreshRevision={tileRefreshRevision}
-            refreshEnabled={visible.autoRefresh}
-          />
-          <MapCoordinatesOverlay nativeTileSizeBlocks={nativeTileSizeBlocks} />
-          {visible.sectors && capabilities && (
-            <SectorLayer
-              sectorSizeBlocks={capabilities.sectorSizeBlocks}
-              nativeTileSizeBlocks={nativeTileSizeBlocks}
-            />
-          )}
-          {visible.claims && (
-            <ClaimLayer
-              claims={claims}
-              nativeTileSizeBlocks={nativeTileSizeBlocks}
-              onOpenMarketplaceOffers={setOffersClaim}
-            />
-          )}
-          {visible.gpsGlobalMarkers && (
-            <GpsGlobalMarkerLayer
-              markers={gpsGlobalMarkers}
-              nativeTileSizeBlocks={nativeTileSizeBlocks}
-            />
-          )}
-          {visible.playerHistory && (
-            <PlayerHistoryLayer
-              sectors={playerHistory}
-              nativeTileSizeBlocks={nativeTileSizeBlocks}
-            />
-          )}
-          {visible.marketCriers && <NpcMarketLayer markets={marketCriers} color="#9C27B0" nativeTileSizeBlocks={nativeTileSizeBlocks} onOpen={setNpcMarket} />}
-          {visible.shopTraders && <NpcMarketLayer markets={shopTraders} color="#F57C00" nativeTileSizeBlocks={nativeTileSizeBlocks} onOpen={setNpcMarket} />}
-          <PlayerLayer
-            players={players}
-            visible={visible}
-            nativeTileSizeBlocks={nativeTileSizeBlocks}
-          />
-        </MapContainer>
-        <div className="pointer-events-none absolute right-3 top-3 z-[1000] flex max-w-[min(24rem,calc(100vw-1.5rem))] flex-col items-end gap-3">
+  const controls = (
+    <div className="pointer-events-none absolute right-3 top-3 z-[1000] flex max-w-[min(24rem,calc(100vw-1.5rem))] flex-col items-end gap-3">
+      <div className="flex flex-col items-end gap-3">
           {mapControls}
           {embeddedMapHref && displayMode === 'normal' && (
             <Button asChild type="button" variant="outline" size="icon" className="pointer-events-auto bg-background/90 shadow-lg backdrop-blur">
@@ -359,16 +304,17 @@ export function AdminMapTab({
           <Button type="button" variant="outline" size="icon" className="pointer-events-auto bg-background/90 shadow-lg" onClick={() => setLayersOpen((value) => !value)} aria-label={t('mapLayers')} title={t('mapLayers')}>
             <Layers className="h-4 w-4" />
           </Button>
+      </div>
           {layersOpen && <div className="pointer-events-auto w-full rounded-md border border-border bg-background/90 p-3 text-sm shadow-lg backdrop-blur">
             <div className="mb-2 text-xs font-medium text-muted-foreground">{t('mapLayers')}</div>
             <div className="flex flex-col gap-2">
-              {satelliteTileUrl && <LayerToggle label={t('mapLayerSatellite')} checked={baseLayer === 'satellite'}
-                onChange={(checked) => setBaseLayer(checked ? 'satellite' : 'surface')} />}
-              <LayerToggle label={t('mapLayerAutoRefresh')} checked={visible.autoRefresh}
-                onChange={(checked) => setVisible((value) => ({ ...value, autoRefresh: checked }))} />
+              {satelliteTileUrl && <LayerToggle label={t('mapLayerSatellite')} checked={showSatellite}
+                onChange={setShowSatellite} />}
+              {isAuthenticated && <LayerToggle label={t('mapLayerAutoRefresh')} checked={visible.autoRefresh}
+                onChange={(checked) => setVisible((value) => ({ ...value, autoRefresh: checked }))} />}
               <LayerToggle label={t('mapLayerSectors')} checked={visible.sectors}
                 onChange={(checked) => setVisible((value) => ({ ...value, sectors: checked }))} />
-              <LayerToggle label={t('mapLayerClaims')} checked={visible.claims}
+              {isAuthenticated && <><LayerToggle label={t('mapLayerClaims')} checked={visible.claims}
                 disabled={!capabilities?.claims}
                 onChange={(checked) => {
                   setVisible((value) => ({ ...value, claims: checked }));
@@ -381,11 +327,9 @@ export function AdminMapTab({
               <LayerToggle label={t('mapLayerRecentPlayers')} checked={visible.recent}
                 disabled={!capabilities?.players}
                 onChange={(checked) => setVisible((value) => ({ ...value, recent: checked }))} />
-              {isAdmin && (
-                <LayerToggle label={t('mapLayerLongTermPlayers')} checked={visible.longTerm}
-                  disabled={!capabilities?.players}
-                  onChange={(checked) => setVisible((value) => ({ ...value, longTerm: checked }))} />
-              )}
+              <LayerToggle label={t('mapLayerLongTermPlayers')} checked={visible.longTerm}
+                disabled={!capabilities?.players}
+                onChange={(checked) => setVisible((value) => ({ ...value, longTerm: checked }))} />
               <LayerToggle label={t('mapLayerGpsGlobalMarkers')} checked={visible.gpsGlobalMarkers}
                 disabled={!capabilities?.gpsGlobalMarkers}
                 onChange={(checked) => setVisible((value) => ({
@@ -399,10 +343,99 @@ export function AdminMapTab({
                 onChange={(checked) => setVisible((value) => ({ ...value, marketCriers: checked }))} />
               <LayerToggle label={t('mapLayerShopTraders')} checked={visible.shopTraders} disabled={!capabilities?.shopTraders}
                 onChange={(checked) => setVisible((value) => ({ ...value, shopTraders: checked }))} />
+              </>}
               {error && <span className="text-destructive">{t('mapLayerError')}</span>}
             </div>
           </div>}
         </div>
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        'space-y-3',
+        fullViewport && 'h-[100dvh] w-full space-y-0',
+        expanded && 'fixed inset-0 z-50 flex h-[100dvh] w-screen flex-col space-y-0 bg-background',
+      )}
+    >
+      {!expanded && !fullViewport && <p className="text-sm text-muted-foreground">{t('mapCaptureHint')}</p>}
+      <div className={cn(
+        'relative isolate h-[65vh] min-h-[420px] overflow-hidden rounded-lg border border-border',
+        (expanded || fullViewport) && 'h-[100dvh] min-h-0 flex-1 rounded-none border-0',
+      )}>
+        <MapContainer
+          key={mapIdentity}
+          crs={CRS.Simple}
+          bounds={initialBounds}
+          minZoom={metadata.minZoom}
+          maxZoom={metadata.nativeZoom}
+          zoom={metadata.nativeZoom}
+          className="h-full min-h-0 w-full bg-muted"
+        >
+          <InvalidateMapSize active={displayMode} />
+          <SignedZTileLayer
+            url={tileUrl}
+            tileSize={metadata.tileSize}
+            minZoom={metadata.minZoom}
+            maxZoom={metadata.nativeZoom}
+            onlinePlayerTiles={onlinePlayerTiles}
+            refreshRevision={tileRefreshRevision}
+            refreshEnabled={visible.autoRefresh}
+          />
+          {showSatellite && satelliteTileUrl && (
+            <SignedZTileLayer
+              url={satelliteTileUrl}
+              tileSize={metadata.tileSize}
+              minZoom={metadata.minZoom}
+              maxZoom={metadata.nativeZoom}
+              onlinePlayerTiles={onlinePlayerTiles}
+              refreshRevision={tileRefreshRevision}
+              refreshEnabled={visible.autoRefresh}
+              overlay
+            />
+          )}
+          <MapCoordinatesOverlay nativeTileSizeBlocks={nativeTileSizeBlocks} />
+          {visible.sectors && capabilities && (
+            <SectorLayer
+              sectorSizeBlocks={capabilities.sectorSizeBlocks}
+              nativeTileSizeBlocks={nativeTileSizeBlocks}
+            />
+          )}
+          {isAuthenticated && capabilities?.claims && visible.claims && (
+            <ClaimLayer
+              claims={claims}
+              nativeTileSizeBlocks={nativeTileSizeBlocks}
+              onOpenMarketplaceOffers={setOffersClaim}
+            />
+          )}
+          {isAuthenticated && capabilities?.gpsGlobalMarkers && visible.gpsGlobalMarkers && (
+            <GpsGlobalMarkerLayer
+              markers={gpsGlobalMarkers}
+              nativeTileSizeBlocks={nativeTileSizeBlocks}
+            />
+          )}
+          {isAuthenticated && capabilities?.playerHistory && visible.playerHistory && (
+            <PlayerHistoryLayer
+              sectors={playerHistory}
+              nativeTileSizeBlocks={nativeTileSizeBlocks}
+            />
+          )}
+          {isAuthenticated && (
+            <NpcMarketLayer
+              criers={showMarketCriers ? marketCriers : []}
+              traders={showShopTraders ? shopTraders : []}
+              onOpen={setSelectedMarkets}
+              nativeTileSizeBlocks={nativeTileSizeBlocks}
+            />
+          )}
+          <PlayerLayer
+            players={isAuthenticated && capabilities?.players ? players : []}
+            visible={visible}
+            nativeTileSizeBlocks={nativeTileSizeBlocks}
+          />
+        </MapContainer>
+        {controls}
       </div>
       <MarketplaceOffersDialog
         apiBaseUrl={apiBaseUrl}
@@ -415,7 +448,11 @@ export function AdminMapTab({
           if (!open) setOffersClaim(null);
         }}
       />
-      <NpcMarketDialog market={npcMarket} onOpenChange={(open) => { if (!open) setNpcMarket(null); }} />
+      <NpcMarketsDialog
+        markets={isAuthenticated && (showMarketCriers || showShopTraders) ? selectedMarkets : []}
+        portalContainer={expanded ? containerRef.current : null}
+        onClose={() => setSelectedMarkets([])}
+      />
     </div>
   );
 }
@@ -598,7 +635,7 @@ function LayerToggle({
   );
 }
 
-function SignedZTileLayer({ url, tileSize, minZoom, maxZoom, onlinePlayerTiles, refreshRevision, refreshEnabled }: {
+function SignedZTileLayer({ url, tileSize, minZoom, maxZoom, onlinePlayerTiles, refreshRevision, refreshEnabled, overlay = false }: {
   url: string;
   tileSize: number;
   minZoom: number;
@@ -606,18 +643,23 @@ function SignedZTileLayer({ url, tileSize, minZoom, maxZoom, onlinePlayerTiles, 
   onlinePlayerTiles: NativeTileCoordinate[];
   refreshRevision: number;
   refreshEnabled: boolean;
+  overlay?: boolean;
 }) {
   const map = useMap();
   const layerRef = useRef<BackendTileLayer | null>(null);
   useEffect(() => {
-    const layer = new BackendTileLayer(url, { tileSize, minZoom, maxZoom, noWrap: true });
+    const layer = new BackendTileLayer(url, {
+      tileSize, minZoom, maxZoom, noWrap: true,
+      zIndex: overlay ? 2 : 1,
+      errorTileUrl: overlay ? Util.emptyImageUrl : undefined,
+    });
     layerRef.current = layer;
     layer.addTo(map);
     return () => {
       layerRef.current = null;
       layer.remove();
     };
-  }, [map, maxZoom, minZoom, tileSize, url]);
+  }, [map, maxZoom, minZoom, overlay, tileSize, url]);
   useEffect(() => {
     if (!shouldRefreshOnlinePlayerTiles(refreshEnabled)) return;
     layerRef.current?.refreshOnlinePlayerTiles(onlinePlayerTiles, refreshRevision);
@@ -952,35 +994,142 @@ function formatOfferName(offer: MapMarketplaceOffer): string {
   return offer.itemVariant > 0 ? `${offer.itemName} #${offer.itemVariant}` : offer.itemName;
 }
 
-function NpcMarketLayer({ markets, color, nativeTileSizeBlocks, onOpen }: { markets: MapNpcMarket[]; color: string; nativeTileSizeBlocks: number; onOpen: (market: MapNpcMarket) => void }) {
-  const icon = new DivIcon({
-    className: 'npc-market-marker',
-    html: `<span style="display:block;width:14px;height:14px;background:${color};border:2px solid #fff"></span>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
+function NpcMarketLayer({ criers, traders, nativeTileSizeBlocks, onOpen }: {
+  criers: MapNpcMarket[];
+  traders: MapNpcMarket[];
+  nativeTileSizeBlocks: number;
+  onOpen: (markets: MapNpcMarket[]) => void;
+}) {
+  const [zoom, setZoom] = useState<number | undefined>(undefined);
+  const map = useMapEvents({ zoomend: () => setZoom(map.getZoom()) });
+  const groups: Array<{
+    position: ReturnType<typeof playerToMapPosition>;
+    point: ReturnType<LeafletMap['project']>;
+    members: Array<{ market: MapNpcMarket; kind: 'crier' | 'trader' }>;
+  }> = [];
+
+  for (const [kind, markets] of [['crier', criers], ['trader', traders]] as const) {
+    for (const market of markets) {
+      const position = playerToMapPosition(market, nativeTileSizeBlocks);
+      const point = map.project(position, zoom);
+      const group = groups.find((entry) =>
+        Math.abs(entry.point.x - point.x) < 18 && Math.abs(entry.point.y - point.y) < 18);
+      if (group) group.members.push({ market, kind });
+      else groups.push({ position, point, members: [{ market, kind }] });
+    }
+  }
+
+  return groups.map(({ position, members }) => {
+    const label = members.map(({ market }) => market.name).join(' · ');
+    const colors = { crier: '#9C27B0', trader: '#F57C00' };
+    const background = members.some(({ kind }) => kind !== members[0].kind)
+      ? `linear-gradient(90deg, ${colors.crier} 50%, ${colors.trader} 50%)`
+      : colors[members[0].kind];
+    return (
+      <NpcMarketMarker
+        key={members.map(({ market, kind }) => `${kind}:${market.id}`).join('|')}
+        position={position}
+        label={label}
+        background={background}
+        count={members.length}
+        onOpen={() => onOpen(members.map(({ market }) => market))}
+      />
+    );
   });
-  return markets.map((market) => <Marker key={market.id} position={playerToMapPosition(market, nativeTileSizeBlocks)} icon={icon} eventHandlers={{ click: () => onOpen(market) }} />);
 }
 
-function NpcMarketDialog({ market, onOpenChange }: { market: MapNpcMarket | null; onOpenChange: (open: boolean) => void }) {
+function NpcMarketMarker({ position, label, background, count, onOpen }: {
+  position: ReturnType<typeof playerToMapPosition>;
+  label: string;
+  background: string;
+  count: number;
+  onOpen: () => void;
+}) {
+  const { host, icon } = useMemo(() => {
+    const host = document.createElement('div');
+    // Leaflet otherwise starts dragging on mousedown and may discard the click.
+    DomEvent.disableClickPropagation(host);
+    return { host, icon: new DivIcon({
+      className: 'npc-market-marker',
+      html: host,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    }) };
+  }, []);
+
+  return (
+    <>
+      <Marker position={position} icon={icon} zIndexOffset={1000} interactive={false} keyboard={false} />
+      {createPortal(
+        <button type="button" title={label} aria-label={label}
+          className="pointer-events-auto grid size-[18px] cursor-pointer place-items-center border-2 border-white p-0 font-sans text-[10px] font-bold leading-none text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          style={{ background }}
+          onClick={onOpen}>
+          {count > 1 ? count : ''}
+        </button>,
+        host,
+      )}
+    </>
+  );
+}
+
+function NpcMarketsDialog({ markets, portalContainer, onClose }: {
+  markets: MapNpcMarket[];
+  portalContainer: HTMLElement | null;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
-  return <Dialog open={!!market} onOpenChange={onOpenChange}>
-    <DialogContent className="max-h-[85vh] overflow-x-auto overflow-y-auto sm:max-w-5xl">
-      <DialogHeader>
-        <DialogTitle>{market?.name}</DialogTitle>
-        <DialogDescription>{market?.balances.map((balance) => `${balance.balance} ${balance.currency}`).join(' · ') || t('mapNpcNoBalance')}</DialogDescription>
-      </DialogHeader>
-      {market && market.offers.length > 0 ? <Table>
-        <TableHeader><TableRow><TableHead>{t('mapNpcItem')}</TableHead><TableHead>{t('mapNpcBuyPrice')}</TableHead><TableHead>{t('mapNpcSellPrice')}</TableHead><TableHead>{t('mapNpcStock')}</TableHead></TableRow></TableHeader>
-        <TableBody>{market.offers.map((offer) => <TableRow key={offer.id}>
-          <TableCell className="max-w-[28rem] whitespace-normal break-words">{offer.nameDe || offer.nameEn || offer.itemName}{offer.itemVariant > 0 ? ` #${offer.itemVariant}` : ''} × {offer.amount}</TableCell>
-          <TableCell>{offer.playerBuyPrice ?? offer.price} {offer.currency}</TableCell>
-          <TableCell>{offer.playerSellPrice ?? '—'}{offer.playerSellPrice === undefined ? '' : ` ${offer.currency}`}</TableCell>
-          <TableCell>{offer.stock ?? '—'}{offer.maxStock === undefined ? '' : ` / ${offer.maxStock}`}</TableCell>
-        </TableRow>)}</TableBody>
-      </Table> : <p className="text-sm text-muted-foreground">{t('mapNoOffers')}</p>}
-    </DialogContent>
-  </Dialog>;
+  return (
+    <Dialog open={markets.length > 0} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent portalContainer={portalContainer} className="max-h-[85vh] overflow-y-auto sm:max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>{t('mapNpcOffersTitle')}</DialogTitle>
+          <DialogDescription className="sr-only">{markets.map((market) => market.name).join(' · ')}</DialogDescription>
+        </DialogHeader>
+        <div className="min-w-0 divide-y">
+          {markets.map((market, index) => <NpcMarketPopup key={`${market.id}:${index}`} market={market} />)}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NpcMarketPopup({ market }: { market: MapNpcMarket }) {
+  const { t, i18n } = useTranslation();
+  const german = i18n?.language?.startsWith('de');
+  return (
+    <section aria-label={market.name} className="min-w-0 space-y-2 py-2">
+      <h3 className="text-base font-semibold">{market.name}</h3>
+      <div className="text-sm text-muted-foreground">{market.balances.map((balance) => `${balance.balance} ${balance.currency}`).join(' · ') || t('mapNpcNoBalance')}</div>
+      {market.offers.length > 0 ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('mapNpcItem')}</TableHead>
+                <TableHead>{t('mapNpcBuyPrice')}</TableHead>
+                <TableHead>{t('mapNpcSellPrice')}</TableHead>
+                <TableHead>{t('mapNpcStock')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {market.offers.map((offer) => (
+                <TableRow key={offer.id}>
+                  <TableCell className="whitespace-normal break-words">
+                    {((german ? offer.nameDe || offer.nameEn : offer.nameEn || offer.nameDe) || offer.itemName).replace(/\\u00ad/gi, '\u00ad')}
+                    {offer.itemVariant > 0 ? ` #${offer.itemVariant}` : ''} × {offer.amount}
+                  </TableCell>
+                  <TableCell>{offer.playerBuyPrice ?? offer.price} {offer.currency}</TableCell>
+                  <TableCell>{offer.playerSellPrice === undefined ? '—' : `${offer.playerSellPrice} ${offer.currency}`}</TableCell>
+                  <TableCell>{offer.stock ?? '—'}{offer.maxStock === undefined ? '' : ` / ${offer.maxStock}`}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : <div>{t('mapNoOffers')}</div>}
+    </section>
+  );
 }
 
 function PlayerLayer({

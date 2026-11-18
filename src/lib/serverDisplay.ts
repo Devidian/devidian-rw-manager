@@ -15,9 +15,14 @@ export function getServerSecondaryName(server: ServerWithStatus): string | undef
   return shortname && shortname !== getServerDisplayName(server) ? shortname : undefined;
 }
 
+export function getServerPlayerCount(server: ServerWithStatus): number {
+  if (server.status === 'offline') return 0;
+  return server.publicPlayerCount ?? server.queryData?.playercount ?? server.onlinePlayers?.length ?? 0;
+}
+
 export function getServerCapacity(server: ServerWithStatus): { current: number; maximum: number | string } {
   return {
-    current: server.onlinePlayers?.length ?? server.queryData?.playercount ?? 0,
+    current: getServerPlayerCount(server),
     maximum: server.queryData?.maxplayers ?? '?',
   };
 }

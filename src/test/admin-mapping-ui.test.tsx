@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe('admin mapping UI', () => {
-  it('renders plugin loading, empty, error, valid, and invalid states', () => {
+  it('keeps the public plugin inventory visible when additional plugin data is protected', () => {
     const { rerender } = render(<PluginsTab plugins={[]} latestVersions={{}} loading error={false} />);
     expect(screen.getByText('loadingPlugins')).toBeInTheDocument();
 
@@ -25,7 +25,8 @@ describe('admin mapping UI', () => {
     rerender(<PluginsTab plugins={[
       { name: 'Admin Utils', version: '0.7.0', valid: true },
       { name: 'Broken', valid: false },
-    ]} latestVersions={{}} loading={false} error={false} />);
+    ]} latestVersions={{}} nativeAccess="noAccess" loading={false} error={false} />);
+    expect(screen.getByText('nativeAccessDenied')).toBeInTheDocument();
     expect(screen.getByText('Admin Utils')).toBeInTheDocument();
     expect(screen.getByText('0.7.0')).toBeInTheDocument();
     expect(screen.getByText('invalidPlugin')).toBeInTheDocument();

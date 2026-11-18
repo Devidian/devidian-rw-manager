@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ServerConfig } from '@/types/server';
-import { StorageAdapter } from '@/lib/storage';
+import { ServerApprovalError, StorageAdapter } from '@/lib/storage';
 
 export function useServers(adapter: StorageAdapter) {
   const [servers, setServers] = useState<ServerConfig[]>([]);
@@ -19,6 +19,13 @@ export function useServers(adapter: StorageAdapter) {
     const newServer = await adapter.addServer(data);
     setServers(prev => [...prev, newServer]);
     return newServer;
+  }, [adapter]);
+
+  const approveServer = useCallback(async (id: string): Promise<ServerConfig> => {
+    if (!adapter.approveServer) throw new ServerApprovalError('SERVER_APPROVAL_FAILED');
+    const approved = await adapter.approveServer(id);
+    setServers(prev => [...prev.filter(server => server.id !== id && server.id !== approved.id), approved]);
+    return approved;
   }, [adapter]);
 
   const updateServer = useCallback(async (id: string, data: Partial<Pick<ServerConfig, 'label' | 'backendUrl'>>): Promise<ServerConfig> => {
@@ -42,5 +49,5 @@ export function useServers(adapter: StorageAdapter) {
     return servers.find(s => s.id === id);
   }, [servers]);
 
-  return { servers, refreshServers, addServer, updateServer, setServerBlocked, removeServer, getServer };
+  return { servers, refreshServers, addServer, approveServer, updateServer, setServerBlocked, removeServer, getServer };
 }

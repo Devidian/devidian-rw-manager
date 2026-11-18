@@ -15,13 +15,9 @@ interface AuthContextValue {
   hasAuthService: boolean;
   sessionExpired: boolean;
   clearSessionExpired: () => void;
-  login: (username: string, password: string) => Promise<void>;
-  register: (data: { username?: string; email: string; password: string; steamId?: string }) => Promise<void>;
   loginWithSteam: (callbackPath?: string) => void;
   logout: () => Promise<void>;
-  linkSteamId: (steamId: string) => Promise<void>;
   handleSteamCallback: (search: string) => Promise<void>;
-  disconnectSteam: () => Promise<void>;
   updateProfile: (data: { name: string }) => Promise<void>;
   updateIntercomChannels: (channels: string[]) => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -103,18 +99,6 @@ export function AuthProvider({
 
   const clearSessionExpired = useCallback(() => setSessionExpired(false), []);
 
-  const loginFn = useCallback(async (username: string, password: string) => {
-    const res = await authApi.login(baseUrl, { username, password });
-    saveToken(res.token);
-    setUser(res.user);
-  }, [baseUrl]);
-
-  const registerFn = useCallback(async (data: { username?: string; email: string; password: string; steamId?: string }) => {
-    const res = await authApi.register(baseUrl, data);
-    saveToken(res.token);
-    setUser(res.user);
-  }, [baseUrl]);
-
   const loginWithSteam = useCallback((callbackPath = '/auth/steam/callback') => {
     const origin = window.location.origin;
     const base = ((window as unknown as Record<string, unknown>)['__BASE_URL__'] as string) ?? '/';
@@ -137,21 +121,6 @@ export function AuthProvider({
     }
     clearToken();
     setUser(null);
-  }, [baseUrl]);
-
-  const linkSteamIdFn = useCallback(async (steamId: string) => {
-    const token = getToken();
-    if (!token) return;
-    const res = await authApi.linkSteamId(baseUrl, token, steamId);
-    setUser(res.user);
-  }, [baseUrl]);
-
-  const disconnectSteam = useCallback(async () => {
-    const token = getToken();
-    if (!token) return;
-    const res = await authApi.steamDisconnect(baseUrl, token);
-    if (res.token) saveToken(res.token);
-    setUser(res.user);
   }, [baseUrl]);
 
   const updateProfile = useCallback(async (data: { name: string }) => {
@@ -198,13 +167,9 @@ export function AuthProvider({
       hasAuthService,
       sessionExpired,
       clearSessionExpired,
-      login: loginFn,
-      register: registerFn,
       loginWithSteam,
       logout: logoutFn,
-      linkSteamId: linkSteamIdFn,
       handleSteamCallback,
-      disconnectSteam,
       updateProfile,
       updateIntercomChannels,
       deleteAccount,

@@ -1,9 +1,10 @@
+import { getServerPlayerCount } from '@/lib/serverDisplay';
 import { useTranslation } from 'react-i18next';
 import { ServerWithStatus } from '@/types/server';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MapPin, Tag, RefreshCw, Trash2, Loader2, Clock, ChevronRight, Star, ExternalLink } from 'lucide-react';
+import { Users, MapPin, Tag, RefreshCw, Trash2, Loader2, Clock, ChevronRight, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { de as deFns } from 'date-fns/locale';
@@ -17,10 +18,6 @@ interface ServerCardProps {
   server: ServerWithStatus;
   onRefresh: () => void;
   onDelete?: () => void;
-  isPinned?: boolean;
-  onTogglePin?: () => void;
-  pinDisabled?: boolean;
-  pinDisabledReason?: string;
 }
 
 function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
@@ -57,7 +54,7 @@ function StatusBadge({ status }: { status: ServerWithStatus['status'] }) {
   );
 }
 
-export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTogglePin, pinDisabled = false, pinDisabledReason }: ServerCardProps) {
+export function ServerCard({ server, onRefresh, onDelete }: ServerCardProps) {
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language?.startsWith('de') ? deFns : enUS;
   const navigate = useNavigate();
@@ -66,7 +63,7 @@ export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTo
   const serverName = data?.name ?? server.label;
   const subtitle = info?.shortname || (info?.description ? formatServerDescription(info.description) : null);
   const map = data?.map ?? '—';
-  const playercount = server.onlinePlayers?.length ?? data?.playercount ?? 0;
+  const playercount = getServerPlayerCount(server);
   const maxplayers = data?.maxplayers ?? '?';
   const version = data?.version;
   const connectUrl = serverConnectUrl(server);
@@ -151,21 +148,6 @@ export function ServerCard({ server, onRefresh, onDelete, isPinned = false, onTo
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
-            {onTogglePin && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className={cn(
-                  'h-7 w-7 p-0 text-muted-foreground hover:text-primary',
-                  isPinned && 'text-primary'
-                )}
-                onClick={e => { e.stopPropagation(); onTogglePin(); }}
-                disabled={!isPinned && pinDisabled}
-                title={isPinned ? t('unpinServer') : pinDisabledReason ?? t('pinServer')}
-              >
-                <Star className={cn('h-3.5 w-3.5', isPinned && 'fill-current')} />
-              </Button>
-            )}
             {connectUrl && (
               <Button
                 asChild

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TOKEN_KEY } from '@/lib/authApi';
 import type {
   MapClaim,
@@ -28,8 +28,8 @@ export function useMapLayers(
   backendUrl: string,
   serverId: string | undefined,
   worldKey: string,
-  onlinePlayers: ServerPlayerListPlayer[],
-  databasePlayers: DbPlayer[] = [],
+  _onlinePlayers: ServerPlayerListPlayer[],
+  _databasePlayers: DbPlayer[] = [],
   apiPath = '/api/storage',
   liveUpdates = true,
 ) {
@@ -128,7 +128,7 @@ export function useMapLayers(
         if (!aborted(requestError)) setError(true);
       });
     return () => controller.abort();
-  }, [apiPath, backendUrl, enabled, generalRevision, serverId, worldKey]);
+  }, [apiPath, backendUrl, enabled, generalRevision, liveUpdates, serverId, worldKey]);
 
   const loadPlayerSnapshot = useCallback(async (signal: AbortSignal) => {
     const base = backendUrl.replace(/\/$/, '');
@@ -137,7 +137,6 @@ export function useMapLayers(
     const items = await request(
       `${serverBase}/map/layers/players`,
       signal,
-      true,
     ).then(parsePlayers);
     if (playerStateVersionRef.current === stateVersion) setLayerPlayers(items);
   }, [apiPath, backendUrl, serverId]);
@@ -165,15 +164,11 @@ export function useMapLayers(
     };
   }, [capabilities?.players, enabled, liveSubscribed, loadPlayerSnapshot]);
 
-  const players = useMemo(
-    () => mergeOnlinePlayers(layerPlayers, databasePlayers, onlinePlayers),
-    [databasePlayers, layerPlayers, onlinePlayers],
-  );
 
   return {
     capabilities,
     claims,
-    players,
+    players: capabilities?.players ? layerPlayers : [],
     gpsGlobalMarkers,
     error,
     refreshClaims,
@@ -316,12 +311,9 @@ export function parseGlobalOffers(value: unknown): MapMarketplaceOffer[] {
   return value.available ? value.items : [];
 }
 
-async function request(url: string, signal?: AbortSignal, authenticated = false): Promise<unknown> {
-  const headers: HeadersInit = {};
-  if (authenticated) {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
+async function request(url: string, signal?: AbortSignal): Promise<unknown> {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
   const response = await fetch(url, { signal, headers });
   if (!response.ok) throw new Error(`Map layer request failed: ${response.status}`);
   return response.json();

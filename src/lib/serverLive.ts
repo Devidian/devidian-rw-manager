@@ -1,7 +1,7 @@
 import type { ServerLiveStatusPayload } from '@/types/server';
 
 export type ServerLiveConnectionState = 'disabled' | 'connecting' | 'subscribed' | 'disconnected';
-export type ServerLiveRemovedField = 'queryData' | 'infoData' | 'onlinePlayers' | 'errorMessage';
+export type ServerLiveRemovedField = 'queryData' | 'infoData' | 'onlinePlayers' | 'publicPlayerCount' | 'errorMessage';
 
 export interface ServerStatusSnapshotMessage {
   type: 'server.status.snapshot';
@@ -67,16 +67,18 @@ function validStatusPayload(value: unknown): value is ServerLiveStatusPayload {
 }
 
 function validPartialStatus(value: Record<string, unknown>): boolean {
-  const allowed = new Set(['status', 'queryData', 'infoData', 'onlinePlayers', 'lastChecked', 'errorMessage']);
+  const allowed = new Set(['status', 'queryData', 'infoData', 'onlinePlayers', 'publicPlayerCount', 'lastChecked', 'errorMessage']);
   return Object.keys(value).every((key) => allowed.has(key)) &&
     (value.status === undefined || value.status === 'online' || value.status === 'offline') &&
     (value.lastChecked === undefined || validDate(value.lastChecked)) &&
     (value.errorMessage === undefined || typeof value.errorMessage === 'string') &&
+    (value.publicPlayerCount === undefined || (typeof value.publicPlayerCount === 'number' &&
+      Number.isSafeInteger(value.publicPlayerCount) && value.publicPlayerCount >= 0)) &&
     (value.onlinePlayers === undefined || Array.isArray(value.onlinePlayers));
 }
 
 function isRemovedField(value: unknown): value is ServerLiveRemovedField {
-  return value === 'queryData' || value === 'infoData' || value === 'onlinePlayers' || value === 'errorMessage';
+  return value === 'queryData' || value === 'infoData' || value === 'onlinePlayers' || value === 'publicPlayerCount' || value === 'errorMessage';
 }
 
 function validDate(value: unknown): value is string {

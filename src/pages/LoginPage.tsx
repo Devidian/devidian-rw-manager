@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LegalFooter } from '@/components/LegalFooter';
-import { Server, AlertCircle, Gamepad2 } from 'lucide-react';
+import { Server, AlertCircle } from 'lucide-react';
+import steamSignInButton from '@/assets/steam-sign-in.png';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -26,14 +27,14 @@ export default function LoginPage() {
 
         <div className="w-full max-w-sm space-y-4">
           {steamLoginAvailable ? (
-            <Button
+            <button
+              type="button"
               onClick={() => loginWithSteam()}
-              className="w-full gap-2 bg-[hsl(215_60%_35%)] hover:bg-[hsl(215_60%_40%)] text-white"
-              size="lg"
+              className="mx-auto block rounded-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              aria-label={t('loginWithSteam')}
             >
-              <Gamepad2 className="h-4 w-4" />
-              {t('loginWithSteam')}
-            </Button>
+              <img src={steamSignInButton} alt="" width="180" height="35" />
+            </button>
           ) : (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-destructive shrink-0" />

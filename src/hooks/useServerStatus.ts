@@ -34,6 +34,7 @@ export function useServerStatus(
       queryData: response.queryData,
       infoData: response.infoData,
       onlinePlayers: response.onlinePlayers,
+      publicPlayerCount: response.publicPlayerCount,
       lastChecked: new Date(response.lastChecked),
       errorMessage: response.errorMessage,
     };
@@ -63,6 +64,7 @@ export function useServerStatus(
           queryData: rest.queryData,
           infoData: rest.infoData,
           onlinePlayers: rest.onlinePlayers,
+          publicPlayerCount: rest.publicPlayerCount,
           lastChecked: rest.lastChecked,
           errorMessage: rest.errorMessage,
         };

@@ -3,7 +3,19 @@ import { useServerContext } from '@/context/ServerContext';
 import { ServerCard } from '@/components/ServerCard';
 import { Button } from '@/components/ui/button';
 import { Server, RefreshCw } from 'lucide-react';
-import { PinnedServerLimitAlert } from '@/components/PinnedServerLimitAlert';
+import { useState } from 'react';
+import { getServerDisplayName } from '@/lib/serverDisplay';
+import { ServerApprovalError } from '@/lib/storage';
+import { RichText } from '@/components/RichText';
+
+const approvalErrorKeys: Record<string, string> = {
+  VERIFIED_STEAM_REQUIRED: 'serverApprovalLoginRequired',
+  MASTER_SERVER_NO_LONGER_LISTED: 'serverApprovalNoLongerListed',
+  SERVER_ALREADY_APPROVED: 'serverApprovalAlreadyApproved',
+  SERVER_CONTACT_MISMATCH: 'serverApprovalContactMismatch',
+  SERVER_INFO_UNAVAILABLE: 'serverApprovalInfoUnavailable',
+  SERVER_SUPPRESSED: 'serverApprovalSuppressed',
+};
 
 export default function Index() {
   const { t } = useTranslation();
@@ -11,13 +23,26 @@ export default function Index() {
     refreshAll,
     refreshOne,
     dashboardServerList,
-    pinServer,
-    unpinServer,
-    isPinned,
-    canPinServer,
-    pinLimitReached,
-    maxPinnedServers,
+    serverList,
+    approveServer,
   } = useServerContext();
+  const [approving, setApproving] = useState<string | null>(null);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
+  const contactServers = serverList.filter(server => server.masterOnly && server.canApprove);
+
+  const approve = async (id: string) => {
+    setApproving(id);
+    setApprovalError(null);
+    try {
+      await approveServer(id);
+    } catch (error) {
+      const key = error instanceof ServerApprovalError && Object.prototype.hasOwnProperty.call(approvalErrorKeys, error.code)
+        ? approvalErrorKeys[error.code] : 'serverApprovalFailed';
+      setApprovalError(key);
+    } finally {
+      setApproving(null);
+    }
+  };
 
   const onlineCount = dashboardServerList.filter(s => s.status === 'online').length;
   const plural = dashboardServerList.length !== 1 ? (t('server') === 'Server' ? 'n' : 's') : '';
@@ -43,7 +68,17 @@ export default function Index() {
         </div>
       </div>
 
-      {pinLimitReached && <PinnedServerLimitAlert max={maxPinnedServers} />}
+
+      {approvalError && <p role="alert" className="text-sm text-destructive">{t(approvalError)}</p>}
+      {contactServers.length > 0 && <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+        <h2 className="font-semibold">{t('contactServers')}</h2>
+        <p className="text-sm text-muted-foreground">{t('contactServersDesc')}</p>
+        {contactServers.map(server => <div key={server.id} className="flex items-center justify-between gap-3">
+          <span className="text-sm"><RichText text={getServerDisplayName(server)} /></span>
+          <Button size="sm" variant="outline" disabled={approving !== null}
+            onClick={() => void approve(server.id)}>{t('approveServer')}</Button>
+        </div>)}
+      </div>}
 
       {dashboardServerList.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -62,10 +97,6 @@ export default function Index() {
               key={server.id}
               server={server}
               onRefresh={() => refreshOne(server.id)}
-              isPinned={isPinned(server.id)}
-              onTogglePin={() => void (isPinned(server.id) ? unpinServer(server.id) : pinServer(server.id))}
-              pinDisabled={!canPinServer(server.id)}
-              pinDisabledReason={t('pinnedServerLimitAction', { max: maxPinnedServers })}
             />
           ))}
         </div>

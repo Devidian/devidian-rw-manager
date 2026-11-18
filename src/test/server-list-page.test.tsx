@@ -4,13 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServerWithStatus } from '@/types/server';
 
 const state = vi.hoisted(() => ({
-  pinServer: vi.fn(),
-  unpinServer: vi.fn(),
   setServerBlocked: vi.fn(async () => undefined),
-  isPinned: vi.fn((id: string) => id === 'server-a'),
   isSuperAdmin: false,
   isAdmin: false,
-  pinLimitReached: false,
+  isAuthenticated: false,
 }));
 
 const serverList: ServerWithStatus[] = [
@@ -94,19 +91,14 @@ vi.mock('@/context/ServerContext', () => ({
     refreshAll: vi.fn(),
     refreshServerList: vi.fn(),
     refreshOne: vi.fn(),
-    pinServer: state.pinServer,
-    unpinServer: state.unpinServer,
     setServerBlocked: state.setServerBlocked,
-    isPinned: state.isPinned,
-    canPinServer: (id: string) => state.isPinned(id) || !state.pinLimitReached,
-    pinLimitReached: state.pinLimitReached,
-    maxPinnedServers: 50,
   }),
 }));
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     isSuperAdmin: state.isSuperAdmin,
     isAdmin: state.isAdmin,
+    isAuthenticated: state.isAuthenticated,
   }),
 }));
 
@@ -114,25 +106,19 @@ const { default: ServerListPage } = await import('@/pages/ServerListPage');
 
 describe('server list page', () => {
   beforeEach(() => {
-    state.pinServer.mockClear();
-    state.unpinServer.mockClear();
     state.setServerBlocked.mockClear();
-    state.isPinned.mockClear();
     state.isSuperAdmin = false;
     state.isAdmin = false;
-    state.pinLimitReached = false;
+    state.isAuthenticated = false;
   });
 
-  it('warns at the configured limit and disables only new favorites', () => {
-    state.pinLimitReached = true;
+  it('shows the public list without pin controls', () => {
     render(<MemoryRouter><ServerListPage /></MemoryRouter>);
-
-    expect(screen.getByText('pinnedServerLimitTitle')).toBeInTheDocument();
-    expect(screen.getAllByTitle('pinnedServerLimitAction:{"max":50}')[0]).toBeDisabled();
-    expect(screen.getByTitle('unpinServer')).toBeEnabled();
+    expect(screen.getByText('Offline Server')).toBeInTheDocument();
+    expect(screen.queryByTitle('pinServer')).not.toBeInTheDocument();
   });
 
-  it('hides offline servers for regular users and toggles pin state through the server context', () => {
+  it('shows offline servers and server details to guests', () => {
     render(
       <MemoryRouter>
         <ServerListPage />
@@ -140,7 +126,7 @@ describe('server list page', () => {
     );
 
     expect(screen.getByText('Pinned Server')).toBeInTheDocument();
-    expect(screen.queryByText('Offline Server')).not.toBeInTheDocument();
+    expect(screen.getByText('Offline Server')).toBeInTheDocument();
     expect(screen.getByText('127.0.0.1:4255')).toBeInTheDocument();
     expect(screen.getByText('World A')).toHaveClass('font-bold');
     expect(screen.getByText(/serverListDetails:\{"windows":1,"linux":1,"password":1\}/)).toBeInTheDocument();
@@ -149,22 +135,39 @@ describe('server list page', () => {
     expect(screen.getByTitle('OZ Tools')).toBeInTheDocument();
     expect(screen.getByLabelText('locked')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTitle('unpinServer'));
-    expect(state.unpinServer).toHaveBeenCalledWith('server-a');
-
-    fireEvent.click(screen.getAllByTitle('pinServer')[0]);
-    expect(state.pinServer).toHaveBeenCalledWith('server-c');
   });
 
-  it('lets admins include offline servers', () => {
+  it('shows offline servers to admins', () => {
     state.isAdmin = true;
     render(<MemoryRouter><ServerListPage /></MemoryRouter>);
 
-    fireEvent.click(screen.getByRole('switch'));
     expect(screen.getByText('Offline Server')).toBeInTheDocument();
   });
 
-  it('keeps pinned servers first, then sorts online servers by players and name', () => {
+  it('uses equal-sized icon badges with status and OS tooltips', () => {
+    serverList[1].status = 'unknown';
+    try {
+      render(<MemoryRouter><ServerListPage /></MemoryRouter>);
+
+      const badges = [
+        screen.getAllByTitle('online')[0],
+        screen.getByTitle('unknown'),
+        screen.getByTitle('Windows'),
+        screen.getByTitle('Linux'),
+        screen.getByTitle('locked'),
+        screen.getByTitle('OZ Tools'),
+      ];
+      for (const badge of badges) expect(badge).toHaveClass('h-5', 'w-7', 'p-0');
+      expect(screen.getByTitle('unknown').textContent).toBe('');
+      expect(screen.getByTitle('unknown').querySelector('.status-dot-unknown')).toBeInTheDocument();
+      expect(screen.getByTitle('Windows')).toHaveAttribute('aria-label', 'Windows');
+      expect(screen.getByTitle('Linux')).toHaveAttribute('aria-label', 'Linux');
+    } finally {
+      serverList[1].status = 'offline';
+    }
+  });
+
+  it('sorts online servers by players and name, with offline servers retained', () => {
     const { container } = render(
       <MemoryRouter>
         <ServerListPage />
@@ -172,13 +175,14 @@ describe('server list page', () => {
     );
 
     const rows = [...container.querySelectorAll('tbody tr')].map((row) => row.textContent ?? '');
-    expect(rows[0]).toContain('Pinned Server');
-    expect(rows[1]).toContain('Busy Server');
-    expect(rows).toHaveLength(2);
+    expect(rows[0]).toContain('Busy Server');
+    expect(rows[1]).toContain('Pinned Server');
+    expect(rows[2]).toContain('Offline Server');
   });
 
   it('allows super admins to toggle server blocking', () => {
     state.isSuperAdmin = true;
+    state.isAuthenticated = true;
     render(
       <MemoryRouter>
         <ServerListPage />
@@ -186,6 +190,6 @@ describe('server list page', () => {
     );
 
     fireEvent.click(screen.getAllByTitle('blockServer')[0]);
-    return waitFor(() => expect(state.setServerBlocked).toHaveBeenCalledWith('server-a', true));
+    return waitFor(() => expect(state.setServerBlocked).toHaveBeenCalledWith('server-c', true));
   });
 });
