@@ -37,6 +37,13 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.9.2](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.9.1...rw-manager-v1.9.2) (2026-11-18)
+
+
+### Fixed
+
+* coordinate Manager privacy and server participation UI ([1dd9082](https://github.com/Devidian/devidian-rw-manager/commit/1dd90826030aad270ba699426a6cbc0e60645be0))
+
 ## [1.9.1](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.9.0...rw-manager-v1.9.1) (2026-11-13)
 
 
