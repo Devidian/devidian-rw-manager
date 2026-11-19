@@ -37,6 +37,13 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.9.3](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.9.2...rw-manager-v1.9.3) (2026-11-19)
+
+
+### Fixed
+
+* render size, underline and links in server descriptions ([6b840d6](https://github.com/Devidian/devidian-rw-manager/commit/6b840d68134cd8e34c7c41ef7f0ada4de6043b8a))
+
 ## [1.9.2](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.9.1...rw-manager-v1.9.2) (2026-11-18)
 
 
