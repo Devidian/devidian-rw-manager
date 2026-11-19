@@ -103,7 +103,7 @@ function StatusDisplay({ status }: { status: ServerWithStatus['status'] }) {
   );
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | number | boolean | null }) {
+function InfoRow({ icon: Icon, label, value, allowLinks }: { icon: React.ElementType; label: string; value?: string | number | boolean | null; allowLinks?: boolean }) {
   const { t } = useTranslation();
   if (value === undefined || value === null || value === '') return null;
   const display = typeof value === 'boolean' ? (value ? t('yes') : t('no')) : String(value);
@@ -115,13 +115,13 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
         {display.includes('\n') ? (
-          hasRichTextTags(display) ? (
-            <RichText text={display} className="text-sm text-muted-foreground whitespace-pre-wrap font-mono mt-1 block" />
+          hasRichTextTags(display, allowLinks) ? (
+            <RichText text={display} allowLinks={allowLinks} className="text-sm text-muted-foreground whitespace-pre-wrap font-mono mt-1 block" />
           ) : (
             <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono mt-1">{display}</pre>
           )
         ) : (
-          <p className="text-sm text-foreground font-medium mt-0.5">{hasRichTextTags(display) ? <RichText text={display} /> : display}</p>
+          <p className="text-sm text-foreground font-medium mt-0.5">{hasRichTextTags(display, allowLinks) ? <RichText text={display} allowLinks={allowLinks} /> : display}</p>
         )}
       </div>
     </div>
@@ -1003,7 +1003,7 @@ export function ServerDetail({ server, onRefresh }: ServerDetailProps) {
                   )}
                   <InfoRow icon={Tag} label={t('serverName')} value={serverName} />
                   {info?.shortname && <InfoRow icon={Tag} label={t('shortName')} value={info.shortname} />}
-                  {info?.description && <InfoRow icon={Tag} label={t('description')} value={formatServerDescription(info.description)} />}
+                  {info?.description && <InfoRow icon={Tag} label={t('description')} value={formatServerDescription(info.description)} allowLinks />}
                   <InfoRow icon={MapPin} label={t('map')} value={data?.map} />
                   <InfoRow icon={Tag} label={t('version')} value={data?.version} />
                   <InfoRow icon={Users} label={t('playerCount')} value={`${playercount} / ${maxplayers}`} />

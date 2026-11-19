@@ -4,14 +4,14 @@ type RichTextNode =
   | string
   | { type: 'color'; value: string; children: RichTextNode[] }
   | { type: 'bold'; children: RichTextNode[] }
+  | { type: 'u'; children: RichTextNode[] }
+  | { type: 'size'; value: string; children: RichTextNode[] }
+  | { type: 'a'; value: string; children: RichTextNode[] }
   | { type: 'break' }
   | { type: 'align'; value: string; children: RichTextNode[] };
 
-type RichTextFrame = {
-  type: 'root' | 'color' | 'bold' | 'align';
-  value?: string;
-  children: RichTextNode[];
-};
+type RichTextFrame = { type: 'root'; children: RichTextNode[] }
+  | Exclude<RichTextNode, string | { type: 'break' }>;
 
 const TAG_REGEX = /<[^>]*>/g;
 
@@ -19,19 +19,21 @@ interface RichTextProps {
   text: string;
   className?: string;
   code?: boolean;
+  allowLinks?: boolean;
 }
 
-export function RichText({ text, className, code }: RichTextProps) {
-  const parts = renderNodes(parseRichText(text));
+export function RichText({ text, className, code, allowLinks = false }: RichTextProps) {
+  const parts = renderNodes(parseRichText(text, allowLinks));
 
   return code ? <pre>{parts}</pre> : <span className={className}>{parts}</span>;
 }
 
-export function hasRichTextTags(text: string): boolean {
-  return /<\/?b>|<\/?color(?:=[^>]+)?>|<br\s*\/?>|<\/?align(?:=(?:left|center|right|justify|justified))?>/i.test(text);
+export function hasRichTextTags(text: string, allowLinks = false): boolean {
+  return /<\/?(?:b|u)>|<\/?color(?:=[^>]+)?>|<br\s*\/?>|<\/?align(?:=(?:left|center|right|justify|justified))?>|<size=\d+(?:\.\d+)?%>/i.test(text)
+    || (allowLinks && /<a\s+href\s*=/i.test(text));
 }
 
-function parseRichText(text: string): RichTextNode[] {
+function parseRichText(text: string, allowLinks: boolean): RichTextNode[] {
   const root: RichTextFrame = { type: 'root', children: [] };
   const stack: RichTextFrame[] = [root];
   let lastIndex = 0;
@@ -45,7 +47,7 @@ function parseRichText(text: string): RichTextNode[] {
   while ((match = regex.exec(text)) !== null) {
     appendText(text.slice(lastIndex, match.index));
     const tag = match[0];
-    if (!applyTag(tag, stack)) appendText(tag);
+    if (!applyTag(tag, stack, allowLinks)) appendText(tag);
     lastIndex = regex.lastIndex;
   }
 
@@ -54,7 +56,7 @@ function parseRichText(text: string): RichTextNode[] {
   return root.children;
 }
 
-function applyTag(tag: string, stack: RichTextFrame[]): boolean {
+function applyTag(tag: string, stack: RichTextFrame[], allowLinks: boolean): boolean {
   const lowerTag = tag.toLowerCase();
   if (/^<br\s*\/?>$/i.test(tag)) {
     currentFrame(stack).children.push({ type: 'break' });
@@ -71,6 +73,29 @@ function applyTag(tag: string, stack: RichTextFrame[]): boolean {
     return true;
   }
   if (lowerTag === '</b>') return closeFrame(stack, 'bold');
+  if (lowerTag === '<u>') {
+    stack.push({ type: 'u', children: [] });
+    return true;
+  }
+  if (lowerTag === '</u>') return closeFrame(stack, 'u');
+  if (lowerTag === '</size>') return closeFrame(stack, 'size');
+  const percentage = tag.match(/^<size=(\d+(?:\.\d+)?)%>$/i);
+  if (percentage) {
+    const size = Number(percentage[1]);
+    if (size <= 0 || size > 300) return false;
+    stack.push({ type: 'size', value: `${size}%`, children: [] });
+    return true;
+  }
+  if (allowLinks) {
+    if (lowerTag === '</a>') return closeFrame(stack, 'a');
+    const href = tag.match(/^<a\s+href\s*=\s*(?:"([^"]+)"|'([^']+)')\s*>$/i);
+    if (href && !stack.some(frame => frame.type === 'a')) {
+      const url = safeWebUrl(href[1] ?? href[2]);
+      if (!url) return false;
+      stack.push({ type: 'a', value: url, children: [] });
+      return true;
+    }
+  }
 
   if (lowerTag === '<color>' || lowerTag === '</color>') {
     return closeFrame(stack, 'color');
@@ -86,20 +111,29 @@ function applyTag(tag: string, stack: RichTextFrame[]): boolean {
   return true;
 }
 
-function closeFrame(stack: RichTextFrame[], type: 'color' | 'bold' | 'align'): boolean {
+function safeWebUrl(value: string): string | undefined {
+  if (!/^https?:\/\//i.test(value)) return;
+  try {
+    return new URL(value).href;
+  } catch {
+    return undefined;
+  }
+}
+
+function closeFrame(stack: RichTextFrame[], type: Exclude<RichTextFrame['type'], 'root'>): boolean {
   const frame = currentFrame(stack);
   if (frame.type !== type) return false;
 
   stack.pop();
-  currentFrame(stack).children.push(frameToNode(frame));
+  currentFrame(stack).children.push(frame);
   return true;
 }
 
 function closeOpenFrames(stack: RichTextFrame[]): void {
   while (stack.length > 1) {
     const frame = stack.pop();
-    if (!frame) return;
-    currentFrame(stack).children.push(frameToNode(frame));
+    if (!frame || frame.type === 'root') return;
+    currentFrame(stack).children.push(frame);
   }
 }
 
@@ -107,27 +141,24 @@ function currentFrame(stack: RichTextFrame[]): RichTextFrame {
   return stack[stack.length - 1];
 }
 
-function frameToNode(frame: RichTextFrame): RichTextNode {
-  if (frame.type === 'align') return { type: 'align', value: frame.value ?? 'left', children: frame.children };
-  return frame.type === 'color'
-    ? { type: 'color', value: frame.value ?? 'inherit', children: frame.children }
-    : { type: 'bold', children: frame.children };
-}
-
 function renderNodes(nodes: RichTextNode[], keyPrefix = 'rt'): React.ReactNode[] {
   return nodes.map((node, index) => {
     const key = `${keyPrefix}-${index}`;
     if (typeof node === 'string') return node;
     if (node.type === 'break') return <br key={key} />;
+    const children = renderNodes(node.children, key);
     if (node.type === 'align') {
-      return <span key={key} style={{ display: 'block', textAlign: node.value as React.CSSProperties['textAlign'] }}>{renderNodes(node.children, key)}</span>;
+      return <span key={key} style={{ display: 'block', textAlign: node.value as React.CSSProperties['textAlign'] }}>{children}</span>;
     }
     if (node.type === 'bold') {
-      return <strong key={key}>{renderNodes(node.children, key)}</strong>;
+      return <strong key={key}>{children}</strong>;
     }
+    if (node.type === 'u') return <u key={key}>{children}</u>;
+    if (node.type === 'size') return <span key={key} style={{ fontSize: node.value }}>{children}</span>;
+    if (node.type === 'a') return <a key={key} href={node.value} className="underline" target="_blank" rel="noopener noreferrer">{children}</a>;
     return (
       <span key={key} style={{ color: node.value }}>
-        {renderNodes(node.children, key)}
+        {children}
       </span>
     );
   });

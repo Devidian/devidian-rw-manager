@@ -104,17 +104,23 @@ describe('server detail mapping tabs', () => {
     });
   });
 
-  it('renders description line breaks and keeps unsupported HTML as text', () => {
+  it('renders nested description formatting and web links across escaped line breaks', () => {
     const target = server();
     target.infoData = {
       name: 'New World', shortname: '', contact: '', headerimage: false,
-      description: String.raw`<b>Description title</b>\nNext line\n<img src=x onerror=alert(1)>`,
+      description: String.raw`<size=200%><u><b>Description title</b></u></size>\n<color=green><u><a href="https://greenvalleys-rw.com/">World map</a></u></color>\n<img src=x onerror=alert(1)>`,
     };
     const { container } = render(<ServerDetail server={target} onRefresh={vi.fn()} />);
     const title = screen.getByText('Description title');
     expect(title.tagName).toBe('STRONG');
-    expect(title.parentElement).toHaveClass('whitespace-pre-wrap');
-    expect(title.parentElement?.textContent).toBe('Description title\nNext line\n<img src=x onerror=alert(1)>');
+    expect(title.parentElement?.tagName).toBe('U');
+    const sizedTitle = title.parentElement?.parentElement;
+    expect(sizedTitle).toHaveStyle({ fontSize: '200%' });
+    expect(sizedTitle?.parentElement).toHaveClass('whitespace-pre-wrap');
+    expect(sizedTitle?.parentElement?.textContent).toBe('Description title\nWorld map\n<img src=x onerror=alert(1)>');
+    const link = screen.getByRole('link', { name: 'World map' });
+    expect(link).toHaveAttribute('href', 'https://greenvalleys-rw.com/');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     expect(container.querySelector('img[onerror]')).toBeNull();
   });
 

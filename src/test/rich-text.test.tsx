@@ -34,4 +34,16 @@ describe('safe description layout tags', () => {
     expect(container.textContent).toBe(text);
     expect(container.querySelector('script, br, [onclick]')).toBeNull();
   });
+
+  it('renders links only when enabled and keeps unsupported URLs and attributes as text', () => {
+    const valid = '<a href="https://example.org/">Site</a>';
+    const { container, rerender } = render(<RichText text={valid} />);
+    expect(container.textContent).toBe(valid);
+    expect(screen.queryByRole('link')).toBeNull();
+
+    const invalid = `<a href="javascript:void(0)">Script</a><a href="//example.org/">Relative</a><a href="https://example.org/" onclick="void(0)">Attribute</a>`;
+    rerender(<RichText text={invalid} allowLinks />);
+    expect(container.textContent).toBe(invalid);
+    expect(screen.queryByRole('link')).toBeNull();
+  });
 });
