@@ -28,3 +28,7 @@ Does not own:
 - Run the repository build script for build-impacting changes.
 - Run lint/tests when behavior, UI logic, or API integration changes.
 - Review backend contract impact when changing API usage.
+
+## CodeMap
+
+For unfamiliar modules and cross-repository impact, start at [the local CodeMap](.codemap/README.md) and use the [CodeMap skill](.agents/skills/codemap/SKILL.md). Verify relevant source and update and validate affected entries when indexed information changes.
