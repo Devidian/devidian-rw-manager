@@ -20,7 +20,7 @@ Does not own:
 - Preserve the existing Vite, React, TypeScript, shadcn-ui, Tailwind, and test setup.
 - Use the package manager already configured by the repository.
 - Keep UI changes consistent with the existing application design system.
-- Follow `.codex/agents.toml` for local agent roles, task classes, context loading, and escalation.
+- Follow `.codex/agents/*.toml` for local agent roles, task classes, context loading, and escalation.
 - Follow `docs/policies/repository-policy.md` for reusable governance rules.
 - Keep `README.md` and `PLANS.md` aligned with setup, workflow, or deployment changes.
 
