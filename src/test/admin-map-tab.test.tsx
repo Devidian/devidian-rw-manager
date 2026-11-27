@@ -12,6 +12,7 @@ const mapContainerProps = vi.hoisted(() => ({
   invalidations: 0,
 }));
 
+const tileRefreshCalls = vi.hoisted(() => vi.fn());
 const tileLayerUrls = vi.hoisted(() => [] as string[]);
 const tileLayerOptions = vi.hoisted(() => [] as Array<{ zIndex?: number; errorTileUrl?: string }>);
 const removedTileLayerUrls = vi.hoisted(() => [] as string[]);
@@ -35,6 +36,12 @@ vi.mock('leaflet', async (importOriginal) => {
       }
 
       addTo() {
+        const dynamic = this as { refreshOnlinePlayerTiles?: (...args: unknown[]) => void };
+        const refresh = dynamic.refreshOnlinePlayerTiles?.bind(this);
+        if (refresh) dynamic.refreshOnlinePlayerTiles = (...args) => {
+          tileRefreshCalls(...args);
+          refresh(...args);
+        };
         return this;
       }
 
@@ -122,6 +129,7 @@ describe('AdminMapTab', () => {
     mapContainerProps.unmounts = 0;
     mapContainerProps.invalidations = 0;
     tileLayerUrls.length = 0;
+    tileRefreshCalls.mockClear();
     tileLayerOptions.length = 0;
     removedTileLayerUrls.length = 0;
     rectanglePathOptions.length = 0;
@@ -193,6 +201,22 @@ describe('AdminMapTab', () => {
     expect(mapContainerProps.current?.maxBounds).toBeUndefined();
     expect(tileLayerUrls).toContain('https://map.example.com/server-1/{z}/{x}/{y}.png');
     expect(screen.getByText('mapLayerAutoRefresh')).toBeInTheDocument();
+  });
+
+  it('invokes the tile-layer refresh only while automatic updates are enabled', () => {
+    render(<TestAdminMapTab
+      apiBaseUrl="https://manager.example.com"
+      serverId="server-1"
+      tileBaseUrl="https://map.example.com"
+      metadata={metadata('world-a', 'World A')}
+    />);
+    const automatic = screen.getByRole('checkbox', { name: 'mapLayerAutoRefresh' });
+    expect(tileRefreshCalls).toHaveBeenCalled();
+    tileRefreshCalls.mockClear();
+    fireEvent.click(automatic);
+    expect(tileRefreshCalls).not.toHaveBeenCalled();
+    fireEvent.click(automatic);
+    expect(tileRefreshCalls).toHaveBeenCalled();
   });
 
   it('offers the server-specific embedded map from the normal map view', () => {

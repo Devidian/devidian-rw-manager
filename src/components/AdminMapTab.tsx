@@ -661,7 +661,7 @@ function SignedZTileLayer({ url, tileSize, minZoom, maxZoom, onlinePlayerTiles, 
     };
   }, [map, maxZoom, minZoom, overlay, tileSize, url]);
   useEffect(() => {
-    if (!shouldRefreshOnlinePlayerTiles(refreshEnabled)) return;
+    if (!refreshEnabled) return;
     layerRef.current?.refreshOnlinePlayerTiles(onlinePlayerTiles, refreshRevision);
   }, [onlinePlayerTiles, refreshEnabled, refreshRevision]);
   return null;
@@ -1034,10 +1034,6 @@ interface NativeTileCoordinate {
 
 export function tileSignature(tiles: NativeTileCoordinate[]): string {
   return tiles.map((tile) => `${tile.x}:${tile.z}`).sort().join(',');
-}
-
-export function shouldRefreshOnlinePlayerTiles(autoRefresh: boolean): boolean {
-  return autoRefresh;
 }
 
 export function isOnlinePlayerTile(coords: { x: number; y: number; z: number }, nativeZoom: number, onlinePlayerTiles: NativeTileCoordinate[]): boolean {
