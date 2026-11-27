@@ -22,10 +22,8 @@ export function useServerStatus(
 ) {
   const [statusMap, setStatusMap] = useState<Record<string, ServerWithStatus>>({});
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const liveSubscriptionServerIds = useMemo(
-    () => servers.map((server) => server.id),
-    [servers],
-  );
+  const liveSubscriptionKey = JSON.stringify(servers.map(server => server.id).sort());
+  const liveSubscriptionServerIds = useMemo(() => JSON.parse(liveSubscriptionKey) as string[], [liveSubscriptionKey]);
 
   const fetchServerFull = useCallback(async (server: ServerConfig): Promise<Partial<ServerWithStatus>> => {
     const response = await adapter.getServerLiveStatus(server);

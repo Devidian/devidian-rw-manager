@@ -36,7 +36,7 @@ export function ServerProvider({ children }: { children: ReactNode }) {
   );
 
   const serverList: ServerWithStatus[] = servers.map(s => {
-    const status = statusMap[s.id];
+    const status = s.masterOnly ? undefined : statusMap[s.id];
     return status ? { ...s, ...status, status: status.status } : { ...s, status: s.status ?? 'unknown' as const };
   });
   const pinnedServerList = serverList.filter(server => !!user && server.dashboardVisible);

@@ -403,6 +403,13 @@
   "maxPlayers": "Max players",
   "availability": "Availability",
   "globalStatisticsSummary": "Server-wide player statistics across all stored servers.",
+  "storedServerStatistics": "Players on participating servers",
+  "observedPlayerStatistics": "Global player activity",
+  "observedPlayerStatisticsCoverage": "Includes participating and discovered servers with usable observations. Totals can be partial when servers are unreachable or undiscovered. Gaps indicate missing samples.",
+  "observedPlayerStatisticsUnavailable": "Global player activity is currently unavailable.",
+  "noObservedPlayerStatistics": "No global player activity recorded for this period.",
+  "minPlayers": "Min players",
+  "statisticsSampleCount": "Samples",
   "uniquePlayers": "Unique players",
   "configRequiresAuth": "Authentication required"
 }

@@ -67,9 +67,16 @@ This project is built with:
 Server detail pages include a lazy-loaded statistics tab when a manager backend
 is configured. The tab reads `/api/storage/server/:id/statistics` and renders
 hourly, weekly, monthly, and accumulated weekday availability/player charts.
-Player names in the live player list, server details, and global statistics open
-a profile by the backend's player mapping ObjectId. Playtime is
-shown when the server's native player data exposes it.
+The statistics page displays participating-server history and a separate
+anonymous global player activity chart with the same time-range controls.
+Global totals cover usable observations and may be partial.
+
+The server catalog refreshes cached status, player counts, and public character
+names for discovered servers. The player list shows these names in muted rows
+below participating servers, with both detail links unavailable. The rows
+expire with the catalog observation. Participating players retain their
+existing detail links and visibility rules. Playtime is shown when the
+server's native player data exposes it.
 
 Signed-in users can join additional public Global Intercom channels. The
 manager backend stores their subscriptions and the browser rejoins them after

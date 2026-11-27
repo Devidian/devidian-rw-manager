@@ -7,11 +7,13 @@ import { PlayerUid } from '@/components/PlayerUid';
 import { PlayerNameLink } from '@/components/PlayerNameLink';
 import { RichText } from '@/components/RichText';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getServerCapacity, getServerDisplayName, getServerSecondaryName } from '@/lib/serverDisplay';
+import { getServerCapacity, getServerPlayerCountDisplay, getServerDisplayName, getServerSecondaryName } from '@/lib/serverDisplay';
 import type { ListedOnlinePlayer } from '@/lib/onlinePlayers';
 
 interface OnlinePlayerRow {
   key: string;
+  masterOnly: boolean;
+  playerCount: number | string;
   playerId?: string | number;
   serverId: string;
   serverName: string;
@@ -28,6 +30,8 @@ export default function PlayerListPage({ onlinePlayers }: { onlinePlayers: Liste
   const players = useMemo(() => {
     const rows: OnlinePlayerRow[] = onlinePlayers.map(({ key, server, player }) => ({
       key,
+      masterOnly: server.masterOnly === true,
+      playerCount: getServerPlayerCountDisplay(server),
       serverId: server.id,
       serverName: getServerDisplayName(server),
       serverSecondaryName: getServerSecondaryName(server),
@@ -39,6 +43,7 @@ export default function PlayerListPage({ onlinePlayers }: { onlinePlayers: Liste
     }));
 
     return rows.sort((left, right) => {
+      if (left.masterOnly !== right.masterOnly) return left.masterOnly ? 1 : -1;
       const capacity = right.capacity.current - left.capacity.current;
       if (capacity !== 0) return capacity;
       const server = left.serverName.localeCompare(right.serverName, undefined, { numeric: true, sensitivity: 'base' });
@@ -75,20 +80,22 @@ export default function PlayerListPage({ onlinePlayers }: { onlinePlayers: Liste
             </TableHeader>
             <TableBody>
               {players.map(player => (
-                <TableRow key={player.key}>
-                  <TableCell className="font-medium">{player.playerId === undefined ? player.playerName
+                <TableRow key={player.key} className={player.masterOnly ? 'bg-muted/60 text-muted-foreground hover:bg-muted/70' : undefined}>
+                  <TableCell className="font-medium">{player.masterOnly || player.playerId === undefined ? player.playerName
                     : <PlayerNameLink id={player.playerId} uid={player.uid} name={player.playerName} />}</TableCell>
-                  {isAuthenticated && <TableCell><PlayerUid uid={player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>}
+                  {isAuthenticated && <TableCell><PlayerUid uid={player.masterOnly ? undefined : player.uid} platform={player.platform} authenticated={isAuthenticated} /></TableCell>}
                   <TableCell className="min-w-[16rem]">
-                    <Link to={`/server/${player.serverId}`} className="font-medium text-foreground hover:text-primary">
-                      <RichText text={player.serverName} />
-                    </Link>
+                    {player.masterOnly
+                      ? <span className="font-medium"><RichText text={player.serverName} /></span>
+                      : <Link to={`/server/${player.serverId}`} className="font-medium text-foreground hover:text-primary">
+                        <RichText text={player.serverName} />
+                      </Link>}
                     {player.serverSecondaryName && (
                       <div className="text-xs text-muted-foreground truncate max-w-[20rem]">{player.serverSecondaryName}</div>
                     )}
                   </TableCell>
                   <TableCell className="tabular-nums">
-                    <span className="font-medium text-foreground">{player.capacity.current}</span>
+                    <span className={player.masterOnly ? "font-medium" : "font-medium text-foreground"}>{player.playerCount}</span>
                     <span className="text-muted-foreground"> / {player.capacity.maximum}</span>
                   </TableCell>
                 </TableRow>

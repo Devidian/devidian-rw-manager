@@ -18,7 +18,7 @@ import { RichText } from '@/components/RichText';
 import { ServerWithStatus } from '@/types/server';
 import { cn } from '@/lib/utils';
 import { serverConnectUrl } from '@/lib/serverConnect';
-import { getServerDisplayName, getServerSecondaryName, getServerPlayerCount } from '@/lib/serverDisplay';
+import { getServerDisplayName, getServerSecondaryName, getServerPlayerCount, getServerPlayerCountDisplay } from '@/lib/serverDisplay';
 
 const statusBadgeSize = 'h-5 w-7 justify-center p-0';
 
@@ -312,7 +312,7 @@ export default function ServerListPage() {
                 const name = getServerDisplayName(server);
                 const secondaryName = getServerSecondaryName(server);
                 const map = data?.map ?? '-';
-                const playerCount = getServerPlayerCount(server);
+                const playerCount = getServerPlayerCountDisplay(server);
                 const maxPlayers = data?.maxplayers ?? '?';
                 const version = data?.version ?? server.version ?? '-';
                 const connectUrl = server.masterOnly ? undefined : serverConnectUrl(server);

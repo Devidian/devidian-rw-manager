@@ -1,14 +1,16 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { BarChart3, Loader2 } from 'lucide-react';
 import { useStorageMode } from '@/context/StorageModeContext';
-import type { ServerStatisticsBucket } from '@/types/server';
+import type { GlobalStatisticsPayload } from '@/types/server';
 import {
   buildGlobalStatisticsPoints,
+  buildObservedPlayerPoints,
   isoDate,
   statisticsPickerValue,
   statisticsRange,
+  summarizeObservedPlayers,
   type StatisticsView,
   type StatisticsPoint,
 } from '@/lib/statistics';
@@ -19,24 +21,41 @@ import {
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { StatisticsDatePicker } from '@/components/StatisticsDatePicker';
 
-const GlobalStatisticsChart = memo(function GlobalStatisticsChart({ points, averageLabel, maxLabel }: {
+const GlobalStatisticsChart = memo(function GlobalStatisticsChart({ points, averageLabel, maxLabel, minLabel, sampleLabel, locale }: {
   points: StatisticsPoint[];
   averageLabel: string;
   maxLabel: string;
+  minLabel?: string;
+  sampleLabel?: string;
+  locale?: string;
 }) {
+  const data = minLabel ? points.map(point => point.samples ? point : { label: point.label, samples: 0 }) : points;
+  const format = new Intl.NumberFormat(locale);
   return (
     <ChartContainer
       config={{
         averagePlayers: { label: averageLabel, color: 'hsl(var(--primary))' },
         maxPlayers: { label: maxLabel, color: 'hsl(var(--muted-foreground))' },
+        ...(minLabel ? { minPlayers: { label: minLabel, color: 'hsl(var(--chart-2))' } } : {}),
       }}
       className="h-72 w-full"
     >
-      <BarChart data={points}>
+      <BarChart data={data}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
         <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartTooltip content={<ChartTooltipContent
+          labelFormatter={(label, items) => sampleLabel ? (
+            <>{label} · {sampleLabel} {format.format(items[0]?.payload?.samples ?? 0)}</>
+          ) : label}
+          formatter={minLabel ? (value, series) => (
+            <span className="flex w-full justify-between gap-3">
+              <span>{series === 'minPlayers' ? minLabel : series === 'maxPlayers' ? maxLabel : averageLabel}</span>
+              <span className="tabular-nums">{format.format(Number(value))}</span>
+            </span>
+          ) : undefined}
+        />} />
+        {minLabel && <Bar dataKey="minPlayers" fill="var(--color-minPlayers)" radius={[4, 4, 0, 0]} />}
         <Bar dataKey="averagePlayers" fill="var(--color-averagePlayers)" radius={[4, 4, 0, 0]} />
         <Bar dataKey="maxPlayers" fill="var(--color-maxPlayers)" radius={[4, 4, 0, 0]} />
       </BarChart>
@@ -49,10 +68,9 @@ export default function StatisticsPage() {
   const { adapter } = useStorageMode();
   const [view, setView] = useState<StatisticsView>('day');
   const [dateValue, setDateValue] = useState(() => isoDate(new Date()));
-  const [buckets, setBuckets] = useState<ServerStatisticsBucket[]>([]);
+  const [statistics, setStatistics] = useState<GlobalStatisticsPayload>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const snapshotRef = useRef({ range: '', chart: '' });
 
   useEffect(() => {
     let cancelled = false;
@@ -61,14 +79,7 @@ export default function StatisticsPage() {
     adapter.getGlobalStatistics(statisticsRange(view, dateValue))
       .then((payload) => {
         if (cancelled) return;
-        const range = `${view}:${dateValue}`;
-        const chart = JSON.stringify(buildGlobalStatisticsPoints(payload.buckets, view, dateValue, 'en').map((point) => [
-          point.label, point.averagePlayers, point.maxPlayers, point.samples > 0,
-        ]));
-        if (range !== snapshotRef.current.range || chart !== snapshotRef.current.chart) {
-          setBuckets(payload.buckets);
-        }
-        snapshotRef.current = { range, chart };
+        setStatistics(payload);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'UNKNOWN_ERROR');
@@ -82,9 +93,15 @@ export default function StatisticsPage() {
   }, [adapter, dateValue, view]);
 
   const points = useMemo(
-    () => buildGlobalStatisticsPoints(buckets, view, dateValue, i18n.language || 'en'),
-    [buckets, dateValue, i18n.language, view],
+    () => buildGlobalStatisticsPoints(statistics?.buckets ?? [], view, dateValue, i18n.language || 'en'),
+    [statistics, dateValue, i18n.language, view],
   );
+  const observed = useMemo(
+    () => buildObservedPlayerPoints(statistics?.globalPlayerBuckets ?? [], view, dateValue, i18n.language || 'en'),
+    [statistics, dateValue, i18n.language, view],
+  );
+  const observedSummary = useMemo(() => summarizeObservedPlayers(statistics?.globalPlayerBuckets ?? []), [statistics]);
+  const numberFormat = new Intl.NumberFormat(i18n.language || 'en');
   const hasData = points.some((point) => point.samples > 0);
   const changeView = (nextView: StatisticsView) => {
     setView(nextView);
@@ -118,7 +135,7 @@ export default function StatisticsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
-            {t('players')}
+            {t('storedServerStatistics')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -145,7 +162,42 @@ export default function StatisticsPage() {
         </CardContent>
       </Card>
 
-
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            {t('observedPlayerStatistics')}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">{t('observedPlayerStatisticsCoverage')}</p>
+        </CardHeader>
+        <CardContent aria-busy={loading}>
+          {!loading && (error || statistics?.globalPlayerBuckets === undefined) && (
+            <p className="text-sm text-muted-foreground">{t('observedPlayerStatisticsUnavailable')}</p>
+          )}
+          {!loading && !error && statistics?.globalPlayerBuckets !== undefined && (
+            observedSummary.samples > 0
+              ? <>
+                  <dl className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {([
+                      ['minPlayers', observedSummary.minPlayers],
+                      ['maxPlayers', observedSummary.maxPlayers],
+                      ['averagePlayers', observedSummary.averagePlayers],
+                      ['statisticsSampleCount', observedSummary.samples],
+                    ] as const).map(([label, value]) => (
+                      <div key={label}>
+                        <dt className="text-sm text-muted-foreground">{t(label)}</dt>
+                        <dd className="font-medium tabular-nums">{numberFormat.format(value ?? 0)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <GlobalStatisticsChart points={observed} averageLabel={t('averagePlayers')}
+                    minLabel={t('minPlayers')} maxLabel={t('maxPlayers')} sampleLabel={t('statisticsSampleCount')}
+                    locale={i18n.language || 'en'} />
+                </>
+              : <p className="text-sm text-muted-foreground">{t('noObservedPlayerStatistics')}</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

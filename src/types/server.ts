@@ -1,6 +1,8 @@
 export interface ServerConfig {
   id: string;
   masterOnly?: boolean;
+  masterOnlyPlayerNames?: string[];
+  masterOnlyLiveUntil?: string;
   canApprove?: boolean;
   canDelete?: boolean;
   dashboardVisible?: boolean;
@@ -212,7 +214,16 @@ export interface ServerStatisticsPayload {
   buckets: ServerStatisticsBucket[];
 }
 
+export interface GlobalPlayerBucket {
+  hourStart: string;
+  sampleCount: number;
+  minPlayers: number;
+  maxPlayers: number;
+  averagePlayers: number;
+}
+
 export interface GlobalStatisticsPayload {
+  globalPlayerBuckets?: GlobalPlayerBucket[];
   from?: string;
   to?: string;
   buckets: ServerStatisticsBucket[];

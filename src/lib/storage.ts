@@ -14,6 +14,7 @@ export class ServerApprovalError extends Error {
 
 export interface StorageAdapter {
   getServers(): Promise<ServerConfig[]>;
+  getMasterOnlyServers?(): Promise<ServerConfig[]>;
   refreshServers(): Promise<ServerConfig[]>;
   approveServer?(id: string): Promise<ServerConfig>;
   addServer(data: Omit<ServerConfig, 'id' | 'createdAt'>): Promise<ServerConfig>;
@@ -127,8 +128,16 @@ export class BackendStorageAdapter implements StorageAdapter {
     return this.baseUrl.replace(/\/$/, '');
   }
 
-  async getServers(): Promise<ServerConfig[]> {
-    const res = await fetch(`${this.base}/api/storage/server`, {
+  getServers(): Promise<ServerConfig[]> {
+    return this.fetchServers();
+  }
+
+  getMasterOnlyServers(): Promise<ServerConfig[]> {
+    return this.fetchServers('?masterOnly=true');
+  }
+
+  private async fetchServers(query = ''): Promise<ServerConfig[]> {
+    const res = await fetch(`${this.base}/api/storage/server${query}`, {
       headers: authHeaders(),
       signal: AbortSignal.timeout(10_000),
     });

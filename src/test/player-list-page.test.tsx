@@ -130,7 +130,33 @@ describe('player list page', () => {
     }
   });
 
-  it('excludes master-only servers from the player list', () => {
+  it('appends same-name public character rows with muted styling and no detail links', () => {
+    state.isAuthenticated = true;
+    const transient: ServerWithStatus = {
+      ...baseServerList[1],
+      masterOnly: true,
+      label: 'Discovered server',
+      queryData: { ...baseServerList[1].queryData!, name: 'Discovered server', playercount: 50 },
+      masterOnlyPlayerNames: ['12345678901234567', '12345678901234567'],
+    };
+    serverList = [transient, baseServerList[0]];
+    const { rerender } = render(<MemoryRouter><PlayerListPage /></MemoryRouter>);
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(rows[0]).toHaveTextContent('Ada');
+    for (const row of rows.slice(1)) {
+      expect(row).toHaveTextContent('12345678901234567');
+      expect(row).toHaveTextContent('Discovered server');
+      expect(row).toHaveClass('bg-muted/60');
+      expect(row.querySelectorAll('a')).toHaveLength(0);
+    }
+    expect(rows).toHaveLength(3);
+
+    serverList = [{ ...transient, status: 'unknown' }, baseServerList[0]];
+    rerender(<MemoryRouter><PlayerListPage /></MemoryRouter>);
+    expect(screen.queryByText('12345678901234567')).not.toBeInTheDocument();
+  });
+
+  it('excludes master-only servers without a public roster from the player list', () => {
     const active = { ...baseServerList[1], lastSeen: '2026-10-19T04:00:00.000Z' };
     const oldAddress = {
       ...active,

@@ -403,6 +403,13 @@
   "maxPlayers": "Max. Spieler",
   "availability": "Verfügbarkeit",
   "globalStatisticsSummary": "Serverübergreifende Spielerstatistiken über alle gespeicherten Server.",
+  "storedServerStatistics": "Spieler auf teilnehmenden Servern",
+  "observedPlayerStatistics": "Globale Spieleraktivität",
+  "observedPlayerStatisticsCoverage": "Erfasst teilnehmende und entdeckte Server mit verwertbaren Beobachtungen. Bei unerreichbaren oder unbekannten Servern können die Werte unvollständig sein. Lücken zeigen fehlende Stichproben.",
+  "observedPlayerStatisticsUnavailable": "Die globale Spieleraktivität ist derzeit nicht verfügbar.",
+  "noObservedPlayerStatistics": "Für diesen Zeitraum wurde keine globale Spieleraktivität erfasst.",
+  "minPlayers": "Min. Spieler",
+  "statisticsSampleCount": "Stichproben",
   "uniquePlayers": "Eindeutige Spieler",
   "configRequiresAuth": "Anmeldung erforderlich"
 }

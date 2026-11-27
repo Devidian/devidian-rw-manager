@@ -8,6 +8,7 @@ Client storage, API and live-event integration. Backend owns the corresponding s
 ## Source and tests
 
 - [Storage adapters](../../src/lib/storage.ts), [authentication API](../../src/lib/authApi.ts), and [server live client](../../src/lib/serverLive.ts) provide client entry points.
+- The [catalog hook](../../src/hooks/useServers.ts) refreshes and expires discovery-only REST observations. The [statistics page](../../src/pages/StatisticsPage.tsx) consumes the optional anonymous hourly buckets alongside participating-server history.
 - [Map live subscription](../../src/hooks/useMapLiveSubscription.ts) and [map live client](../../src/lib/mapLive.ts) consume live map updates.
 - [Map live tests](../../src/test/map-live.test.ts) and [admin mapping contract tests](../../src/test/admin-mapping-contract.test.ts) exercise client behavior.
 

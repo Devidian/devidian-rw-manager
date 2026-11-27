@@ -20,6 +20,11 @@ export function getServerPlayerCount(server: ServerWithStatus): number {
   return server.publicPlayerCount ?? server.queryData?.playercount ?? server.onlinePlayers?.length ?? 0;
 }
 
+export function getServerPlayerCountDisplay(server: ServerWithStatus): number | string {
+  if (server.masterOnly && server.status !== 'offline' && server.queryData?.playercount === undefined) return '—';
+  return getServerPlayerCount(server);
+}
+
 export function getServerCapacity(server: ServerWithStatus): { current: number; maximum: number | string } {
   return {
     current: getServerPlayerCount(server),

@@ -1,4 +1,4 @@
-import type { ServerStatisticsBucket } from '@/types/server';
+import type { GlobalPlayerBucket, ServerStatisticsBucket } from '@/types/server';
 
 export type StatisticsView = 'day' | 'week' | 'month' | 'weekday';
 
@@ -6,6 +6,7 @@ export interface StatisticsPoint {
   label: string;
   averagePlayers: number;
   maxPlayers: number;
+  minPlayers?: number;
   availability: number;
   samples: number;
 }
@@ -82,12 +83,12 @@ export function statisticsRange(view: StatisticsView, dateValue: string): { from
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-function groupBuckets(
-  buckets: ServerStatisticsBucket[],
+function groupBuckets<Bucket extends { hourStart: string }>(
+  buckets: Bucket[],
   view: StatisticsView,
   dateValue: string,
   locale: string,
-  aggregate: (label: string, buckets: ServerStatisticsBucket[]) => StatisticsPoint,
+  aggregate: (label: string, buckets: Bucket[]) => StatisticsPoint,
 ): StatisticsPoint[] {
   const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' });
   if (view === 'weekday') {
@@ -101,7 +102,7 @@ function groupBuckets(
   const start = statisticsDate(view, dateValue);
   const hours = view === 'day' ? 24 : view === 'week' ? 24 * 7 : 24 * 31;
   const end = view === 'month' ? addMonths(start, 1) : addDays(start, hours / 24);
-  const grouped = new Map<string, ServerStatisticsBucket[]>();
+  const grouped = new Map<string, Bucket[]>();
 
   for (const bucket of buckets) {
     const date = new Date(bucket.hourStart);
@@ -182,4 +183,39 @@ export function buildGlobalStatisticsPoints(
   locale: string,
 ): StatisticsPoint[] {
   return groupBuckets(buckets, view, dateValue, locale, aggregateGlobalBucketGroup);
+}
+
+function aggregateObservedBucketGroup(label: string, hours: GlobalPlayerBucket[]): StatisticsPoint {
+  let samples = 0;
+  let totalPlayers = 0;
+  let minPlayers = Infinity;
+  let maxPlayers = 0;
+  for (const hour of hours) {
+    if (hour.sampleCount === 0) continue;
+    samples += hour.sampleCount;
+    totalPlayers += hour.averagePlayers * hour.sampleCount;
+    minPlayers = Math.min(minPlayers, hour.minPlayers);
+    maxPlayers = Math.max(maxPlayers, hour.maxPlayers);
+  }
+  return {
+    label,
+    averagePlayers: samples ? Number((totalPlayers / samples).toFixed(1)) : 0,
+    minPlayers: samples ? minPlayers : undefined,
+    maxPlayers,
+    availability: 0,
+    samples,
+  };
+}
+
+export function summarizeObservedPlayers(buckets: GlobalPlayerBucket[]): StatisticsPoint {
+  return aggregateObservedBucketGroup('', buckets);
+}
+
+export function buildObservedPlayerPoints(
+  buckets: GlobalPlayerBucket[],
+  view: StatisticsView,
+  dateValue: string,
+  locale: string,
+): StatisticsPoint[] {
+  return groupBuckets(buckets, view, dateValue, locale, aggregateObservedBucketGroup);
 }

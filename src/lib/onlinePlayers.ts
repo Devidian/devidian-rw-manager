@@ -59,5 +59,11 @@ export function listOnlinePlayers(servers: ServerWithStatus[], publicNames: Reco
   return [...exported, ...participating.flatMap(server =>
     unexportedOnlineNames(publicNames[server.id] ?? [], exportedByServer.get(server.id) ?? [])
       .map((name, index) => ({ key: `public:${server.id}:${index}`, server, player: { name } })),
+  ), ...servers.flatMap(server =>
+    server.masterOnly && server.status === 'online' && !server.blocked
+      ? (server.masterOnlyPlayerNames ?? []).map((name, index) => ({
+        key: `discovered:${server.id}:${index}`, server, player: { name },
+      }))
+      : [],
   )];
 }

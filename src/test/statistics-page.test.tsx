@@ -84,3 +84,19 @@ describe('StatisticsPage', () => {
     expect(state.chartRenders).toHaveBeenCalledTimes(renders);
   });
 });
+
+it('renders the separate global sample summary including confirmed zeroes', async () => {
+  const hourStart = new Date(`${isoDate(new Date())}T10:00:00`).toISOString();
+  state.getGlobalStatistics.mockResolvedValue({ buckets: [], globalPlayerBuckets: [
+    { hourStart, sampleCount: 2, minPlayers: 0, maxPlayers: 8, averagePlayers: 4 },
+  ] } satisfies GlobalStatisticsPayload);
+  render(<MemoryRouter><StatisticsPage /></MemoryRouter>);
+  expect(screen.getByText('storedServerStatistics')).toBeInTheDocument();
+  expect(screen.getByText('observedPlayerStatistics')).toBeInTheDocument();
+  expect(await screen.findByText('statisticsSampleCount')).toBeInTheDocument();
+  expect(screen.getByText('minPlayers').nextElementSibling).toHaveTextContent('0');
+  expect(screen.getByText('maxPlayers').nextElementSibling).toHaveTextContent('8');
+  expect(screen.getByText('averagePlayers').nextElementSibling).toHaveTextContent('4');
+  expect(screen.getByText('statisticsSampleCount').nextElementSibling).toHaveTextContent('2');
+  expect(screen.getByText('observedPlayerStatisticsCoverage')).toBeInTheDocument();
+});
