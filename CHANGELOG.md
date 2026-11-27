@@ -37,6 +37,24 @@
 * use periodic REST player refresh only while live updates are unavailable
 * resume `/live` polling only while the server-status WebSocket is unavailable
 
+## [1.9.4](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.9.3...rw-manager-v1.9.4) (2026-11-27)
+
+
+### Changed
+
+* extract shared Marketplace offers in Manager ([0aa136f](https://github.com/Devidian/devidian-rw-manager/commit/0aa136f2fc62a262bb5467d56d438e27dd2d08e8))
+* inline the Manager tile refresh guard ([343f0b6](https://github.com/Devidian/devidian-rw-manager/commit/343f0b6fc0d2f1aa00ff387b02acb2c02a83bf02))
+
+
+### Documentation
+
+* **codemap:** add repository navigation and maintenance workflow ([b8ca9cb](https://github.com/Devidian/devidian-rw-manager/commit/b8ca9cb31eb02e72212e7cbff1f261d040b5df12))
+
+
+### Maintenance
+
+* **codex:** correct repository workflow references ([deacac8](https://github.com/Devidian/devidian-rw-manager/commit/deacac817da7400983c1d0967e21b67902a7a988))
+
 ## [1.9.3](https://github.com/Devidian/devidian-rw-manager/compare/rw-manager-v1.9.2...rw-manager-v1.9.3) (2026-11-19)
 
 
