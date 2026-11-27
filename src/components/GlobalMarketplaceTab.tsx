@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MarketplaceOffersTable } from '@/components/AdminMapTab';
+import { MarketplaceOffersTable } from '@/components/MarketplaceOffers';
 import { fetchGlobalMarketplaceOffers } from '@/hooks/useMapLayers';
 import type { MapMarketplaceOffer } from '@/types/adminMapping';
 
